@@ -1,8 +1,9 @@
 use tokio::runtime::Runtime;
 use tokio::sync::{mpsc, oneshot};
-use tokio::task;
 
-struct MyActor {
+// based on orig code from Alice Ryhl blog post https://ryhl.io/blog/actors-with-tokio
+
+struct Actor {
     receiver: mpsc::Receiver<ActorMessage>,
     next_id: u32,
 }
@@ -10,9 +11,9 @@ enum ActorMessage {
     GetUniqueId { respond_to: oneshot::Sender<u32> },
 }
 
-impl MyActor {
+impl Actor {
     fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
-        MyActor {
+        Actor {
             receiver,
             next_id: 0,
         }
@@ -32,21 +33,21 @@ impl MyActor {
     }
 }
 
-async fn run_my_actor(mut actor: MyActor) {
+async fn run_my_actor(mut actor: Actor) {
     while let Some(msg) = actor.receiver.recv().await {
         actor.handle_message(msg);
     }
 }
 
 #[derive(Clone)]
-pub struct MyActorHandle {
+pub struct ActorHandle {
     sender: mpsc::Sender<ActorMessage>,
 }
 
-impl MyActorHandle {
+impl ActorHandle {
     pub fn new() -> Self {
         let (sender, receiver) = mpsc::channel(8);
-        let actor = MyActor::new(receiver);
+        let actor = Actor::new(receiver);
         tokio::spawn(run_my_actor(actor));
 
         Self { sender }
@@ -67,7 +68,7 @@ impl MyActorHandle {
 fn main() {
     let runtime = Runtime::new().unwrap();
     let r = runtime.block_on(async {
-        let a = MyActorHandle::new();
+        let a = ActorHandle::new();
         let r = a.get_unique_id().await;
         r
     });
