@@ -1,0 +1,33 @@
+Navactor Technical Approach
+====================
+
+A CLI tool as lab for the actor use cases.  Ingest piped streams of CRLF-
+delimited observations, send them to actors, implement the OPERATOR 
+processing, and persist.
+
+Postpone network support and make a dtlab cli lab that is a useful personal
+data science tool.
+
+----------
+
+Parts
+----------
+
+Parts: rust, clap, tokio, sqlite
+
+Concepts and Values
+---------------
+
+1. cli-first
+2. messages can be any serializable object (unparsed msg is ok)
+3. actors can ONLY persist NUMERICAL DATA
+4. all work done by actors must be done with DtLab Operators
+5. all IO must be via actor messaging
+
+TODO
+--------
+
+1. clap
+2. ingest stdin stream into actor msgs
+3. parse msgs in actor impls
+
