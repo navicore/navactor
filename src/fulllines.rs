@@ -1,7 +1,11 @@
 use std::io;
 use std::io::BufRead;
 
-pub fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<String>> {
+/**
+ * trait lets any BufRead impl be processed with a "for line in ..." style
+ */
+
+fn full_lines(mut input: impl BufRead) -> impl Iterator<Item = io::Result<String>> {
     std::iter::from_fn(move || {
         let mut vec = String::new();
         match input.read_line(&mut vec) {

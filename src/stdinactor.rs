@@ -16,9 +16,9 @@ impl StdinActor {
     fn handle_message(&mut self, msg: StdinActorMessage) {
         match msg {
             StdinActorMessage::ReadCmd { respond_to } => {
-                for line in io::stdin().lock().full_lines() {
-                    match line {
-                        Ok(l) => print!("{}", l),
+                for line_result in io::stdin().lock().full_lines() {
+                    match line_result {
+                        Ok(line) => print!("{}", line),
                         _ => println!(),
                     }
                 }
