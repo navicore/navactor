@@ -1,5 +1,6 @@
-mod actor;
-use crate::actor::ActorHandle;
+mod fulllines;
+mod stdinactor;
+use crate::stdinactor::StdinActorHandle;
 use clap::{Args, Parser, Subcommand};
 use tokio::runtime::Runtime;
 
@@ -51,20 +52,13 @@ struct Extractor {
 
 fn main() {
     let cli = Cli::parse();
-
-    if cli.verbose >= 1 {
-        println!("buffer: {:?}", cli.buffer);
-        println!("verbose: {:?}", cli.verbose);
-    }
-    println!("dbfile: {:?}", cli.dbfile);
-
-    // let runtime = Runtime::new().unwrap();
-    // let r = runtime.block_on(async {
-    //     let a = ActorHandle::new();
-    //     let r = a.get_unique_id().await;
-    //     r
-    // });
-    // println!("response: {}", r);
+    let bufsz: usize = cli.buffer.unwrap_or(8);
+    let runtime = Runtime::new().unwrap();
+    runtime.block_on(async {
+        let a = StdinActorHandle::new(bufsz);
+        let r = a.read().await;
+        println!("response: {}", r);
+    });
 
     //todo: instantiate input actor
     //todo: instantiate output actor
