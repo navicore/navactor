@@ -2,7 +2,7 @@ Navactor Technical Approach
 ====================
 
 A CLI tool as lab for the actor use cases.  Ingest piped streams of CRLF-
-delimited observations, send them to actors, implement the OPERATOR 
+delimited observations, send them to actors, implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
 processing, and persist.
 
 Postpone network support and make a dtlab cli lab that is a useful personal
