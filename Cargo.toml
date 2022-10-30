@@ -2,6 +2,9 @@
 name = "navactor"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+authors = ["Ed Sweeney <ed@onextent.com>"]
+description = "A cli tool for creating and updating actors from piped input"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
