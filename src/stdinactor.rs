@@ -1,4 +1,4 @@
-use crate::fulllines::FullLines;
+use crate::lineiter::LineIterator;
 use std::io;
 use tokio::sync::{mpsc, oneshot};
 
@@ -16,7 +16,7 @@ impl StdinActor {
     fn handle_message(&mut self, msg: StdinActorMessage) {
         match msg {
             StdinActorMessage::ReadCmd { respond_to } => {
-                for line_result in io::stdin().lock().full_lines() {
+                for line_result in io::stdin().lock().line_iter() {
                     match line_result {
                         Ok(line) => print!("{}", line),
                         _ => println!(),

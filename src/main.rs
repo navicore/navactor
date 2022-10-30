@@ -1,4 +1,4 @@
-mod fulllines;
+mod lineiter;
 mod stdinactor;
 use crate::stdinactor::StdinActorHandle;
 use clap::{Args, Parser, Subcommand};
