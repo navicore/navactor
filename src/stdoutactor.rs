@@ -9,8 +9,7 @@ impl StdoutActor {
     fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
         StdoutActor { receiver }
     }
-    async fn handle_message(&mut self, msg: ActorMessage) {
-        println!("output got msg............");
+    fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::PrintOneCmd { text } => println!("{}", text),
             ActorMessage::IsCompleteMsg { respond_to } => {
@@ -21,7 +20,7 @@ impl StdoutActor {
     }
 }
 
-async fn run_my_actor(mut actor: StdoutActor) {
+async fn acting(mut actor: StdoutActor) {
     while let Some(msg) = actor.receiver.recv().await {
         actor.handle_message(msg);
     }
@@ -36,12 +35,11 @@ impl StdoutActorHandle {
     pub fn new(bufsz: usize) -> Self {
         let (sender, receiver) = mpsc::channel(bufsz);
         let actor = StdoutActor::new(receiver);
-        tokio::spawn(run_my_actor(actor));
+        tokio::spawn(acting(actor));
         Self { sender }
     }
 
     pub async fn print(&self, text: String) {
-        println!("got print");
         let msg = ActorMessage::PrintOneCmd { text };
         let _ = self.sender.send(msg).await;
     }

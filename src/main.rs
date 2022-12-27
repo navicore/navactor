@@ -1,9 +1,6 @@
-mod actor;
-mod lineiter;
 mod messages;
 mod stdinactor;
 mod stdoutactor;
-use crate::actor::ActorHandle;
 use crate::stdinactor::StdinActorHandle;
 use crate::stdoutactor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
@@ -63,11 +60,10 @@ fn main() {
         let output = StdoutActorHandle::new(bufsz);
         let input = StdinActorHandle::new(bufsz, output);
         let r = input.read().await;
-        println!("response: {}", r);
+        if r != 1 {
+            panic!("END response: {} sucks.", r);
+        }
     });
-
-    let a = ActorHandle::new();
-    let _ = a.get_unique_id();
 
     //todo: instantiate input actor
     //todo: instantiate output actor
