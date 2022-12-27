@@ -13,7 +13,10 @@ data science tool.
 Parts
 ----------
 
-Parts: rust, clap, tokio, sqlite
+Parts: `rust, clap, tokio, rusqlite, tokio-rusqlite`
+
+Maybe `rayon` but only for operator apply when a single actor's self update
+will benefit from parallelism.
 
 Concepts and Values
 ---------------
@@ -21,6 +24,7 @@ Concepts and Values
 1. cli-first
 2. messages can be any serializable object (unparsed msg is ok)
 3. actors can ONLY persist NUMERICAL DATA
+3. persistence can only be of event source commands (state changes) - consider shallow clones around time windows rather than the akka snapshot approach
 4. all work done by actors must be done with DtLab Operators
 5. all IO must be via actor messaging
   a. should even stdin be read from an input actor?
@@ -32,13 +36,13 @@ USAGE
 all state be a single db file
 
 ```bash
-cat my.jsonl | navactor -l ./my.db-> my-new-state-log.jsonl
+cat my.jsonl | nv -d ./my.db-> my-new-state-log.jsonl
 ```
 
 TODO
 --------
 
-1. clap
+1. ~~clap~~
 2. ingest stdin stream into actor msgs
 3. parse msgs in actor impls
 

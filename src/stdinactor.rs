@@ -1,57 +1,58 @@
-use crate::lineiter::LineIterator;
-use std::io;
+use crate::messages::ActorMessage;
+use crate::stdoutactor::StdoutActorHandle;
+use tokio::io::stdin;
+use tokio::io::AsyncBufReadExt;
+use tokio::io::BufReader;
 use tokio::sync::{mpsc, oneshot};
 
 struct StdinActor {
-    receiver: mpsc::Receiver<StdinActorMessage>,
-}
-enum StdinActorMessage {
-    ReadCmd { respond_to: oneshot::Sender<u32> },
+    receiver: mpsc::Receiver<ActorMessage>,
+    output: StdoutActorHandle,
 }
 
 impl StdinActor {
-    fn new(receiver: mpsc::Receiver<StdinActorMessage>) -> Self {
-        StdinActor { receiver }
+    fn new(receiver: mpsc::Receiver<ActorMessage>, output: StdoutActorHandle) -> Self {
+        StdinActor { receiver, output }
     }
-    fn handle_message(&mut self, msg: StdinActorMessage) {
+    async fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
-            StdinActorMessage::ReadCmd { respond_to } => {
-                for line_result in io::stdin().lock().line_iter() {
-                    match line_result {
-                        Ok(line) => print!("{}", line),
-                        _ => println!(),
-                    }
+            ActorMessage::ReadAllCmd { respond_to } => {
+                let mut lines = BufReader::new(stdin()).lines();
+
+                while let Some(line) = lines.next_line().await.expect("failed to read stream") {
+                    let _ = self.output.print(line).await;
                 }
 
-                let _ = respond_to.send(1);
+                let _ = self.output.complete(respond_to).await; // THIS DOES NOT WORK
             }
+            e => println!("unexpected: {:?}", e),
         }
     }
 }
 
-async fn run_my_actor(mut actor: StdinActor) {
+async fn acting(mut actor: StdinActor) {
     while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg);
+        actor.handle_message(msg).await;
     }
 }
 
 #[derive(Clone)]
 pub struct StdinActorHandle {
-    sender: mpsc::Sender<StdinActorMessage>,
+    sender: mpsc::Sender<ActorMessage>,
 }
 
 impl StdinActorHandle {
-    pub fn new(bufsz: usize) -> Self {
+    pub fn new(bufsz: usize, output: StdoutActorHandle) -> Self {
         let (sender, receiver) = mpsc::channel(bufsz);
-        let actor = StdinActor::new(receiver);
-        tokio::spawn(run_my_actor(actor));
+        let actor = StdinActor::new(receiver, output);
+        tokio::spawn(acting(actor));
 
         Self { sender }
     }
 
     pub async fn read(&self) -> u32 {
         let (send, recv) = oneshot::channel();
-        let msg = StdinActorMessage::ReadCmd { respond_to: send };
+        let msg = ActorMessage::ReadAllCmd { respond_to: send };
         let _ = self.sender.send(msg).await;
         recv.await.expect("StdinActor task has been killed")
     }

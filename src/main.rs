@@ -1,6 +1,8 @@
-mod lineiter;
+mod messages;
 mod stdinactor;
+mod stdoutactor;
 use crate::stdinactor::StdinActorHandle;
+use crate::stdoutactor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
 use tokio::runtime::Runtime;
 
@@ -55,9 +57,12 @@ fn main() {
     let bufsz: usize = cli.buffer.unwrap_or(8);
     let runtime = Runtime::new().unwrap();
     runtime.block_on(async {
-        let a = StdinActorHandle::new(bufsz);
-        let r = a.read().await;
-        println!("response: {}", r);
+        let output = StdoutActorHandle::new(bufsz);
+        let input = StdinActorHandle::new(bufsz, output);
+        let r = input.read().await;
+        if r != 1 {
+            panic!("END response: {} sucks.", r);
+        }
     });
 
     //todo: instantiate input actor
