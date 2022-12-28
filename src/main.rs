@@ -1,6 +1,8 @@
+mod extractor_actor;
 mod messages;
 mod stdinactor;
 mod stdoutactor;
+use crate::extractor_actor::ExtractorActorHandle;
 use crate::messages::ActorMessage::IsCompleteMsg;
 use crate::stdinactor::StdinActorHandle;
 use crate::stdoutactor::StdoutActorHandle;
@@ -54,7 +56,19 @@ struct Extractor {
     extractor: String,
 }
 
-fn define(_: Extractor, bufsz: usize, runtime: Runtime) {}
+fn define(spec: Extractor, bufsz: usize, runtime: Runtime) {
+    let result = run_async_define(spec, bufsz);
+    runtime.block_on(result).expect("An error occurred");
+}
+
+async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), String> {
+    let extractor = ExtractorActorHandle::new(bufsz);
+
+    match extractor.define(spec_holder.extractor).await {
+        IsCompleteMsg { respond_to_opt: _ } => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
 
 fn list(bufsz: usize, runtime: Runtime) {}
 

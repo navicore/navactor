@@ -2,6 +2,10 @@ use tokio::sync::oneshot;
 
 #[derive(Debug)]
 pub enum ActorMessage {
+    DefineCmd {
+        respond_to: oneshot::Sender<ActorMessage>,
+        spec: String,
+    },
     ReadAllCmd {
         respond_to: oneshot::Sender<ActorMessage>,
     },
