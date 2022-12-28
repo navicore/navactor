@@ -1,6 +1,7 @@
 mod messages;
 mod stdinactor;
 mod stdoutactor;
+use crate::messages::ActorMessage::IsCompleteMsg;
 use crate::stdinactor::StdinActorHandle;
 use crate::stdoutactor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
@@ -60,15 +61,15 @@ fn main() {
         let output = StdoutActorHandle::new(bufsz);
         let input = StdinActorHandle::new(bufsz, output);
         let r = input.read().await;
-        if r != 1 {
-            panic!("END response: {} sucks.", r);
+        match r {
+            IsCompleteMsg {
+                respond_to_opt: None,
+            } => {
+                println!("success");
+            }
+            _ => {
+                panic!("END response: sucks.");
+            }
         }
     });
-
-    //todo: instantiate input actor
-    //todo: instantiate output actor
-    //todo: send start command to input actor
-
-    //todo: need some lifecycle - perhaps block on shutdown for output actor and output actor only
-    //shuts down because input actor sent and EOF msg to output actor?
 }

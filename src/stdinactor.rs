@@ -23,7 +23,7 @@ impl StdinActor {
                     let _ = self.output.print(line).await;
                 }
 
-                let _ = self.output.complete(respond_to).await; // THIS DOES NOT WORK
+                let _ = self.output.complete(respond_to).await;
             }
             e => println!("unexpected: {:?}", e),
         }
@@ -50,7 +50,7 @@ impl StdinActorHandle {
         Self { sender }
     }
 
-    pub async fn read(&self) -> u32 {
+    pub async fn read(&self) -> ActorMessage {
         let (send, recv) = oneshot::channel();
         let msg = ActorMessage::ReadAllCmd { respond_to: send };
         let _ = self.sender.send(msg).await;

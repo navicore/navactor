@@ -12,9 +12,14 @@ impl StdoutActor {
     fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::PrintOneCmd { text } => println!("{}", text),
-            ActorMessage::IsCompleteMsg { respond_to } => {
-                let _ = respond_to.send(1);
-            }
+            ActorMessage::IsCompleteMsg { respond_to_opt } => match respond_to_opt {
+                Some(respond_to) => {
+                    let _ = respond_to.send(ActorMessage::IsCompleteMsg {
+                        respond_to_opt: None,
+                    });
+                }
+                _ => {}
+            },
             _ => println!(""),
         }
     }
@@ -44,8 +49,10 @@ impl StdoutActorHandle {
         let _ = self.sender.send(msg).await;
     }
 
-    pub async fn complete(&self, respond_to: oneshot::Sender<u32>) {
-        let msg = ActorMessage::IsCompleteMsg { respond_to };
+    pub async fn complete(&self, respond_to: oneshot::Sender<ActorMessage>) {
+        let msg = ActorMessage::IsCompleteMsg {
+            respond_to_opt: Some(respond_to),
+        };
         let _ = self.sender.send(msg).await;
     }
 }
