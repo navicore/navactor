@@ -5,6 +5,7 @@ use crate::messages::ActorMessage::IsCompleteMsg;
 use crate::stdinactor::StdinActorHandle;
 use crate::stdoutactor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
+use log::debug;
 use tokio::runtime::Runtime;
 
 #[derive(Parser)]
@@ -53,20 +54,39 @@ struct Extractor {
     extractor: String,
 }
 
+fn define(_: Extractor, bufsz: usize, runtime: Runtime) {}
+
+fn list(bufsz: usize, runtime: Runtime) {}
+
+fn inspect(_: Inspect, bufsz: usize, runtime: Runtime) {}
+
+fn ingest(_: Extractor, bufsz: usize, runtime: Runtime) {
+    let result = run_async_ingest(bufsz);
+    runtime.block_on(result).expect("An error occurred");
+}
+
+async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
+    let output = StdoutActorHandle::new(bufsz);
+    let input = StdinActorHandle::new(bufsz, output);
+
+    match input.read().await {
+        IsCompleteMsg { respond_to_opt: _ } => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
 fn main() {
+    env_logger::init();
+    debug!("nv started");
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
-    let runtime = Runtime::new().unwrap();
-    runtime.block_on(async {
-        let output = StdoutActorHandle::new(bufsz);
-        let input = StdinActorHandle::new(bufsz, output);
-        match input.read().await {
-            IsCompleteMsg { respond_to_opt: _ } => {
-                println!("success");
-            }
-            _ => {
-                panic!("END response: sucks.");
-            }
-        }
-    });
+    let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
+
+    match cli.command {
+        Commands::Define(extractor) => define(extractor, bufsz, runtime),
+        Commands::List(_) => list(bufsz, runtime),
+        Commands::Ingest(extractor) => ingest(extractor, bufsz, runtime),
+        Commands::Inspect(path) => inspect(path, bufsz, runtime),
+    }
+    debug!("nv stopped");
 }

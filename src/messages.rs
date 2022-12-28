@@ -8,6 +8,9 @@ pub enum ActorMessage {
     PrintOneCmd {
         text: String,
     },
+    ErrorMsg {
+        reason: String,
+    },
     IsCompleteMsg {
         respond_to_opt: Option<oneshot::Sender<ActorMessage>>,
     },

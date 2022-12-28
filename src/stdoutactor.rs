@@ -1,4 +1,5 @@
 use crate::messages::ActorMessage;
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::{mpsc, oneshot};
 
 struct StdoutActor {
@@ -9,18 +10,21 @@ impl StdoutActor {
     fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
         StdoutActor { receiver }
     }
+
     fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::PrintOneCmd { text } => println!("{}", text),
-            ActorMessage::IsCompleteMsg { respond_to_opt } => match respond_to_opt {
-                Some(respond_to) => {
-                    let _ = respond_to.send(ActorMessage::IsCompleteMsg {
+            ActorMessage::IsCompleteMsg { respond_to_opt } => {
+                if let Some(respond_to) = respond_to_opt {
+                    let complete_msg = ActorMessage::IsCompleteMsg {
                         respond_to_opt: None,
-                    });
+                    };
+                    respond_to.send(complete_msg);
                 }
-                _ => {}
-            },
-            _ => println!(""),
+            }
+            _ => {
+                log::warn!("unexpected: {:?}", msg);
+            }
         }
     }
 }
@@ -44,15 +48,18 @@ impl StdoutActorHandle {
         Self { sender }
     }
 
-    pub async fn print(&self, text: String) {
+    pub async fn print(&self, text: String) -> Result<(), SendError<ActorMessage>> {
         let msg = ActorMessage::PrintOneCmd { text };
-        let _ = self.sender.send(msg).await;
+        self.sender.send(msg).await
     }
 
-    pub async fn complete(&self, respond_to: oneshot::Sender<ActorMessage>) {
+    pub async fn complete(
+        &self,
+        respond_to: oneshot::Sender<ActorMessage>,
+    ) -> Result<(), SendError<ActorMessage>> {
         let msg = ActorMessage::IsCompleteMsg {
             respond_to_opt: Some(respond_to),
         };
-        let _ = self.sender.send(msg).await;
+        self.sender.send(msg).await
     }
 }

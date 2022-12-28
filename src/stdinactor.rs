@@ -14,18 +14,24 @@ impl StdinActor {
     fn new(receiver: mpsc::Receiver<ActorMessage>, output: StdoutActorHandle) -> Self {
         StdinActor { receiver, output }
     }
+
     async fn handle_message(&mut self, msg: ActorMessage) {
-        match msg {
-            ActorMessage::ReadAllCmd { respond_to } => {
-                let mut lines = BufReader::new(stdin()).lines();
+        if let ActorMessage::ReadAllCmd { respond_to } = msg {
+            let mut lines = BufReader::new(stdin()).lines();
 
-                while let Some(line) = lines.next_line().await.expect("failed to read stream") {
-                    let _ = self.output.print(line).await;
-                }
-
-                let _ = self.output.complete(respond_to).await;
+            while let Some(line) = lines.next_line().await.expect("failed to read stream") {
+                self.output
+                    .print(line)
+                    .await
+                    .expect("failed to send rec to printer stream");
             }
-            e => println!("unexpected: {:?}", e),
+
+            self.output
+                .complete(respond_to)
+                .await
+                .expect("can not send EOF report");
+        } else {
+            log::warn!("unexpected: {:?}", msg);
         }
     }
 }

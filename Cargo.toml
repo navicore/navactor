@@ -10,4 +10,6 @@ description = "A cli tool for creating and updating actors from piped input"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+env_logger = "0.10.0"
+log = "0.4.17"
 tokio = { version = "1", features = ["full"] }
