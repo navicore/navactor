@@ -19,7 +19,9 @@ impl StdoutActor {
                     let complete_msg = ActorMessage::IsCompleteMsg {
                         respond_to_opt: None,
                     };
-                    respond_to.send(complete_msg);
+                    respond_to
+                        .send(complete_msg)
+                        .expect("could not send completion token");
                 }
             }
             _ => {

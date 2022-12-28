@@ -70,9 +70,9 @@ async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), St
     }
 }
 
-fn list(bufsz: usize, runtime: Runtime) {}
+fn list(_: usize, _: Runtime) {}
 
-fn inspect(_: Inspect, bufsz: usize, runtime: Runtime) {}
+fn inspect(_: Inspect, _: usize, _: Runtime) {}
 
 fn ingest(_: Extractor, bufsz: usize, runtime: Runtime) {
     let result = run_async_ingest(bufsz);
