@@ -60,11 +60,8 @@ fn main() {
     runtime.block_on(async {
         let output = StdoutActorHandle::new(bufsz);
         let input = StdinActorHandle::new(bufsz, output);
-        let r = input.read().await;
-        match r {
-            IsCompleteMsg {
-                respond_to_opt: None,
-            } => {
+        match input.read().await {
+            IsCompleteMsg { respond_to_opt: _ } => {
                 println!("success");
             }
             _ => {
