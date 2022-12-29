@@ -1,11 +1,11 @@
 mod extractor_actor;
 mod messages;
-mod stdinactor;
-mod stdoutactor;
+mod stdin_actor;
+mod stdout_actor;
 use crate::extractor_actor::ExtractorActorHandle;
 use crate::messages::ActorMessage::IsCompleteMsg;
-use crate::stdinactor::StdinActorHandle;
-use crate::stdoutactor::StdoutActorHandle;
+use crate::stdin_actor::StdinActorHandle;
+use crate::stdout_actor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
 use log::debug;
 use tokio::runtime::Runtime;

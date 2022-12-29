@@ -1,5 +1,5 @@
 use crate::messages::ActorMessage;
-use crate::stdoutactor::StdoutActorHandle;
+use crate::stdout_actor::StdoutActorHandle;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
