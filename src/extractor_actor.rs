@@ -12,7 +12,10 @@ impl ExtractorActor {
 
     fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
-            ActorMessage::DefineCmd { spec, respond_to } => {
+            ActorMessage::DefineCmd {
+                spec,
+                respond_to_opt: Some(respond_to),
+            } => {
                 log::debug!("defining spec {}", spec);
                 // TODO
                 //
@@ -49,11 +52,12 @@ impl ExtractorActorHandle {
         tokio::spawn(acting(actor));
         Self { sender }
     }
+
     pub async fn define(&self, spec: String) -> ActorMessage {
         let (send, recv) = oneshot::channel();
         let msg = ActorMessage::DefineCmd {
             spec,
-            respond_to: send,
+            respond_to_opt: Some(send),
         };
         let _ = self.sender.send(msg).await;
         recv.await.expect("StdinActor task has been killed")

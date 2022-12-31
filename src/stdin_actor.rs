@@ -16,7 +16,10 @@ impl StdinActor {
     }
 
     async fn handle_message(&mut self, msg: ActorMessage) {
-        if let ActorMessage::ReadAllCmd { respond_to } = msg {
+        if let ActorMessage::ReadAllCmd {
+            respond_to_opt: Some(respond_to),
+        } = msg
+        {
             let mut lines = BufReader::new(stdin()).lines();
 
             while let Some(line) = lines.next_line().await.expect("failed to read stream") {
@@ -58,7 +61,9 @@ impl StdinActorHandle {
 
     pub async fn read(&self) -> ActorMessage {
         let (send, recv) = oneshot::channel();
-        let msg = ActorMessage::ReadAllCmd { respond_to: send };
+        let msg = ActorMessage::ReadAllCmd {
+            respond_to_opt: Some(send),
+        };
         let _ = self.sender.send(msg).await;
         recv.await.expect("StdinActor task has been killed")
     }
