@@ -35,7 +35,9 @@ enum Commands {
     Define(Extractor),
     /// List extractors
     List(NoArg),
-    /// Process incoming stream of with extractor
+    /// Process incoming stream of internal formats
+    Update(NoArg),
+    /// Process incoming stream of external formats with extractor
     Ingest(Extractor),
     /// Get actor state for all actors in path
     Inspect(Inspect),
@@ -72,6 +74,8 @@ async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), St
 
 fn list(_: usize, _: Runtime) {}
 
+fn update(_: usize, _: Runtime) {}
+
 fn inspect(_: Inspect, _: usize, _: Runtime) {}
 
 fn ingest(_: Extractor, bufsz: usize, runtime: Runtime) {
@@ -99,6 +103,7 @@ fn main() {
     match cli.command {
         Commands::Define(extractor) => define(extractor, bufsz, runtime),
         Commands::List(_) => list(bufsz, runtime),
+        Commands::Update(_) => update(bufsz, runtime),
         Commands::Ingest(extractor) => ingest(extractor, bufsz, runtime),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }

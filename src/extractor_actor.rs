@@ -14,6 +14,9 @@ impl ExtractorActor {
         match msg {
             ActorMessage::DefineCmd { spec, respond_to } => {
                 log::debug!("defining spec {}", spec);
+                // TODO
+                //
+                //
                 let complete_msg = ActorMessage::IsCompleteMsg {
                     respond_to_opt: None,
                 };
