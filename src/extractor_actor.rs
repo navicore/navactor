@@ -1,16 +1,15 @@
+use crate::actor::Actor;
 use crate::messages::ActorMessage;
+use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
 struct ExtractorActor {
     receiver: mpsc::Receiver<ActorMessage>,
 }
 
-impl ExtractorActor {
-    fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
-        ExtractorActor { receiver }
-    }
-
-    fn handle_message(&mut self, msg: ActorMessage) {
+#[async_trait]
+impl Actor for ExtractorActor {
+    async fn handle_message(&mut self, msg: ActorMessage) {
         match msg {
             ActorMessage::DefineCmd {
                 spec,
@@ -34,9 +33,15 @@ impl ExtractorActor {
     }
 }
 
+impl ExtractorActor {
+    fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
+        ExtractorActor { receiver }
+    }
+}
+
 async fn acting(mut actor: ExtractorActor) {
     while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg);
+        actor.handle_message(msg).await;
     }
 }
 
@@ -60,6 +65,6 @@ impl ExtractorActorHandle {
             respond_to_opt: Some(send),
         };
         let _ = self.sender.send(msg).await;
-        recv.await.expect("StdinActor task has been killed")
+        recv.await.expect("Actor task has been killed")
     }
 }

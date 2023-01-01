@@ -1,3 +1,4 @@
+mod actor;
 mod extractor_actor;
 mod messages;
 mod stdin_actor;
