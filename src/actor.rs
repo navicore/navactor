@@ -14,6 +14,9 @@ pub struct ActorHandle {
 }
 
 impl ActorHandle {
+    // system message but it is currently used by userland code implementing
+    // actors that forward respond_to in workflows.  TODO for a way to do this w/o the
+    // app code touching or seeing the envelope or mpsc objects
     pub async fn send(&self, envelope: MessageEnvelope) {
         self.sender
             .send(envelope)
