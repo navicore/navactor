@@ -27,10 +27,10 @@ impl Actor for StdinActor {
                 self.output.send(msg).await
             }
 
-            self.output
-                .complete(respond_to)
-                .await
-                .expect("can not send EOF report");
+            let complete_msg = ActorMessage::IsCompleteMsg {
+                respond_to_opt: Some(respond_to),
+            };
+            self.output.send(complete_msg).await
         } else {
             log::warn!("unexpected: {:?}", msg);
         }
@@ -45,6 +45,16 @@ impl StdinActor {
 
 pub struct StdinActorHandle {
     sender: mpsc::Sender<ActorMessage>,
+}
+
+#[async_trait]
+impl ActorHandle for StdinActorHandle {
+    async fn send(&self, msg: ActorMessage) {
+        self.sender
+            .send(msg)
+            .await
+            .expect("actor handle can not send");
+    }
 }
 
 impl StdinActorHandle {
@@ -64,7 +74,7 @@ impl StdinActorHandle {
         let msg = ActorMessage::ReadAllCmd {
             respond_to_opt: Some(send),
         };
-        let _ = self.sender.send(msg).await;
+        let _ = self.send(msg).await;
         recv.await.expect("StdinActor task has been killed")
     }
 }

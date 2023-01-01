@@ -2,8 +2,7 @@ use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::messages::ActorMessage;
 use async_trait::async_trait;
-use tokio::sync::mpsc::error::SendError;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 
 struct StdoutActor {
     receiver: mpsc::Receiver<ActorMessage>,
@@ -62,14 +61,5 @@ impl StdoutActorHandle {
         while let Some(msg) = actor.receiver.recv().await {
             actor.handle_message(msg).await;
         }
-    }
-    pub async fn complete(
-        &self,
-        respond_to: oneshot::Sender<ActorMessage>,
-    ) -> Result<(), SendError<ActorMessage>> {
-        let msg = ActorMessage::IsCompleteMsg {
-            respond_to_opt: Some(respond_to),
-        };
-        self.sender.send(msg).await
     }
 }
