@@ -68,7 +68,7 @@ async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), St
     let extractor = ExtractorActorHandle::new(bufsz);
 
     match extractor.define(spec_holder.extractor).await {
-        IsCompleteMsg { respond_to_opt: _ } => Ok(()),
+        IsCompleteMsg {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
 }
@@ -89,7 +89,7 @@ async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
     let input = StdinActorHandle::new(bufsz, output);
 
     match input.read().await {
-        IsCompleteMsg { respond_to_opt: _ } => Ok(()),
+        IsCompleteMsg {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
 }
