@@ -2,7 +2,6 @@ use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
-use crate::stdout_actor_handle::StdoutActorHandle;
 use async_trait::async_trait;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
@@ -11,7 +10,7 @@ use tokio::sync::mpsc;
 
 pub struct StdinActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
-    pub output: StdoutActorHandle,
+    pub output: ActorHandle,
 }
 
 #[async_trait]
@@ -47,7 +46,20 @@ impl Actor for StdinActor {
 }
 
 impl StdinActor {
-    pub fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: StdoutActorHandle) -> Self {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         StdinActor { receiver, output }
     }
+}
+
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+    async fn start(mut actor: StdinActor) {
+        while let Some(envelope) = actor.receiver.recv().await {
+            actor.handle_envelope(envelope).await;
+        }
+    }
+    let (sender, receiver) = mpsc::channel(bufsz);
+    let actor = StdinActor::new(receiver, output);
+    let actor_handle = ActorHandle::new(sender);
+    tokio::spawn(start(actor));
+    actor_handle
 }

@@ -1,17 +1,10 @@
 mod actor;
 mod extractor_actor;
-mod extractor_actor_handle;
 mod message;
 mod stdin_actor;
-mod stdin_actor_handle;
 mod stdout_actor;
-mod stdout_actor_handle;
-use crate::actor::ActorHandle;
-use crate::extractor_actor_handle::ExtractorActorHandle;
 use crate::message::Message;
 use crate::message::Message::IsCompleteMsg;
-use crate::stdin_actor_handle::StdinActorHandle;
-use crate::stdout_actor_handle::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
 use log::debug;
 use tokio::runtime::Runtime;
@@ -70,7 +63,7 @@ fn define(spec: Extractor, bufsz: usize, runtime: Runtime) {
 }
 
 async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), String> {
-    let extractor = ExtractorActorHandle::new(bufsz);
+    let extractor = extractor_actor::new(bufsz);
     let message = Message::DefineCmd {
         spec: spec_holder.extractor,
     };
@@ -92,8 +85,8 @@ fn ingest(_: Extractor, bufsz: usize, runtime: Runtime) {
 }
 
 async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
-    let output = StdoutActorHandle::new(bufsz);
-    let input = StdinActorHandle::new(bufsz, output);
+    let output = stdout_actor::new(bufsz);
+    let input = stdin_actor::new(bufsz, output);
 
     let read_cmd = Message::ReadAllCmd {};
     match input.ask(read_cmd).await {
