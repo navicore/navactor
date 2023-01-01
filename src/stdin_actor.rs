@@ -1,4 +1,5 @@
 use crate::actor::Actor;
+use crate::actor::ActorHandle;
 use crate::messages::ActorMessage;
 use crate::stdout_actor::StdoutActorHandle;
 use async_trait::async_trait;
@@ -21,8 +22,9 @@ impl Actor for StdinActor {
         {
             let mut lines = BufReader::new(stdin()).lines();
 
-            while let Some(line) = lines.next_line().await.expect("failed to read stream") {
-                self.output.print(line).await
+            while let Some(text) = lines.next_line().await.expect("failed to read stream") {
+                let msg = ActorMessage::PrintOneCmd { text };
+                self.output.send(msg).await
             }
 
             self.output

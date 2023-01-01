@@ -66,11 +66,6 @@ impl StdoutActorHandle {
         Self { sender }
     }
 
-    pub async fn print(&self, text: String) {
-        let msg = ActorMessage::PrintOneCmd { text };
-        self.send(msg).await;
-    }
-
     pub async fn complete(
         &self,
         respond_to: oneshot::Sender<ActorMessage>,
