@@ -43,13 +43,6 @@ impl StdinActor {
     }
 }
 
-async fn acting(mut actor: StdinActor) {
-    while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg).await;
-    }
-}
-
-#[derive(Clone)]
 pub struct StdinActorHandle {
     sender: mpsc::Sender<ActorMessage>,
 }
@@ -58,11 +51,14 @@ impl StdinActorHandle {
     pub fn new(bufsz: usize, output: StdoutActorHandle) -> Self {
         let (sender, receiver) = mpsc::channel(bufsz);
         let actor = StdinActor::new(receiver, output);
-        tokio::spawn(acting(actor));
-
+        tokio::spawn(StdinActorHandle::start(actor));
         Self { sender }
     }
-
+    async fn start(mut actor: StdinActor) {
+        while let Some(msg) = actor.receiver.recv().await {
+            actor.handle_message(msg).await;
+        }
+    }
     pub async fn read(&self) -> ActorMessage {
         let (send, recv) = oneshot::channel();
         let msg = ActorMessage::ReadAllCmd {

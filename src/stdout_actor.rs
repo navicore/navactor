@@ -37,13 +37,6 @@ impl StdoutActor {
     }
 }
 
-async fn acting(mut actor: StdoutActor) {
-    while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg).await;
-    }
-}
-
-#[derive(Clone)]
 pub struct StdoutActorHandle {
     sender: mpsc::Sender<ActorMessage>,
 }
@@ -62,10 +55,14 @@ impl StdoutActorHandle {
     pub fn new(bufsz: usize) -> Self {
         let (sender, receiver) = mpsc::channel(bufsz);
         let actor = StdoutActor::new(receiver);
-        tokio::spawn(acting(actor));
+        tokio::spawn(StdoutActorHandle::start(actor));
         Self { sender }
     }
-
+    async fn start(mut actor: StdoutActor) {
+        while let Some(msg) = actor.receiver.recv().await {
+            actor.handle_message(msg).await;
+        }
+    }
     pub async fn complete(
         &self,
         respond_to: oneshot::Sender<ActorMessage>,

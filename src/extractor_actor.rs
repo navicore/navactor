@@ -39,13 +39,6 @@ impl ExtractorActor {
     }
 }
 
-async fn acting(mut actor: ExtractorActor) {
-    while let Some(msg) = actor.receiver.recv().await {
-        actor.handle_message(msg).await;
-    }
-}
-
-#[derive(Clone)]
 pub struct ExtractorActorHandle {
     sender: mpsc::Sender<ActorMessage>,
 }
@@ -54,10 +47,14 @@ impl ExtractorActorHandle {
     pub fn new(bufsz: usize) -> Self {
         let (sender, receiver) = mpsc::channel(bufsz);
         let actor = ExtractorActor::new(receiver);
-        tokio::spawn(acting(actor));
+        tokio::spawn(ExtractorActorHandle::start(actor));
         Self { sender }
     }
-
+    async fn start(mut actor: ExtractorActor) {
+        while let Some(msg) = actor.receiver.recv().await {
+            actor.handle_message(msg).await;
+        }
+    }
     pub async fn define(&self, spec: String) -> ActorMessage {
         let (send, recv) = oneshot::channel();
         let msg = ActorMessage::DefineCmd {
