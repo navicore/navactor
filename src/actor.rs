@@ -1,12 +1,13 @@
-use crate::messages::ActorMessage;
+use crate::message::Message;
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait Actor {
-    async fn handle_message(&mut self, msg: ActorMessage);
+    async fn handle_message(&mut self, msg: Message);
 }
 
 #[async_trait]
 pub trait ActorHandle {
-    async fn send(&self, msg: ActorMessage);
+    async fn tell(&self, msg: Message);
+    async fn ask(&self, msg: Message) -> Message;
 }

@@ -1,17 +1,19 @@
 use crate::actor::Actor;
-use crate::messages::ActorMessage;
+use crate::actor::ActorHandle;
+use crate::message::Message;
+use crate::message::Respondable;
 use async_trait::async_trait;
 use tokio::sync::{mpsc, oneshot};
 
 struct ExtractorActor {
-    receiver: mpsc::Receiver<ActorMessage>,
+    receiver: mpsc::Receiver<Message>,
 }
 
 #[async_trait]
 impl Actor for ExtractorActor {
-    async fn handle_message(&mut self, msg: ActorMessage) {
+    async fn handle_message(&mut self, msg: Message) {
         match msg {
-            ActorMessage::DefineCmd {
+            Message::DefineCmd {
                 spec,
                 respond_to_opt: Some(respond_to),
             } => {
@@ -19,7 +21,7 @@ impl Actor for ExtractorActor {
                 // TODO
                 //
                 //
-                let complete_msg = ActorMessage::IsCompleteMsg {
+                let complete_msg = Message::IsCompleteMsg {
                     respond_to_opt: None,
                 };
                 respond_to
@@ -34,13 +36,28 @@ impl Actor for ExtractorActor {
 }
 
 impl ExtractorActor {
-    fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
+    fn new(receiver: mpsc::Receiver<Message>) -> Self {
         ExtractorActor { receiver }
     }
 }
 
 pub struct ExtractorActorHandle {
-    sender: mpsc::Sender<ActorMessage>,
+    sender: mpsc::Sender<Message>,
+}
+
+#[async_trait]
+impl ActorHandle for ExtractorActorHandle {
+    async fn tell(&self, msg: Message) {
+        self.sender
+            .send(msg)
+            .await
+            .expect("actor handle can not send");
+    }
+    async fn ask(&self, msg: Message) -> Message {
+        let (send, recv) = oneshot::channel();
+        let _ = self.ask(msg).await;
+        recv.await.expect("StdinActor task has been killed")
+    }
 }
 
 impl ExtractorActorHandle {
@@ -55,9 +72,18 @@ impl ExtractorActorHandle {
             actor.handle_message(msg).await;
         }
     }
-    pub async fn define(&self, spec: String) -> ActorMessage {
+
+    //TODO need to make read generic for "send and get reply" of any command
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    //TODO or is this tell and ask?
+    pub async fn define(&self, spec: String) -> Message {
         let (send, recv) = oneshot::channel();
-        let msg = ActorMessage::DefineCmd {
+        let msg = Message::DefineCmd {
             spec,
             respond_to_opt: Some(send),
         };

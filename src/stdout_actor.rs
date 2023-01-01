@@ -1,21 +1,21 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
-use crate::messages::ActorMessage;
+use crate::message::Message;
 use async_trait::async_trait;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 struct StdoutActor {
-    receiver: mpsc::Receiver<ActorMessage>,
+    receiver: mpsc::Receiver<Message>,
 }
 
 #[async_trait]
 impl Actor for StdoutActor {
-    async fn handle_message(&mut self, msg: ActorMessage) {
+    async fn handle_message(&mut self, msg: Message) {
         match msg {
-            ActorMessage::PrintOneCmd { text } => println!("{}", text),
-            ActorMessage::IsCompleteMsg { respond_to_opt } => {
+            Message::PrintOneCmd { text } => println!("{}", text),
+            Message::IsCompleteMsg { respond_to_opt } => {
                 if let Some(respond_to) = respond_to_opt {
-                    let complete_msg = ActorMessage::IsCompleteMsg {
+                    let complete_msg = Message::IsCompleteMsg {
                         respond_to_opt: None,
                     };
                     respond_to
@@ -31,22 +31,27 @@ impl Actor for StdoutActor {
 }
 
 impl StdoutActor {
-    fn new(receiver: mpsc::Receiver<ActorMessage>) -> Self {
+    fn new(receiver: mpsc::Receiver<Message>) -> Self {
         StdoutActor { receiver }
     }
 }
 
 pub struct StdoutActorHandle {
-    sender: mpsc::Sender<ActorMessage>,
+    sender: mpsc::Sender<Message>,
 }
 
 #[async_trait]
 impl ActorHandle for StdoutActorHandle {
-    async fn send(&self, msg: ActorMessage) {
+    async fn tell(&self, msg: Message) {
         self.sender
             .send(msg)
             .await
             .expect("actor handle can not send");
+    }
+    async fn ask(&self, msg: Message) -> Message {
+        let (send, recv) = oneshot::channel();
+        let _ = self.tell(msg).await;
+        recv.await.expect("StdinActor task has been killed")
     }
 }
 

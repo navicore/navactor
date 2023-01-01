@@ -1,10 +1,10 @@
 mod actor;
 mod extractor_actor;
-mod messages;
+mod message;
 mod stdin_actor;
 mod stdout_actor;
 use crate::extractor_actor::ExtractorActorHandle;
-use crate::messages::ActorMessage::IsCompleteMsg;
+use crate::message::Message::IsCompleteMsg;
 use crate::stdin_actor::StdinActorHandle;
 use crate::stdout_actor::StdoutActorHandle;
 use clap::{Args, Parser, Subcommand};
