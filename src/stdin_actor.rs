@@ -94,8 +94,4 @@ impl StdinActorHandle {
             actor.handle_envelope(envelope).await;
         }
     }
-    pub async fn read(&self) -> Message {
-        let msg = Message::ReadAllCmd {};
-        self.ask(msg).await
-    }
 }

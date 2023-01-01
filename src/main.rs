@@ -3,7 +3,9 @@ mod extractor_actor;
 mod message;
 mod stdin_actor;
 mod stdout_actor;
+use crate::actor::ActorHandle;
 use crate::extractor_actor::ExtractorActorHandle;
+use crate::message::Message;
 use crate::message::Message::IsCompleteMsg;
 use crate::stdin_actor::StdinActorHandle;
 use crate::stdout_actor::StdoutActorHandle;
@@ -66,8 +68,10 @@ fn define(spec: Extractor, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), String> {
     let extractor = ExtractorActorHandle::new(bufsz);
-
-    match extractor.define(spec_holder.extractor).await {
+    let message = Message::DefineCmd {
+        spec: spec_holder.extractor,
+    };
+    match extractor.ask(message).await {
         IsCompleteMsg {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
@@ -88,7 +92,9 @@ async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
     let output = StdoutActorHandle::new(bufsz);
     let input = StdinActorHandle::new(bufsz, output);
 
-    match input.read().await {
+    let read_cmd = Message::ReadAllCmd {};
+    match input.ask(read_cmd).await {
+        //match input.read().await {
         IsCompleteMsg {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }

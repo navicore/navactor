@@ -90,9 +90,4 @@ impl ExtractorActorHandle {
             actor.handle_envelope(envelope).await;
         }
     }
-
-    pub async fn define(&self, spec: String) -> Message {
-        let msg = Message::DefineCmd { spec };
-        self.ask(msg).await
-    }
 }
