@@ -7,7 +7,7 @@ pub struct MessageEnvelope {
     pub respond_to_opt: Option<oneshot::Sender<Message>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     DefineCmd { spec: String },
     ReadAllCmd {},
