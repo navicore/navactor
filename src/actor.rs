@@ -4,15 +4,19 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
+/// all actors must implement this trait
 #[async_trait]
 pub trait Actor {
+    /// the function to implement per actor
     async fn handle_envelope(&mut self, envelope: MessageEnvelope);
 }
 
+/// ActorHandle is the API for all actors
 pub struct ActorHandle {
     pub sender: mpsc::Sender<MessageEnvelope>,
 }
 
+/// ActorHandle is the API for all actors via `ask` and `tell`
 impl ActorHandle {
     // system message but it is currently used by userland code implementing
     // actors that forward respond_to in workflows.  TODO for a way to do this w/o the
@@ -41,6 +45,8 @@ impl ActorHandle {
     }
 }
 
+/// ActorHandle constructor is an internal API use in the convenience functions
+/// of the various per-actor ActorHandle impls
 impl ActorHandle {
     pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
         Self { sender }

@@ -5,6 +5,9 @@ use crate::message::MessageEnvelope;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
+/// the state actor is the core of the system.  each digital twin has an
+/// instance of actor keeping state calculated from the stream of observations
+/// sent to the system.
 pub struct StateActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
@@ -19,7 +22,7 @@ impl Actor for StateActor {
                 respond_to_opt,
             } => match message {
                 Message::UpdateCmd { values } => {
-                    log::debug!("haha: {}", values.len());
+                    log::debug!("haha: {:?}", values);
                 }
                 Message::IsCompleteMsg {} => {
                     let senv = MessageEnvelope {
@@ -34,12 +37,14 @@ impl Actor for StateActor {
     }
 }
 
+/// actor private constructor
 impl StateActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         StateActor { receiver, output }
     }
 }
 
+/// actor handle public constructor
 pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {

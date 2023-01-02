@@ -5,6 +5,8 @@ use crate::message::MessageEnvelope;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
+/// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
+/// in combination with other *nix tools.
 pub struct StdoutActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
 }
@@ -34,12 +36,14 @@ impl Actor for StdoutActor {
     }
 }
 
+/// actor private constructor
 impl StdoutActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
         StdoutActor { receiver }
     }
 }
 
+/// actor handle public constructor
 pub fn new(bufsz: usize) -> ActorHandle {
     async fn start(mut actor: StdoutActor) {
         while let Some(envelope) = actor.receiver.recv().await {

@@ -8,6 +8,7 @@ use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
 
+/// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonStateActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
@@ -42,34 +43,41 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 #[async_trait]
 impl Actor for JsonStateActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match &envelope.message {
-            Message::PrintOneCmd { text } => match extract_values_from_json(text) {
-                Ok(values) => {
-                    let msg = Message::UpdateCmd { values };
-                    self.output.tell(msg).await
+        match envelope {
+            MessageEnvelope {
+                message,
+                respond_to_opt,
+            } => match &message {
+                Message::PrintOneCmd { text } => match extract_values_from_json(text) {
+                    Ok(values) => {
+                        let msg = Message::UpdateCmd { values };
+                        self.output.tell(msg).await
+                    }
+                    Err(error) => {
+                        log::warn!("{}", error); // TODO send back an error to respond_to
+                    }
+                },
+                Message::IsCompleteMsg {} => {
+                    let senv = MessageEnvelope {
+                        message,
+                        respond_to_opt,
+                    };
+                    self.output.send(senv).await // forward the good news
                 }
-                Err(error) => {
-                    log::warn!("{}", error); // TODO send back an error to respond_to
-                }
+                _ => {}
             },
-            Message::IsCompleteMsg {} => {
-                let senv = MessageEnvelope {
-                    message: envelope.message.clone(),
-                    respond_to_opt: envelope.respond_to_opt,
-                };
-                self.output.send(senv).await // forward the good news
-            }
-            _ => {}
         }
     }
 }
 
+/// actor private constructor
 impl JsonStateActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         JsonStateActor { receiver, output }
     }
 }
 
+/// actor handle public constructor
 pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: JsonStateActor) {
         while let Some(envelope) = actor.receiver.recv().await {

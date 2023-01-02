@@ -42,15 +42,14 @@ impl Actor for ExtractorActor {
     }
 }
 
+// actor private constructor
 impl ExtractorActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
         ExtractorActor { receiver }
     }
 }
 
-//
-// public interface - you get a handle back, not the actual actor
-//
+/// public interface - you get a handle back, not the actual actor
 pub fn new(bufsz: usize) -> ActorHandle {
     async fn start(mut actor: ExtractorActor) {
         while let Some(envelope) = actor.receiver.recv().await {
