@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use tokio::sync::oneshot;
 
 #[derive(Debug)]
@@ -11,8 +12,6 @@ pub enum Message {
     DefineCmd { spec: String },
     ReadAllCmd {},
     PrintOneCmd { text: String },
-    // ErrorMsg {
-    //     reason: String,
-    // },
+    UpdateCmd { values: HashMap<i32, f64> },
     IsCompleteMsg {},
 }

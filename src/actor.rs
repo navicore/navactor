@@ -21,7 +21,7 @@ impl ActorHandle {
         self.sender
             .send(envelope)
             .await
-            .expect("actor handle can not send");
+            .expect("other actor cannot receive");
     }
     pub async fn tell(&self, message: Message) {
         let envelope = MessageEnvelope {
@@ -37,7 +37,7 @@ impl ActorHandle {
             respond_to_opt: Some(send),
         };
         let _ = self.send(envelope).await;
-        recv.await.expect("StdinActor task has been killed")
+        recv.await.expect("other actor cannot reply")
     }
 }
 

@@ -13,4 +13,6 @@ async-trait = "0.1.60"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.10.0"
 log = "0.4.17"
+serde = "1.0.152"
+serde_json = "1.0.91"
 tokio = { version = "1", features = ["full"] }
