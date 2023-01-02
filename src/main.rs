@@ -89,9 +89,9 @@ fn update(encoding: Encoding, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(_: Encoding, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let state_actor = state_actor::new(bufsz, output); // process telemetry,
-                                                       // store state,
-                                                       // report changes
+    let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
+                                                             // store state,
+                                                             // report changes
     let json_to_state_actor = json_to_state_actor::new(bufsz, state_actor); // parse input
     let input = stdin_actor::new(bufsz, json_to_state_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
