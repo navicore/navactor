@@ -62,6 +62,7 @@ impl Actor for JsonStateActor {
                         message,
                         respond_to_opt,
                     };
+                    log::debug!("complete");
                     self.output.send(senv).await // forward the good news
                 }
                 _ => {}

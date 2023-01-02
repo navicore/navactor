@@ -1,14 +1,12 @@
-mod actor;
-mod extractor_actor;
-mod json_to_state_actor;
-mod message;
-mod state_actor;
-mod stdin_actor;
-mod stdout_actor;
-use crate::message::Message;
-use crate::message::Message::IsCompleteMsg;
 use clap::{Args, Parser, Subcommand};
 use log::debug;
+use nv::extractor_actor;
+use nv::json_to_state_actor;
+use nv::message::Message;
+use nv::message::Message::IsCompleteMsg;
+use nv::state_actor;
+use nv::stdin_actor;
+use nv::stdout_actor;
 use tokio::runtime::Runtime;
 
 #[derive(Parser)]

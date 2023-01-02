@@ -26,24 +26,44 @@ impl Actor for StateActor {
         match message {
             Message::UpdateCmd { values } => {
                 self.state.extend(&values);
+                // report the update to our state to the output actor
                 if let Some(output_handle) = &self.output {
                     let logmsg = Message::PrintOneCmd {
                         text: format!("updating with: {:?}", &values),
                     };
                     output_handle.tell(logmsg).await;
                 }
+                // if this is a tell, respond with a copy of our new state
+                if let Some(respond_to) = respond_to_opt {
+                    let state_msg = Message::UpdateCmd {
+                        values: self.state.clone(),
+                    };
+                    respond_to.send(state_msg).expect("can not reply to tell");
+                }
             }
             Message::IsCompleteMsg {} => {
+                log::debug!("complete");
+                // we can only use the oneshot send once so priority is to
+                // send it onward to an output if defined or if not, send to
+                // the respond_to if defined
                 if let Some(output_handle) = &self.output {
+                    log::debug!("forwarding complete");
+                    // report our new state to the output actor
                     let logmsg = Message::PrintOneCmd {
                         text: format!("new state: {:?}", self.state),
                     };
                     output_handle.tell(logmsg).await;
+                    // forward the complete cmd to the output actor
                     let senv = MessageEnvelope {
-                        message,
+                        message: message.clone(),
                         respond_to_opt,
                     };
                     output_handle.send(senv).await
+                } else if let Some(respond_to) = respond_to_opt {
+                    log::debug!("replying complete");
+                    respond_to
+                        .send(message)
+                        .expect("can not reply to tell IsCompleteMsg");
                 }
             }
             _ => {}
