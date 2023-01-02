@@ -18,15 +18,16 @@ pub struct ActorHandle {
 
 /// ActorHandle is the API for all actors via `ask` and `tell`
 impl ActorHandle {
-    // system message but it is currently used by userland code implementing
-    // actors that forward respond_to in workflows.  TODO for a way to do this w/o the
-    // app code touching or seeing the envelope or mpsc objects
+    /// system message but it is currently used by userland code implementing
+    /// actors that forward respond_to in workflows.  TODO for a way to do this w/o the
+    /// app code touching or seeing the envelope or mpsc objects
     pub async fn send(&self, envelope: MessageEnvelope) {
         self.sender
             .send(envelope)
             .await
             .expect("other actor cannot receive");
     }
+    /// fire and forget
     pub async fn tell(&self, message: Message) {
         let envelope = MessageEnvelope {
             message,
@@ -34,6 +35,7 @@ impl ActorHandle {
         };
         self.send(envelope).await;
     }
+    /// request <-> response
     pub async fn ask(&self, message: Message) -> Message {
         let (send, recv) = oneshot::channel();
         let envelope = MessageEnvelope {
@@ -45,9 +47,11 @@ impl ActorHandle {
     }
 }
 
-/// ActorHandle constructor is an internal API use in the convenience functions
-/// of the various per-actor ActorHandle impls
+/// ActorHandle is the only API for actors.  ActorHandle(s) may be passed
+/// around like erlang pids
 impl ActorHandle {
+    /// ActorHandle constructor is an internal API use in the convenience functions
+    /// of the various per-actor ActorHandle impls
     pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
         Self { sender }
     }
