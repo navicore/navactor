@@ -13,6 +13,7 @@ pub trait Actor {
 
 /// ActorHandle is the API for all actors
 pub struct ActorHandle {
+    #[doc(hidden)]
     pub sender: mpsc::Sender<MessageEnvelope>,
 }
 
@@ -20,6 +21,7 @@ pub struct ActorHandle {
 impl ActorHandle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
+    #[doc(hidden)]
     pub async fn send(&self, envelope: MessageEnvelope) {
         self.sender
             .send(envelope)
@@ -49,8 +51,9 @@ impl ActorHandle {
 /// ActorHandle is the only API for actors.  ActorHandle(s) may be passed
 /// around like erlang pids
 impl ActorHandle {
-    /// ActorHandle constructor is an internal API use in the convenience functions
-    /// of the various per-actor ActorHandle impls
+    // ActorHandle constructor is an internal API use in the convenience functions
+    // of the various per-actor ActorHandle impls
+    #[doc(hidden)]
     pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
         Self { sender }
     }
