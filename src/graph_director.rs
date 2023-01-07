@@ -8,8 +8,24 @@ use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
 
+// TODO:
+//
+// state actor graph actor creates a graph and instantiates all the actors that it is messaging
+// commands to
+//
+// hold off on all extractor work - might be a data-wranggling util that should not pollute this
+// impl.
+//
+// new json supports (1) observations, (2) metadata used to update graph
+//
+// parse new actor update json that has timestamp, path, payload
+//
+// update envelope to have nv timestamp and msgtype (1-data "update or delete", or 2-meta for soft links)
+//
+// use rust std Path to update petgraph graph Edges and lookup actor before creating a new one
+
 /// actor accepts numerical json and converts into the internal state data msg
-pub struct JsonStateActor {
+pub struct GraphDirector {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
 }
@@ -41,7 +57,7 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 }
 
 #[async_trait]
-impl Actor for JsonStateActor {
+impl Actor for GraphDirector {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
@@ -72,21 +88,21 @@ impl Actor for JsonStateActor {
 }
 
 /// actor private constructor
-impl JsonStateActor {
+impl GraphDirector {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        JsonStateActor { receiver, output }
+        GraphDirector { receiver, output }
     }
 }
 
 /// actor handle public constructor
 pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start(mut actor: JsonStateActor) {
+    async fn start(mut actor: GraphDirector) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = JsonStateActor::new(receiver, output);
+    let actor = GraphDirector::new(receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

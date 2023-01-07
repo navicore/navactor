@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 use log::debug;
 use nv::extractor_actor;
-use nv::json_to_state_actor;
+use nv::json_decoder_actor;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
 use nv::state_actor;
@@ -90,8 +90,8 @@ async fn run_async_update(_: Encoding, bufsz: usize) -> Result<(), String> {
     let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
                                                              // store state,
                                                              // report changes
-    let json_to_state_actor = json_to_state_actor::new(bufsz, state_actor); // parse input
-    let input = stdin_actor::new(bufsz, json_to_state_actor); // read from stdin
+    let json_decoder_actor = json_decoder_actor::new(bufsz, state_actor); // parse input
+    let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
     match input.ask(read_cmd).await {
         IsCompleteMsg {} => Ok(()),
