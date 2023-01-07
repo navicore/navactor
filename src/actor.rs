@@ -1,6 +1,7 @@
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
+use chrono::Utc;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -33,6 +34,7 @@ impl ActorHandle {
         let envelope = MessageEnvelope {
             message,
             respond_to_opt: None,
+            timestamp: Utc::now(),
         };
         self.send(envelope).await;
     }
@@ -42,6 +44,7 @@ impl ActorHandle {
         let envelope = MessageEnvelope {
             message,
             respond_to_opt: Some(send),
+            timestamp: Utc::now(),
         };
         let _ = self.send(envelope).await;
         recv.await.expect("other actor cannot reply")

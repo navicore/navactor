@@ -1,3 +1,5 @@
+use chrono::DateTime;
+use chrono::Utc;
 use std::collections::HashMap;
 use tokio::sync::oneshot;
 
@@ -8,12 +10,12 @@ use tokio::sync::oneshot;
 pub struct MessageEnvelope {
     pub message: Message,
     pub respond_to_opt: Option<oneshot::Sender<Message>>,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message {
-    DefineCmd { spec: String },
     ReadAllCmd {},
     PrintOneCmd { text: String },
     UpdateCmd { values: HashMap<i32, f64> },

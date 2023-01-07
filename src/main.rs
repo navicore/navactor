@@ -1,6 +1,5 @@
 use clap::{Args, Parser, Subcommand};
 use log::debug;
-use nv::extractor_actor;
 use nv::json_decoder_actor;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
@@ -30,10 +29,6 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Define extractor from incoming stream of rules
-    Define(Extractor),
-    /// List extractors
-    List(NoArg),
     /// Process incoming stream of internal formats
     Update(Encoding),
     /// Process incoming stream of external formats with extractor
@@ -61,24 +56,6 @@ struct Extractor {
     /// name of extractor
     extractor: String,
 }
-
-fn define(spec: Extractor, bufsz: usize, runtime: Runtime) {
-    let result = run_async_define(spec, bufsz);
-    runtime.block_on(result).expect("An error occurred");
-}
-
-async fn run_async_define(spec_holder: Extractor, bufsz: usize) -> Result<(), String> {
-    let extractor = extractor_actor::new(bufsz);
-    let message = Message::DefineCmd {
-        spec: spec_holder.extractor,
-    };
-    match extractor.ask(message).await {
-        IsCompleteMsg {} => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
-    }
-}
-
-fn list(_: usize, _: Runtime) {}
 
 fn update(encoding: Encoding, bufsz: usize, runtime: Runtime) {
     let result = run_async_update(encoding, bufsz);
@@ -128,8 +105,6 @@ fn main() {
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
 
     match cli.command {
-        Commands::Define(extractor) => define(extractor, bufsz, runtime),
-        Commands::List(_) => list(bufsz, runtime),
         Commands::Update(encoding) => update(encoding, bufsz, runtime),
         Commands::Ingest(extractor) => ingest(extractor, bufsz, runtime),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),

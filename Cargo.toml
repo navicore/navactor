@@ -10,6 +10,7 @@ description = "A cli tool for creating and updating actors from piped input"
 
 [dependencies]
 async-trait = "0.1.61"
+chrono = "0.4.23"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.10.0"
 log = "0.4.17"

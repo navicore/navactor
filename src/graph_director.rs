@@ -1,4 +1,3 @@
-use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;

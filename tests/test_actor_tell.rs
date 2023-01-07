@@ -1,3 +1,4 @@
+use chrono::Utc;
 use nv::json_decoder_actor;
 use nv::message::Message;
 use nv::message::MessageEnvelope;
@@ -24,6 +25,7 @@ fn test_actor_tell() {
         let envelope = MessageEnvelope {
             message,
             respond_to_opt: Some(send),
+            timestamp: Utc::now(),
         };
         let _ = json_decoder_actor.send(envelope).await;
         let result = recv.await;

@@ -18,6 +18,7 @@ impl Actor for StdoutActor {
             MessageEnvelope {
                 message,
                 respond_to_opt,
+                timestamp: _,
             } => match message {
                 Message::PrintOneCmd { text } => println!("{}", text),
                 Message::IsCompleteMsg {} => {
