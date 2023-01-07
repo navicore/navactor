@@ -21,3 +21,13 @@ pub enum Message {
     UpdateCmd { values: HashMap<i32, f64> },
     IsCompleteMsg {},
 }
+
+impl Default for MessageEnvelope {
+    fn default() -> Self {
+        MessageEnvelope {
+            message: Message::ReadAllCmd {},
+            respond_to_opt: None,
+            timestamp: Utc::now(),
+        }
+    }
+}

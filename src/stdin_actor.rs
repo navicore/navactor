@@ -3,7 +3,6 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
-use chrono::Utc;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
@@ -40,7 +39,7 @@ impl Actor for StdinActor {
                     let senv = MessageEnvelope {
                         message: complete_msg,
                         respond_to_opt,
-                        timestamp: Utc::now(),
+                        ..Default::default()
                     };
                     self.output.send(senv).await
                 } else {

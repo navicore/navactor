@@ -3,7 +3,6 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
-use chrono::Utc;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -59,7 +58,7 @@ impl Actor for StateActor {
                     let senv = MessageEnvelope {
                         message: message.clone(),
                         respond_to_opt,
-                        timestamp: Utc::now(),
+                        ..Default::default()
                     };
                     output_handle.send(senv).await
                 } else if let Some(respond_to) = respond_to_opt {
