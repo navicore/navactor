@@ -121,8 +121,10 @@ async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
 fn main() {
     env_logger::init();
     debug!("nv started");
+
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
+
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
 
     match cli.command {
