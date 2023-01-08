@@ -14,18 +14,25 @@ fn test_actor_ask() {
         let mut values = HashMap::new();
         values.insert(1, 1.9);
         values.insert(2, 2.9);
-        let cmd = Message::UpdateCmd { values };
+
+        let path = std::path::Path::new("/");
+        let cmd = Message::UpdateCmd { path, values };
         state_actor.tell(cmd).await;
 
         // update state
         let mut values = HashMap::new();
         values.insert(1, 1.8);
-        let cmd = Message::UpdateCmd { values };
+        let path = std::path::Path::new("/");
+        let cmd = Message::UpdateCmd { path, values };
         let reply = state_actor.ask(cmd).await;
 
-        assert!(matches!(reply, Message::UpdateCmd { values: _ },));
+        assert!(matches!(reply, Message::UpdateCmd { path: _, values: _ },));
 
-        if let Message::UpdateCmd { values: new_values } = reply {
+        if let Message::UpdateCmd {
+            path: _,
+            values: new_values,
+        } = reply
+        {
             // ensure that the initial state for 2 is still there but that the initial state for 1
             // was updated
             let v1 = new_values.get(&1).expect("should be there");

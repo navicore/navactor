@@ -9,9 +9,9 @@ extern crate serde;
 extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
-pub struct JsonDecoderActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
-    pub output: ActorHandle,
+pub struct JsonDecoderActor<'a> {
+    pub receiver: mpsc::Receiver<MessageEnvelope<'a>>,
+    pub output: ActorHandle<'a>,
 }
 
 fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> {
@@ -41,8 +41,8 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 }
 
 #[async_trait]
-impl Actor for JsonDecoderActor {
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+impl<'a> Actor<'a> for JsonDecoderActor<'a> {
+    async fn handle_envelope(&mut self, envelope: MessageEnvelope<'a>) {
         match envelope {
             MessageEnvelope {
                 message,
@@ -51,7 +51,8 @@ impl Actor for JsonDecoderActor {
             } => match &message {
                 Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                     Ok(values) => {
-                        let msg = Message::UpdateCmd { values };
+                        let path = std::path::Path::new("/");
+                        let msg = Message::UpdateCmd { path, values };
                         self.output.tell(msg).await
                     }
                     Err(error) => {
@@ -74,15 +75,15 @@ impl Actor for JsonDecoderActor {
 }
 
 /// actor private constructor
-impl JsonDecoderActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
+impl<'a> JsonDecoderActor<'a> {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope<'a>>, output: ActorHandle<'a>) -> Self {
         JsonDecoderActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start(mut actor: JsonDecoderActor) {
+pub fn new<'a>(bufsz: usize, output: ActorHandle<'static>) -> ActorHandle {
+    async fn start<'a>(mut actor: JsonDecoderActor<'static>) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

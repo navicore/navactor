@@ -7,13 +7,13 @@ use tokio::sync::mpsc;
 
 /// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
 /// in combination with other *nix tools.
-pub struct StdoutActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+pub struct StdoutActor<'a> {
+    pub receiver: mpsc::Receiver<MessageEnvelope<'a>>,
 }
 
 #[async_trait]
-impl Actor for StdoutActor {
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+impl<'a> Actor<'a> for StdoutActor<'a> {
+    async fn handle_envelope(&mut self, envelope: MessageEnvelope<'a>) {
         match envelope {
             MessageEnvelope {
                 message,
@@ -38,15 +38,15 @@ impl Actor for StdoutActor {
 }
 
 /// actor private constructor
-impl StdoutActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
+impl<'a> StdoutActor<'a> {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope<'a>>) -> Self {
         StdoutActor { receiver }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize) -> ActorHandle {
-    async fn start(mut actor: StdoutActor) {
+pub fn new<'a>(bufsz: usize) -> ActorHandle<'static> {
+    async fn start<'a>(mut actor: StdoutActor<'static>) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

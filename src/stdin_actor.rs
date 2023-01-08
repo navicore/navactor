@@ -11,14 +11,14 @@ use tokio::sync::mpsc;
 /// the stdin actor is only used in CLI mode.  it gets a single command to
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
 /// a IsCompleteMsg msg to the next hop to trigger any cleanup and shutdown.
-pub struct StdinActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
-    pub output: ActorHandle,
+pub struct StdinActor<'a> {
+    pub receiver: mpsc::Receiver<MessageEnvelope<'a>>,
+    pub output: ActorHandle<'a>,
 }
 
 #[async_trait]
-impl Actor for StdinActor {
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+impl<'a> Actor<'a> for StdinActor<'a> {
+    async fn handle_envelope(&mut self, envelope: MessageEnvelope<'a>) {
         match envelope {
             MessageEnvelope {
                 message,
@@ -51,15 +51,15 @@ impl Actor for StdinActor {
 }
 
 /// actor private constructor
-impl StdinActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
+impl<'a> StdinActor<'a> {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope<'a>>, output: ActorHandle<'a>) -> Self {
         StdinActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start(mut actor: StdinActor) {
+pub fn new(bufsz: usize, output: ActorHandle<'static>) -> ActorHandle<'static> {
+    async fn start<'a>(mut actor: StdinActor<'static>) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
