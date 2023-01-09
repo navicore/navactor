@@ -1,4 +1,4 @@
-use nv::json_decoder_actor;
+use nv::json_value_decoder_actor;
 use nv::message::Message;
 use nv::message::MessageEnvelope;
 use nv::state_actor;
@@ -11,7 +11,7 @@ fn test_actor_tell() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
         let state_actor = state_actor::new(8, None); // parse input
-        let json_decoder_actor = json_decoder_actor::new(8, state_actor); // parse input
+        let json_decoder_actor = json_value_decoder_actor::new(8, state_actor); // parse input
 
         let cmd = Message::PrintOneCmd {
             text: "{\"1\": 1.0}".to_string(),

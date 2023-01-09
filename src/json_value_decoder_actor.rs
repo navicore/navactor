@@ -10,7 +10,7 @@ extern crate serde;
 extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
-pub struct JsonDecoderActor {
+pub struct JsonValueDecoderActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
 }
@@ -42,7 +42,7 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for JsonDecoderActor {
+impl<'a> Actor<'a> for JsonValueDecoderActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
@@ -80,21 +80,21 @@ impl<'a> Actor<'a> for JsonDecoderActor {
 }
 
 /// actor private constructor
-impl<'a> JsonDecoderActor {
+impl<'a> JsonValueDecoderActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        JsonDecoderActor { receiver, output }
+        JsonValueDecoderActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
 pub fn new<'a>(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start<'a>(mut actor: JsonDecoderActor) {
+    async fn start<'a>(mut actor: JsonValueDecoderActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = JsonDecoderActor::new(receiver, output);
+    let actor = JsonValueDecoderActor::new(receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle
