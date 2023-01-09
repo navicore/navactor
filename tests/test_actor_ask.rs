@@ -1,3 +1,4 @@
+use chrono::Utc;
 use nv::message::Message;
 use nv::state_actor;
 use std::collections::HashMap;
@@ -16,19 +17,36 @@ fn test_actor_ask() {
         values.insert(2, 2.9);
 
         let path = String::from("/");
-        let cmd = Message::UpdateCmd { path, values };
+        let cmd = Message::UpdateCmd {
+            timestamp: Utc::now(),
+            path,
+            values,
+        };
         state_actor.tell(cmd).await;
 
         // update state
         let mut values = HashMap::new();
         values.insert(1, 1.8);
         let path = String::from("/");
-        let cmd = Message::UpdateCmd { path, values };
+        let timestamp = Utc::now();
+        let cmd = Message::UpdateCmd {
+            timestamp,
+            path,
+            values,
+        };
         let reply = state_actor.ask(cmd).await;
 
-        assert!(matches!(reply, Message::UpdateCmd { path: _, values: _ },));
+        assert!(matches!(
+            reply,
+            Message::UpdateCmd {
+                timestamp: _,
+                path: _,
+                values: _
+            },
+        ));
 
         if let Message::UpdateCmd {
+            timestamp: _,
             path: _,
             values: new_values,
         } = reply

@@ -3,6 +3,7 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
+use chrono::Utc;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -25,7 +26,11 @@ impl<'a> Actor<'a> for StateActor {
         } = envelope;
 
         match message {
-            Message::UpdateCmd { path: _, values } => {
+            Message::UpdateCmd {
+                timestamp: _,
+                path: _,
+                values,
+            } => {
                 self.state.extend(&values);
                 // report the update to our state to the output actor
                 if let Some(output_handle) = &self.output {
@@ -37,6 +42,7 @@ impl<'a> Actor<'a> for StateActor {
                 // if this is a tell, respond with a copy of our new state
                 if let Some(respond_to) = respond_to_opt {
                     let state_msg = Message::UpdateCmd {
+                        timestamp: Utc::now(),
                         path: String::from("/"),
                         values: self.state.clone(),
                     };

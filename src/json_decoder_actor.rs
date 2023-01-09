@@ -3,6 +3,7 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
+use chrono::Utc;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 extern crate serde;
@@ -52,7 +53,11 @@ impl<'a> Actor<'a> for JsonDecoderActor {
                 Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                     Ok(values) => {
                         let path = String::from("/");
-                        let msg = Message::UpdateCmd { path, values };
+                        let msg = Message::UpdateCmd {
+                            timestamp: Utc::now(),
+                            path,
+                            values,
+                        };
                         self.output.tell(msg).await
                     }
                     Err(error) => {

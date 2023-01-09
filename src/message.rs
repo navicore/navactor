@@ -21,6 +21,7 @@ pub enum Message {
         text: String,
     },
     UpdateCmd {
+        timestamp: DateTime<Utc>,
         path: String,
         values: HashMap<i32, f64>,
     },
