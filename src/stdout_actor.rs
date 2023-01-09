@@ -7,13 +7,13 @@ use tokio::sync::mpsc;
 
 /// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
 /// in combination with other *nix tools.
-pub struct StdoutActor<'a> {
-    pub receiver: mpsc::Receiver<MessageEnvelope<'a>>,
+pub struct StdoutActor {
+    pub receiver: mpsc::Receiver<MessageEnvelope>,
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for StdoutActor<'a> {
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope<'a>) {
+impl<'a> Actor<'a> for StdoutActor {
+    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
                 message,
@@ -38,15 +38,15 @@ impl<'a> Actor<'a> for StdoutActor<'a> {
 }
 
 /// actor private constructor
-impl<'a> StdoutActor<'a> {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope<'a>>) -> Self {
+impl<'a> StdoutActor {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
         StdoutActor { receiver }
     }
 }
 
 /// actor handle public constructor
-pub fn new<'a>(bufsz: usize) -> ActorHandle<'static> {
-    async fn start<'a>(mut actor: StdoutActor<'static>) {
+pub fn new<'a>(bufsz: usize) -> ActorHandle {
+    async fn start<'a>(mut actor: StdoutActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

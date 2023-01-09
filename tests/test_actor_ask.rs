@@ -15,14 +15,14 @@ fn test_actor_ask() {
         values.insert(1, 1.9);
         values.insert(2, 2.9);
 
-        let path = std::path::Path::new("/");
+        let path = String::from("/");
         let cmd = Message::UpdateCmd { path, values };
         state_actor.tell(cmd).await;
 
         // update state
         let mut values = HashMap::new();
         values.insert(1, 1.8);
-        let path = std::path::Path::new("/");
+        let path = String::from("/");
         let cmd = Message::UpdateCmd { path, values };
         let reply = state_actor.ask(cmd).await;
 

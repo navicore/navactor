@@ -9,15 +9,15 @@ use tokio::sync::mpsc;
 /// the state actor is the core of the system.  each digital twin has an
 /// instance of actor keeping state calculated from the stream of observations
 /// sent to the system.
-pub struct StateActor<'a> {
-    pub receiver: mpsc::Receiver<MessageEnvelope<'a>>,
-    pub output: Option<ActorHandle<'a>>,
+pub struct StateActor {
+    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub output: Option<ActorHandle>,
     pub state: HashMap<i32, f64>,
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for StateActor<'a> {
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope<'a>) {
+impl<'a> Actor<'a> for StateActor {
+    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
             respond_to_opt,
@@ -37,7 +37,7 @@ impl<'a> Actor<'a> for StateActor<'a> {
                 // if this is a tell, respond with a copy of our new state
                 if let Some(respond_to) = respond_to_opt {
                     let state_msg = Message::UpdateCmd {
-                        path: std::path::Path::new("/"),
+                        path: String::from("/"),
                         values: self.state.clone(),
                     };
                     respond_to.send(state_msg).expect("can not reply to tell");
@@ -75,8 +75,8 @@ impl<'a> Actor<'a> for StateActor<'a> {
 }
 
 /// actor private constructor
-impl<'a> StateActor<'a> {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope<'a>>, output: Option<ActorHandle<'a>>) -> Self {
+impl<'a> StateActor {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: Option<ActorHandle>) -> Self {
         let state = HashMap::new(); // TODO: load from event store
         StateActor {
             receiver,
@@ -87,8 +87,8 @@ impl<'a> StateActor<'a> {
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: Option<ActorHandle<'static>>) -> ActorHandle {
-    async fn start<'a>(mut actor: StateActor<'static>) {
+pub fn new(bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+    async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
