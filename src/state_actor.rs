@@ -17,7 +17,7 @@ pub struct StateActor {
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for StateActor {
+impl Actor for StateActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -81,7 +81,7 @@ impl<'a> Actor<'a> for StateActor {
 }
 
 /// actor private constructor
-impl<'a> StateActor {
+impl StateActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: Option<ActorHandle>) -> Self {
         let state = HashMap::new(); // TODO: load from event store
         StateActor {

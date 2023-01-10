@@ -17,7 +17,7 @@ pub struct StdinActor {
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for StdinActor {
+impl Actor for StdinActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
@@ -51,15 +51,15 @@ impl<'a> Actor<'a> for StdinActor {
 }
 
 /// actor private constructor
-impl<'a> StdinActor {
+impl StdinActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         StdinActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new<'a>(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start<'b>(mut actor: StdinActor) {
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+    async fn start(mut actor: StdinActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

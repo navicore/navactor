@@ -45,7 +45,7 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for JsonValueDecoderActor {
+impl Actor for JsonValueDecoderActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
@@ -83,15 +83,15 @@ impl<'a> Actor<'a> for JsonValueDecoderActor {
 }
 
 /// actor private constructor
-impl<'a> JsonValueDecoderActor {
+impl JsonValueDecoderActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         JsonValueDecoderActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new<'a>(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start<'a>(mut actor: JsonValueDecoderActor) {
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+    async fn start(mut actor: JsonValueDecoderActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

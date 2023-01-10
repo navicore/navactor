@@ -6,7 +6,7 @@ use tokio::sync::oneshot;
 
 /// all actors must implement this trait
 #[async_trait]
-pub trait Actor<'a> {
+pub trait Actor {
     /// the function to implement per actor
     async fn handle_envelope(&mut self, envelope: MessageEnvelope);
 }
@@ -52,7 +52,7 @@ impl<'a> ActorHandle {
 
 /// ActorHandle is the only API for actors.  ActorHandle(s) may be passed
 /// around like erlang pids
-impl<'a> ActorHandle {
+impl ActorHandle {
     // ActorHandle constructor is an internal API use in the convenience functions
     // of the various per-actor ActorHandle impls
     #[doc(hidden)]
