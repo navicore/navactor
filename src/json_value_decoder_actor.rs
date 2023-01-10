@@ -18,8 +18,8 @@ pub struct JsonValueDecoderActor {
     pub output: ActorHandle,
 }
 
-fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> {
-    let values: serde_json::Value = match serde_json::from_str(text.as_str()) {
+fn extract_values_from_json(text: &str) -> Result<HashMap<i32, f64>, String> {
+    let values: serde_json::Value = match serde_json::from_str(text) {
         Ok(values) => values,
         Err(e) => return Err(e.to_string()),
     };
@@ -47,13 +47,14 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 #[async_trait]
 impl Actor for JsonValueDecoderActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match envelope {
-            MessageEnvelope {
-                message,
-                respond_to_opt,
-                timestamp: _,
-            } => match &message {
-                Message::PrintOneCmd { text } => match extract_values_from_json(text) {
+        let MessageEnvelope {
+            message,
+            respond_to_opt,
+            timestamp: _,
+        } = envelope;
+        match &message {
+            Message::PrintOneCmd { text } => {
+                match extract_values_from_json(text) {
                     Ok(values) => {
                         let path = String::from("/");
                         let msg = Message::UpdateCmd {
@@ -66,18 +67,18 @@ impl Actor for JsonValueDecoderActor {
                     Err(error) => {
                         log::warn!("{}", error); // TODO send back an error to respond_to
                     }
-                },
-                Message::IsCompleteMsg {} => {
-                    let senv = MessageEnvelope {
-                        message,
-                        respond_to_opt,
-                        ..Default::default()
-                    };
-                    log::debug!("complete");
-                    self.output.send(senv).await // forward the good news
                 }
-                _ => {}
-            },
+            }
+            Message::IsCompleteMsg {} => {
+                let senv = MessageEnvelope {
+                    message,
+                    respond_to_opt,
+                    ..Default::default()
+                };
+                log::debug!("complete");
+                self.output.send(senv).await // forward the good news
+            }
+            _ => {}
         }
     }
 }

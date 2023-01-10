@@ -19,33 +19,31 @@ pub struct StdinActor {
 #[async_trait]
 impl Actor for StdinActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match envelope {
-            MessageEnvelope {
-                message,
-                respond_to_opt,
-                timestamp: _,
-            } => {
-                if let Message::ReadAllCmd {} = message {
-                    let mut lines = BufReader::new(stdin()).lines();
+        let MessageEnvelope {
+            message,
+            respond_to_opt,
+            timestamp: _,
+        } = envelope;
 
-                    while let Some(text) = lines.next_line().await.expect("failed to read stream") {
-                        let msg = Message::PrintOneCmd { text };
-                        self.output.tell(msg).await
-                    }
+        if let Message::ReadAllCmd {} = message {
+            let mut lines = BufReader::new(stdin()).lines();
 
-                    // forward the respond_to handle so that the output actor can respond when all
-                    // is printed
-                    let complete_msg = Message::IsCompleteMsg {};
-                    let senv = MessageEnvelope {
-                        message: complete_msg,
-                        respond_to_opt,
-                        ..Default::default()
-                    };
-                    self.output.send(senv).await
-                } else {
-                    log::warn!("unexpected: {:?}", message);
-                }
+            while let Some(text) = lines.next_line().await.expect("failed to read stream") {
+                let msg = Message::PrintOneCmd { text };
+                self.output.tell(msg).await
             }
+
+            // forward the respond_to handle so that the output actor can respond when all
+            // is printed
+            let complete_msg = Message::IsCompleteMsg {};
+            let senv = MessageEnvelope {
+                message: complete_msg,
+                respond_to_opt,
+                ..Default::default()
+            };
+            self.output.send(senv).await
+        } else {
+            log::warn!("unexpected: {:?}", message);
         }
     }
 }
