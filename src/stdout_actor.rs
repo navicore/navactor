@@ -14,25 +14,24 @@ pub struct StdoutActor {
 #[async_trait]
 impl Actor for StdoutActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match envelope {
-            MessageEnvelope {
-                message,
-                respond_to_opt,
-                timestamp: _,
-            } => match message {
-                Message::PrintOneCmd { text } => println!("{}", text),
-                Message::IsCompleteMsg {} => {
-                    if let Some(respond_to) = respond_to_opt {
-                        let complete_msg = Message::IsCompleteMsg {};
-                        respond_to
-                            .send(complete_msg)
-                            .expect("could not send completion token");
-                    }
+        let MessageEnvelope {
+            message,
+            respond_to_opt,
+            timestamp: _,
+        } = envelope;
+        match message {
+            Message::PrintOneCmd { text } => println!("{}", text),
+            Message::IsCompleteMsg {} => {
+                if let Some(respond_to) = respond_to_opt {
+                    let complete_msg = Message::IsCompleteMsg {};
+                    respond_to
+                        .send(complete_msg)
+                        .expect("could not send completion token");
                 }
-                _ => {
-                    log::warn!("unexpected: {:?}", message);
-                }
-            },
+            }
+            _ => {
+                log::warn!("unexpected: {:?}", message);
+            }
         }
     }
 }
