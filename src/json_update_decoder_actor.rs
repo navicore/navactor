@@ -1,4 +1,3 @@
-use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
@@ -87,15 +86,15 @@ impl<'a> Actor<'a> for JsonUpdateDecoderActor {
 }
 
 /// actor private constructor
-impl<'a> JsonUpdateDecoderActor {
+impl JsonUpdateDecoderActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         JsonUpdateDecoderActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new<'a>(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start<'a>(mut actor: JsonUpdateDecoderActor) {
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+    async fn start(mut actor: JsonUpdateDecoderActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
