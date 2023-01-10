@@ -9,6 +9,9 @@ use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
 
+// FOR TESTING - DEPRECATED
+// this just reads a jsonl file of values w/o any paths or timestamps
+
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonValueDecoderActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,

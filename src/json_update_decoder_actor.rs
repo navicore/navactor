@@ -1,4 +1,3 @@
-use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
@@ -8,6 +7,12 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
+
+// UNDER CONSTRUCTION
+// UNDER CONSTRUCTION
+// UNDER CONSTRUCTION
+//
+// need to extract timestamp and path as well as values from the new fmt json string
 
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonUpdateDecoderActor {
@@ -27,12 +32,14 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
                 if let Some(value) = value.as_f64() {
                     map.insert(key, value);
                 } else {
-                    log::warn!("not numeric value: {}", value)
-                    // TODO: return error if respond_to is available
+                    let emsg = format!("not numeric value: {}", value);
+                    log::warn!(emsg);
+                    break Err(emsg);
                 }
             } else {
-                log::warn!("not numeric key: {}", key)
-                // TODO: return error if respond_to is available
+                let emsg = format!("not numeric key: {}", key);
+                log::warn!(emsg);
+                break Err(emsg);
             }
         }
         Ok(map)
