@@ -45,7 +45,7 @@ impl<'a> ActorHandle {
             respond_to_opt: Some(send),
             ..Default::default()
         };
-        let _ = self.send(envelope).await;
+        self.send(envelope).await;
         recv.await.expect("other actor cannot reply")
     }
 }

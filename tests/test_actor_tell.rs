@@ -26,7 +26,7 @@ fn test_actor_tell() {
             respond_to_opt: Some(send),
             ..Default::default()
         };
-        let _ = json_decoder_actor.send(envelope).await;
+        json_decoder_actor.send(envelope).await;
         let result = recv.await;
         let result_message = result.expect("failed with RecvErr");
         assert!(matches!(result_message, Message::IsCompleteMsg {},));
