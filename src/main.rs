@@ -30,16 +30,14 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Process incoming stream of internal formats
-    Update(Encoding),
-    /// Process incoming stream of external formats with extractor
-    Ingest(Extractor),
+    Update(Namespace),
     /// Get actor state for all actors in path
     Inspect(Inspect),
 }
 
 #[derive(Args)]
-struct Encoding {
-    encoding: String,
+struct Namespace {
+    namespace: String,
 }
 
 #[derive(Args)]
@@ -57,12 +55,12 @@ struct Extractor {
     extractor: String,
 }
 
-fn update(encoding: Encoding, bufsz: usize, runtime: Runtime) {
-    let result = run_async_update(encoding, bufsz);
+fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
+    let result = run_async_update(namespace, bufsz);
     runtime.block_on(result).expect("An error occurred");
 }
 
-async fn run_async_update(_: Encoding, bufsz: usize) -> Result<(), String> {
+async fn run_async_update(_: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
     let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
                                                              // store state,
@@ -78,23 +76,6 @@ async fn run_async_update(_: Encoding, bufsz: usize) -> Result<(), String> {
 
 fn inspect(_: Inspect, _: usize, _: Runtime) {}
 
-fn ingest(_: Extractor, bufsz: usize, runtime: Runtime) {
-    let result = run_async_ingest(bufsz);
-    runtime.block_on(result).expect("An error occurred");
-}
-
-async fn run_async_ingest(bufsz: usize) -> Result<(), String> {
-    let output = stdout_actor::new(bufsz);
-    let input = stdin_actor::new(bufsz, output);
-
-    let read_cmd = Message::ReadAllCmd {};
-    match input.ask(read_cmd).await {
-        //match input.read().await {
-        IsCompleteMsg {} => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
-    }
-}
-
 fn main() {
     env_logger::init();
     debug!("nv started");
@@ -105,8 +86,7 @@ fn main() {
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
 
     match cli.command {
-        Commands::Update(encoding) => update(encoding, bufsz, runtime),
-        Commands::Ingest(extractor) => ingest(extractor, bufsz, runtime),
+        Commands::Update(namespace) => update(namespace, bufsz, runtime),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
     debug!("nv stopped");

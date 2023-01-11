@@ -1,4 +1,3 @@
-use crate::message::MessageEnvelope;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
