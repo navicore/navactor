@@ -29,10 +29,11 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Process incoming stream of internal formats
+    /// Process incoming stream of internal formats into a namespace.  A
+    /// namespace is an instance of GraphDirector.
     Update(Namespace),
     /// Get actor state for all actors in path
-    Inspect(Inspect),
+    Inspect(NvPath),
 }
 
 #[derive(Args)]
@@ -44,7 +45,7 @@ struct Namespace {
 struct NoArg {}
 
 #[derive(Args)]
-struct Inspect {
+struct NvPath {
     /// actor path
     path: String,
 }
@@ -74,7 +75,7 @@ async fn run_async_update(_: Namespace, bufsz: usize) -> Result<(), String> {
     }
 }
 
-fn inspect(_: Inspect, _: usize, _: Runtime) {}
+fn inspect(_: NvPath, _: usize, _: Runtime) {}
 
 fn main() {
     env_logger::init();
