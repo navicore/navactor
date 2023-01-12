@@ -1,4 +1,3 @@
-use crate::message::MessageEnvelope;
 use async_trait::async_trait;
 use chrono::Utc;
 use std::collections::HashMap;

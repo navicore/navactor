@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 extern crate serde;
@@ -6,20 +5,21 @@ extern crate serde_json;
 
 // TODO:
 //
-// state actor graph actor creates a graph and instantiates all the actors that it is messaging
-// commands to
+// state actor graph actor creates a graph and instantiates all the actors that
+// it is messaging commands to
 //
-// hold off on all extractor work - might be a data-wrangling until that should not pollute this
-// impl.
+// hold off on all extractor work - might be a data-wrangling until that should
+// not pollute this impl.
 //
 // new json supports (1) observations, (2) metadata used to update graph
 //
 // parse new actor update json that has timestamp, path, observations
 //
-// update envelope to have nv timestamp and msgtype (1-data "update or delete", or 2-meta for soft links)
+// update envelope to have nv timestamp and msgtype (1-data "update or delete",
+// or 2-meta for soft links)
 //
-// use rust std Path to update petgraph graph Edges and lookup/upsert actor for each input record
-// msg send
+// use rust std Path to update petgraph graph Edges and lookup/upsert actor for
+// each input record msg send
 
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct GraphDirector {
