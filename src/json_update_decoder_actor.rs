@@ -4,7 +4,7 @@ use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::message::Observations;
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -40,8 +40,25 @@ impl Actor for JsonUpdateDecoderActor {
             } => match &message {
                 Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                     Ok(observations) => {
+                        let datetime: DateTime<Utc> = match DateTime::parse_from_str(
+                            &observations.datetime,
+                            "%Y-%m-%dT%H:%M:%S%z",
+                            //"%Y-%m-%dT%H:%M:%S%.fZ",
+                            //  "%Y-%m-%dT%H:%M:%S%.fZ",
+                        ) {
+                            Ok(d) => d.with_timezone(&Utc),
+                            Err(e) => {
+                                log::warn!(
+                                    "can not parse datetime {} due to: {}",
+                                    &observations.datetime,
+                                    e
+                                );
+                                Utc::now()
+                            }
+                        };
+
                         let msg = Message::UpdateCmd {
-                            timestamp: Utc::now(), // TODO: from json
+                            timestamp: datetime,
                             path: observations.path,
                             values: observations.values,
                         };

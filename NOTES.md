@@ -47,13 +47,14 @@ TODO
 1. ~~clap~~
 2. ~~ingest stdin stream into actor msgs~~
 3. ~~parse msgs in actor impls~~
-4. enable https://github.com/tokio-rs/console
-5. next internal msg format needs source timestamp, nv timestamp, path.
-  a. nv timestamp in envelope
-  b. nv source timestamp and path in payload hierarchy
+4. next internal msg format needs source timestamp, nv timestamp, path.
+  a. ~~nv timestamp in envelope~~
+  b. ~~nv source timestamp and path in payload hierarchy~~
+  c. unmarshal time strings
 
 MORE
 ---------
 
 * Operator expression could be processed an embedded lang runtime or a new DSL
+* enable https://github.com/tokio-rs/console
 
