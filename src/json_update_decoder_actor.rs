@@ -1,6 +1,10 @@
+use crate::actor::Actor;
+use crate::actor::ActorHandle;
+use crate::message::Message;
+use crate::message::MessageEnvelope;
+use crate::message::Observations;
 use async_trait::async_trait;
 use chrono::Utc;
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -17,36 +21,16 @@ pub struct JsonUpdateDecoderActor {
     pub output: ActorHandle,
 }
 
-fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> {
-    let values: serde_json::Value = match serde_json::from_str(text.as_str()) {
-        Ok(values) => values,
+fn extract_values_from_json(text: &String) -> Result<Observations, String> {
+    let observations: Observations = match serde_json::from_str(text) {
+        Ok(o) => o,
         Err(e) => return Err(e.to_string()),
     };
-    let mut map: HashMap<i32, f64> = HashMap::new();
-    if let Some(obj) = values.as_object() {
-        for (key, value) in obj.iter() {
-            if let Ok(key) = key.parse::<i32>() {
-                if let Some(value) = value.as_f64() {
-                    map.insert(key, value);
-                } else {
-                    let emsg = format!("not numeric value: {}", value);
-                    log::warn!(emsg);
-                    break Err(emsg);
-                }
-            } else {
-                let emsg = format!("not numeric key: {}", key);
-                log::warn!(emsg);
-                break Err(emsg);
-            }
-        }
-        Ok(map)
-    } else {
-        Err("invalid json".to_string())
-    }
+    Ok(observations)
 }
 
 #[async_trait]
-impl<'a> Actor<'a> for JsonUpdateDecoderActor {
+impl Actor for JsonUpdateDecoderActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
@@ -55,12 +39,11 @@ impl<'a> Actor<'a> for JsonUpdateDecoderActor {
                 timestamp: _,
             } => match &message {
                 Message::PrintOneCmd { text } => match extract_values_from_json(text) {
-                    Ok(values) => {
-                        let path = String::from("/");
+                    Ok(observations) => {
                         let msg = Message::UpdateCmd {
-                            timestamp: Utc::now(),
-                            path,
-                            values,
+                            timestamp: Utc::now(), // TODO: from json
+                            path: observations.path,
+                            values: observations.values,
                         };
                         self.output.tell(msg).await
                     }

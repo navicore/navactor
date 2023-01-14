@@ -1,7 +1,15 @@
 use chrono::DateTime;
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::oneshot;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Observations {
+    pub datetime: String,
+    pub values: HashMap<i32, f64>,
+    pub path: String,
+}
 
 /// all actor messages are delivered in envelops that contain optional
 /// sender objects - these are set when a `tell` message is sent so that
