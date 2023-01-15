@@ -1,4 +1,5 @@
 pub mod actor;
+pub mod graph_director;
 pub mod json_update_decoder_actor;
 pub mod message;
 pub mod state_actor;

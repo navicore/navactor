@@ -1,110 +1,102 @@
+use crate::actor::Actor;
+use crate::actor::ActorHandle;
+use crate::message::Message;
+use crate::message::MessageEnvelope;
+use crate::state_actor;
+use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-extern crate serde;
-extern crate serde_json;
 
 // TODO:
 //
-// state actor graph actor creates a graph and instantiates all the actors that
-// it is messaging commands to
-//
-// hold off on all extractor work - might be a data-wrangling until that should
-// not pollute this impl.
-//
-// new json supports (1) observations, (2) metadata used to update graph
-//
-// parse new actor update json that has datetime, path, observations
-//
-// update envelope to have nv datetime and msgtype (1-data "update or delete",
-// or 2-meta for soft links)
 //
 // use rust std Path to update petgraph graph Edges and lookup/upsert actor for
 // each input record msg send
 
-/// actor accepts numerical json and converts into the internal state data msg
+/// actor graph actor creates a graph and instantiates all the actors that
+/// it is messaging commands to.  it also accepts metadata to create edge
+/// objects in the graph
 pub struct GraphDirector {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
-    path: String,
-}
-
-fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> {
-    let values: serde_json::Value = match serde_json::from_str(text.as_str()) {
-        Ok(values) => values,
-        Err(e) => return Err(e.to_string()),
-    };
-    let mut map: HashMap<i32, f64> = HashMap::new();
-    if let Some(obj) = values.as_object() {
-        for (key, value) in obj.iter() {
-            if let Ok(key) = key.parse::<i32>() {
-                if let Some(value) = value.as_f64() {
-                    map.insert(key, value);
-                } else {
-                    log::warn!("not numeric value: {}", value)
-                    // TODO: return error if respond_to is available
-                }
-            } else {
-                log::warn!("not numeric key: {}", key)
-                // TODO: return error if respond_to is available
-            }
-        }
-        Ok(map)
-    } else {
-        Err("invalid json".to_string())
-    }
+    pub actors: HashMap<String, ActorHandle>,
+    namespace: String,
 }
 
 #[async_trait]
 impl Actor for GraphDirector {
     fn get_path(&mut self) -> String {
-        self.path.clone()
+        self.namespace.clone()
     }
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match envelope {
-            MessageEnvelope {
-                message,
-                respond_to_opt,
-            } => match &message {
-                Message::PrintOneCmd { text } => match extract_values_from_json(text) {
-                    Ok(values) => {
-                        let msg = Message::UpdateCmd { values };
-                        self.output.tell(msg).await
-                    }
-                    Err(error) => {
-                        log::warn!("{}", error); // TODO send back an error to respond_to
-                    }
-                },
-                Message::IsCompleteMsg {} => {
-                    let senv = MessageEnvelope {
-                        message,
-                        respond_to_opt,
-                    };
-                    log::debug!("complete");
-                    self.output.send(senv).await // forward the good news
-                }
-                _ => {}
-            },
+        let MessageEnvelope {
+            message,
+            respond_to_opt,
+            datetime,
+        } = envelope;
+        match &message {
+            Message::UpdateCmd {
+                datetime: _,
+                path,
+                values: _,
+            } => {
+                //upsert actor
+                let actor = self
+                    .actors
+                    .entry(path.clone())
+                    .or_insert_with(|| state_actor::new(path.clone(), 8, None));
+
+                let response = actor.ask(message).await;
+
+                // forward
+                let senv = MessageEnvelope {
+                    message: response.clone(),
+                    respond_to_opt: None,
+                    ..Default::default()
+                };
+                self.output.send(senv).await;
+            }
+            Message::IsCompleteMsg {} => {
+                let senv = MessageEnvelope {
+                    message,
+                    respond_to_opt,
+                    datetime,
+                };
+
+                // forward
+                self.output.send(senv).await // forward the good news
+            }
+            m => log::warn!("unexpected message: {:?}", m),
         }
     }
 }
 
 /// actor private constructor
 impl GraphDirector {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        GraphDirector { receiver, output }
+    fn new(
+        namespace: String,
+        receiver: mpsc::Receiver<MessageEnvelope>,
+        output: ActorHandle,
+    ) -> Self {
+        GraphDirector {
+            namespace,
+            actors: HashMap::new(),
+            receiver,
+            output,
+        }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+pub fn new(namespace: String, bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: GraphDirector) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = GraphDirector::new(receiver, output);
+    let actor = GraphDirector::new(namespace, receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle
