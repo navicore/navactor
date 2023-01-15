@@ -66,7 +66,16 @@ impl Actor for JsonDecoder {
                     self.output.send(senv).await;
                 }
                 Err(error) => {
-                    log::warn!("{}", error); // TODO send back an error to respond_to
+                    log::warn!("json parse error: {}", error);
+                    if let Some(respond_to) = respond_to_opt {
+                        let etxt = format!("json parse error: {}", error);
+                        let emsg = Message::ErrorReport {
+                            datetime: Utc::now(),
+                            path: None,
+                            text: String::from(etxt),
+                        };
+                        respond_to.send(emsg).expect("can not return error");
+                    }
                 }
             },
             m => {
@@ -76,7 +85,7 @@ impl Actor for JsonDecoder {
                     respond_to_opt,
                     ..Default::default()
                 };
-                self.output.send(senv).await // forward the good news
+                self.output.send(senv).await;
             }
         }
     }

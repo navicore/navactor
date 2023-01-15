@@ -38,9 +38,14 @@ pub enum Message {
         path: String,
         values: HashMap<i32, f64>,
     },
+    ErrorReport {
+        text: String,
+        datetime: DateTime<Utc>,
+        path: Option<String>,
+    },
+
     IsCompleteMsg {},
 }
-
 impl Default for MessageEnvelope {
     fn default() -> Self {
         MessageEnvelope {
