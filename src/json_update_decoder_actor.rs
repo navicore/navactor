@@ -19,7 +19,7 @@ pub struct JsonUpdateDecoderActor {
     path: String,
 }
 
-fn extract_values_from_json(text: &String) -> Result<Observations, String> {
+fn extract_values_from_json(text: &str) -> Result<Observations, String> {
     let observations: Observations = match serde_json::from_str(text) {
         Ok(o) => o,
         Err(e) => return Err(e.to_string()),
@@ -34,67 +34,66 @@ impl Actor for JsonUpdateDecoderActor {
     }
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        match envelope {
-            MessageEnvelope {
-                message,
-                respond_to_opt,
-                timestamp: _,
-            } => match &message {
-                Message::PrintOneCmd { text } => match extract_values_from_json(text) {
-                    Ok(observations) => {
-                        let datetime: DateTime<Utc> = match DateTime::parse_from_str(
-                            &observations.datetime,
-                            "%Y-%m-%dT%H:%M:%S%z",
-                        ) {
-                            Ok(d) => d.with_timezone(&Utc),
-                            Err(e) => {
-                                log::warn!(
-                                    "can not parse datetime {} due to: {}",
-                                    &observations.datetime,
-                                    e
-                                );
-                                Utc::now()
-                            }
-                        };
+        let MessageEnvelope {
+            message,
+            respond_to_opt,
+            timestamp: _,
+        } = envelope;
+        match &message {
+            Message::PrintOneCmd { text } => match extract_values_from_json(text) {
+                Ok(observations) => {
+                    let datetime: DateTime<Utc> = match DateTime::parse_from_str(
+                        &observations.datetime,
+                        "%Y-%m-%dT%H:%M:%S%z",
+                    ) {
+                        Ok(d) => d.with_timezone(&Utc),
+                        Err(e) => {
+                            log::warn!(
+                                "can not parse datetime {} due to: {}",
+                                &observations.datetime,
+                                e
+                            );
+                            Utc::now()
+                        }
+                    };
 
-                        let msg = Message::UpdateCmd {
-                            timestamp: datetime,
-                            path: observations.path.clone(),
-                            values: observations.values,
-                        };
-                        let actor = self
-                            .actors
-                            .entry(observations.path.clone())
-                            .or_insert(state_actor::new(observations.path.clone(), 8, None));
+                    let msg = Message::UpdateCmd {
+                        timestamp: datetime,
+                        path: observations.path.clone(),
+                        values: observations.values,
+                    };
+                    let actor = self
+                        .actors
+                        .entry(observations.path.clone())
+                        .or_insert(state_actor::new(observations.path.clone(), 8, None));
 
-                        let response = actor.ask(msg).await;
-                        log::debug!(
-                            "update actor got single actor instance state {:?}",
-                            response
-                        );
-                    }
-                    Err(error) => {
-                        log::warn!("{}", error); // TODO send back an error to respond_to
-                    }
-                },
-                Message::IsCompleteMsg {} => {
-                    log::debug!("complete");
-
-                    // forward if we are configured with an output
-                    if let Some(a) = &self.output {
-                        let senv = MessageEnvelope {
-                            message,
-                            respond_to_opt,
-                            ..Default::default()
-                        };
-                        a.send(senv).await // forward the good news
-                    } else if let Some(respond_to) = respond_to_opt {
-                        // else we're the end of the line so reply if this is an ask
-                        respond_to.send(message).expect("can not reply to ask");
-                    }
+                    let response = actor.ask(msg).await;
+                    log::debug!(
+                        "update actor got single actor instance state {:?}",
+                        response
+                    );
                 }
-                _ => {}
+                Err(error) => {
+                    log::warn!("{}", error); // TODO send back an error to respond_to
+                }
             },
+            Message::IsCompleteMsg {} => {
+                log::debug!("complete");
+
+                // forward if we are configured with an output
+                if let Some(a) = &self.output {
+                    let senv = MessageEnvelope {
+                        message,
+                        respond_to_opt,
+                        ..Default::default()
+                    };
+                    a.send(senv).await // forward the good news
+                } else if let Some(respond_to) = respond_to_opt {
+                    // else we're the end of the line so reply if this is an ask
+                    respond_to.send(message).expect("can not reply to ask");
+                }
+            }
+            _ => {}
         }
     }
 }
