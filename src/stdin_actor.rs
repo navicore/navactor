@@ -27,7 +27,7 @@ impl Actor for StdinActor {
         let MessageEnvelope {
             message,
             respond_to_opt,
-            timestamp: _,
+            datetime: _,
         } = envelope;
 
         if let Message::ReadAllCmd {} = message {

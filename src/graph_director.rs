@@ -13,9 +13,9 @@ extern crate serde_json;
 //
 // new json supports (1) observations, (2) metadata used to update graph
 //
-// parse new actor update json that has timestamp, path, observations
+// parse new actor update json that has datetime, path, observations
 //
-// update envelope to have nv timestamp and msgtype (1-data "update or delete",
+// update envelope to have nv datetime and msgtype (1-data "update or delete",
 // or 2-meta for soft links)
 //
 // use rust std Path to update petgraph graph Edges and lookup/upsert actor for

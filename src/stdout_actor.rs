@@ -22,10 +22,15 @@ impl Actor for StdoutActor {
         let MessageEnvelope {
             message,
             respond_to_opt,
-            timestamp: _,
+            datetime: _,
         } = envelope;
         match message {
             Message::PrintOneCmd { text } => println!("{}", text),
+            Message::StateReport {
+                path,
+                datetime: _,
+                values,
+            } => println!("{} new state: {:?}", path, values),
             Message::IsCompleteMsg {} => {
                 if let Some(respond_to) = respond_to_opt {
                     let complete_msg = Message::IsCompleteMsg {};

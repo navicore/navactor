@@ -27,11 +27,11 @@ impl Actor for StateActor {
         let MessageEnvelope {
             message,
             respond_to_opt,
-            timestamp: _,
+            datetime: _,
         } = envelope;
 
         if let Message::UpdateCmd {
-            timestamp: _,
+            datetime: _,
             path: _,
             values,
         } = message
@@ -39,23 +39,20 @@ impl Actor for StateActor {
             log::debug!("state actor {} update", self.path);
 
             self.state.extend(&values); //update state
+            let state_rpt = Message::StateReport {
+                path: self.path.clone(),
+                values: self.state.clone(),
+                datetime: Utc::now(),
+            };
 
             // report the update to our state to the output actor
             if let Some(output_handle) = &self.output {
-                let logmsg = Message::PrintOneCmd {
-                    text: format!("updating with: {:?}", &values),
-                };
-                output_handle.tell(logmsg).await;
+                output_handle.tell(state_rpt.clone()).await;
             }
 
             // respond with a copy of our new state if this is an 'ask'
             if let Some(respond_to) = respond_to_opt {
-                let state_msg = Message::UpdateCmd {
-                    timestamp: Utc::now(),
-                    path: self.path.clone(),
-                    values: self.state.clone(),
-                };
-                respond_to.send(state_msg).expect("can not reply to ask");
+                respond_to.send(state_rpt).expect("can not reply to ask");
             }
         }
     }
