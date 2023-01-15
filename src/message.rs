@@ -18,7 +18,7 @@ pub struct Observations {
 pub struct MessageEnvelope {
     pub message: Message,
     pub respond_to_opt: Option<oneshot::Sender<Message>>,
-    pub timestamp: DateTime<Utc>,
+    pub datetime: DateTime<Utc>,
 }
 
 /// all actor API interaction is via async messages
@@ -29,7 +29,12 @@ pub enum Message {
         text: String,
     },
     UpdateCmd {
-        timestamp: DateTime<Utc>,
+        datetime: DateTime<Utc>,
+        path: String,
+        values: HashMap<i32, f64>,
+    },
+    StateReport {
+        datetime: DateTime<Utc>,
         path: String,
         values: HashMap<i32, f64>,
     },
@@ -41,7 +46,7 @@ impl Default for MessageEnvelope {
         MessageEnvelope {
             message: Message::ReadAllCmd {},
             respond_to_opt: None,
-            timestamp: Utc::now(),
+            datetime: Utc::now(),
         }
     }
 }

@@ -27,51 +27,60 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
     Ok(observations)
 }
 
+fn extract_datetime(datetime_str: &str) -> DateTime<Utc> {
+    match DateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S%z") {
+        Ok(d) => d.with_timezone(&Utc),
+        Err(e) => {
+            log::warn!("can not parse datetime {} due to: {}", &datetime_str, e);
+            Utc::now()
+        }
+    }
+}
+
 #[async_trait]
 impl Actor for JsonUpdateDecoderActor {
     fn get_path(&mut self) -> String {
         self.path.clone()
     }
-
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
             respond_to_opt,
-            timestamp: _,
+            datetime: _,
         } = envelope;
         match &message {
             Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                 Ok(observations) => {
-                    let datetime: DateTime<Utc> = match DateTime::parse_from_str(
-                        &observations.datetime,
-                        "%Y-%m-%dT%H:%M:%S%z",
-                    ) {
-                        Ok(d) => d.with_timezone(&Utc),
-                        Err(e) => {
-                            log::warn!(
-                                "can not parse datetime {} due to: {}",
-                                &observations.datetime,
-                                e
-                            );
-                            Utc::now()
-                        }
-                    };
-
-                    let msg = Message::UpdateCmd {
-                        timestamp: datetime,
-                        path: observations.path.clone(),
-                        values: observations.values,
-                    };
+                    //upsert actor
                     let actor = self
                         .actors
                         .entry(observations.path.clone())
                         .or_insert_with(|| state_actor::new(observations.path.clone(), 8, None));
 
+                    //forward observations to actor
+                    let msg = Message::UpdateCmd {
+                        datetime: extract_datetime(&observations.datetime),
+                        path: observations.path.clone(),
+                        values: observations.values,
+                    };
                     let response = actor.ask(msg).await;
-                    log::debug!(
-                        "update actor got single actor instance state {:?}",
-                        response
-                    );
+
+                    // reply if this is an 'ask'
+                    if let Some(respond_to) = respond_to_opt {
+                        respond_to
+                            .send(response.clone())
+                            .expect("can not reply to ask");
+                    }
+
+                    // forward if output is configured
+                    if let Some(o) = &self.output {
+                        let senv = MessageEnvelope {
+                            message: response.clone(),
+                            respond_to_opt: None,
+                            ..Default::default()
+                        };
+                        o.send(senv).await;
+                    }
                 }
                 Err(error) => {
                     log::warn!("{}", error); // TODO send back an error to respond_to
@@ -93,7 +102,7 @@ impl Actor for JsonUpdateDecoderActor {
                     respond_to.send(message).expect("can not reply to ask");
                 }
             }
-            _ => {}
+            m => log::warn!("unexpected message: {:?}", m),
         }
     }
 }
