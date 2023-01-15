@@ -65,7 +65,7 @@ impl Actor for JsonUpdateDecoderActor {
                     let actor = self
                         .actors
                         .entry(observations.path.clone())
-                        .or_insert(state_actor::new(observations.path.clone(), 8, None));
+                        .or_insert_with(|| state_actor::new(observations.path.clone(), 8, None));
 
                     let response = actor.ask(msg).await;
                     log::debug!(
