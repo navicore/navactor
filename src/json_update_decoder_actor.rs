@@ -3,10 +3,8 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::message::Observations;
-use crate::state_actor;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use std::collections::HashMap;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -14,8 +12,7 @@ extern crate serde_json;
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonUpdateDecoderActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
-    pub output: Option<ActorHandle>,
-    pub actors: HashMap<String, ActorHandle>,
+    pub output: ActorHandle,
     path: String,
 }
 
@@ -46,73 +43,50 @@ impl Actor for JsonUpdateDecoderActor {
         let MessageEnvelope {
             message,
             respond_to_opt,
-            datetime: _,
+            datetime,
         } = envelope;
+        // match the messages we know how to decode and forward them and everything else to the
+        // next hop
         match &message {
             Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                 Ok(observations) => {
-                    //upsert actor
-                    let actor = self
-                        .actors
-                        .entry(observations.path.clone())
-                        .or_insert_with(|| state_actor::new(observations.path.clone(), 8, None));
-
                     //forward observations to actor
                     let msg = Message::UpdateCmd {
                         datetime: extract_datetime(&observations.datetime),
                         path: observations.path.clone(),
                         values: observations.values,
                     };
-                    let response = actor.ask(msg).await;
-
-                    // reply if this is an 'ask'
-                    if let Some(respond_to) = respond_to_opt {
-                        respond_to
-                            .send(response.clone())
-                            .expect("can not reply to ask");
-                    }
 
                     // forward if output is configured
-                    if let Some(o) = &self.output {
-                        let senv = MessageEnvelope {
-                            message: response.clone(),
-                            respond_to_opt: None,
-                            ..Default::default()
-                        };
-                        o.send(senv).await;
-                    }
+                    let senv = MessageEnvelope {
+                        message: msg,
+                        respond_to_opt, // delegate responding to an ask to director
+                        datetime,
+                    };
+                    self.output.send(senv).await;
                 }
                 Err(error) => {
                     log::warn!("{}", error); // TODO send back an error to respond_to
                 }
             },
-            Message::IsCompleteMsg {} => {
-                log::debug!("complete");
-
-                // forward if we are configured with an output
-                if let Some(a) = &self.output {
-                    let senv = MessageEnvelope {
-                        message,
-                        respond_to_opt,
-                        ..Default::default()
-                    };
-                    a.send(senv).await // forward the good news
-                } else if let Some(respond_to) = respond_to_opt {
-                    // else we're the end of the line so reply if this is an ask
-                    respond_to.send(message).expect("can not reply to ask");
-                }
+            m => {
+                // forward everything else
+                let senv = MessageEnvelope {
+                    message: m.clone(),
+                    respond_to_opt,
+                    ..Default::default()
+                };
+                self.output.send(senv).await // forward the good news
             }
-            m => log::warn!("unexpected message: {:?}", m),
         }
     }
 }
 
 /// actor private constructor
 impl JsonUpdateDecoderActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: Option<ActorHandle>) -> Self {
+    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         JsonUpdateDecoderActor {
             path: "/internal".to_string(),
-            actors: HashMap::new(),
             receiver,
             output,
         }
@@ -120,7 +94,7 @@ impl JsonUpdateDecoderActor {
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: JsonUpdateDecoderActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
