@@ -10,7 +10,7 @@ extern crate serde;
 extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
-pub struct JsonUpdateDecoderActor {
+pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
     path: String,
@@ -35,7 +35,7 @@ fn extract_datetime(datetime_str: &str) -> DateTime<Utc> {
 }
 
 #[async_trait]
-impl Actor for JsonUpdateDecoderActor {
+impl Actor for JsonDecoder {
     fn get_path(&mut self) -> String {
         self.path.clone()
     }
@@ -83,9 +83,9 @@ impl Actor for JsonUpdateDecoderActor {
 }
 
 /// actor private constructor
-impl JsonUpdateDecoderActor {
+impl JsonDecoder {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        JsonUpdateDecoderActor {
+        JsonDecoder {
             path: "/internal".to_string(),
             receiver,
             output,
@@ -95,13 +95,13 @@ impl JsonUpdateDecoderActor {
 
 /// actor handle public constructor
 pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start(mut actor: JsonUpdateDecoderActor) {
+    async fn start(mut actor: JsonDecoder) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = JsonUpdateDecoderActor::new(receiver, output);
+    let actor = JsonDecoder::new(receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

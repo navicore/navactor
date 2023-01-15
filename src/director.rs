@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 /// actor graph director creates a graph and instantiates all the actors that
 /// it is forwarding commands to.  director also accepts metadata to create
 /// and store graph edges to support arbitrary paths
-pub struct GraphDirector {
+pub struct Director {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: Option<ActorHandle>,
     pub actors: HashMap<String, ActorHandle>,
@@ -22,7 +22,7 @@ pub struct GraphDirector {
 }
 
 #[async_trait]
-impl Actor for GraphDirector {
+impl Actor for Director {
     fn get_path(&mut self) -> String {
         self.namespace.clone()
     }
@@ -86,13 +86,13 @@ impl Actor for GraphDirector {
 }
 
 /// actor private constructor
-impl GraphDirector {
+impl Director {
     fn new(
         namespace: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
         output: Option<ActorHandle>,
     ) -> Self {
-        GraphDirector {
+        Director {
             namespace,
             actors: HashMap::new(),
             receiver,
@@ -103,13 +103,13 @@ impl GraphDirector {
 
 /// actor handle public constructor
 pub fn new(namespace: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
-    async fn start(mut actor: GraphDirector) {
+    async fn start(mut actor: Director) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = GraphDirector::new(namespace, receiver, output);
+    let actor = Director::new(namespace, receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

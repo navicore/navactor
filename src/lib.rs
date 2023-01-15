@@ -1,6 +1,6 @@
 pub mod actor;
-pub mod graph_director;
-pub mod json_update_decoder_actor;
+pub mod director;
+pub mod json_decoder;
 pub mod message;
 pub mod state_actor;
 pub mod stdin_actor;
