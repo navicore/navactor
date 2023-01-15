@@ -30,35 +30,33 @@ impl Actor for StateActor {
             timestamp: _,
         } = envelope;
 
-        match message {
-            Message::UpdateCmd {
-                timestamp: _,
-                path: _,
-                values,
-            } => {
-                log::debug!("state actor {} update", self.path);
+        if let Message::UpdateCmd {
+            timestamp: _,
+            path: _,
+            values,
+        } = message
+        {
+            log::debug!("state actor {} update", self.path);
 
-                self.state.extend(&values); //update state
+            self.state.extend(&values); //update state
 
-                // report the update to our state to the output actor
-                if let Some(output_handle) = &self.output {
-                    let logmsg = Message::PrintOneCmd {
-                        text: format!("updating with: {:?}", &values),
-                    };
-                    output_handle.tell(logmsg).await;
-                }
-
-                // respond with a copy of our new state if this is an 'ask'
-                if let Some(respond_to) = respond_to_opt {
-                    let state_msg = Message::UpdateCmd {
-                        timestamp: Utc::now(),
-                        path: self.path.clone(),
-                        values: self.state.clone(),
-                    };
-                    respond_to.send(state_msg).expect("can not reply to ask");
-                }
+            // report the update to our state to the output actor
+            if let Some(output_handle) = &self.output {
+                let logmsg = Message::PrintOneCmd {
+                    text: format!("updating with: {:?}", &values),
+                };
+                output_handle.tell(logmsg).await;
             }
-            _ => {}
+
+            // respond with a copy of our new state if this is an 'ask'
+            if let Some(respond_to) = respond_to_opt {
+                let state_msg = Message::UpdateCmd {
+                    timestamp: Utc::now(),
+                    path: self.path.clone(),
+                    values: self.state.clone(),
+                };
+                respond_to.send(state_msg).expect("can not reply to ask");
+            }
         }
     }
 }
