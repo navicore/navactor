@@ -1,5 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use log::debug;
+use nv::graph_director;
 use nv::json_update_decoder_actor;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
@@ -60,12 +61,10 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
     runtime.block_on(result).expect("An error occurred");
 }
 
-async fn run_async_update(_: Namespace, bufsz: usize) -> Result<(), String> {
+async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-                                           // let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
-                                           //                                                          // store state,
-                                           //                                                          // report changes
-    let json_decoder_actor = json_update_decoder_actor::new(bufsz, Some(output)); // parse input
+    let graph_director = graph_director::new(namespace.namespace, bufsz, Some(output)); // parse input
+    let json_decoder_actor = json_update_decoder_actor::new(bufsz, graph_director); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
     match input.ask(read_cmd).await {
