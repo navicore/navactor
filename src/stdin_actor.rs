@@ -14,10 +14,15 @@ use tokio::sync::mpsc;
 pub struct StdinActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
+    path: String,
 }
 
 #[async_trait]
 impl Actor for StdinActor {
+    fn get_path(&mut self) -> String {
+        self.path.clone()
+    }
+
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -51,7 +56,11 @@ impl Actor for StdinActor {
 /// actor private constructor
 impl StdinActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        StdinActor { receiver, output }
+        StdinActor {
+            path: String::from("/"),
+            receiver,
+            output,
+        }
     }
 }
 

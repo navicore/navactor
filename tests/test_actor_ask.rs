@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 fn test_actor_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let state_actor = state_actor::new(8, None); // parse input
+        let state_actor = state_actor::new("/".to_string(), 8, None); // parse input
 
         // set an initial state
         let mut values = HashMap::new();

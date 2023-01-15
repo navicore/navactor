@@ -7,17 +7,22 @@ use chrono::Utc;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
-/// the state actor is the core of the system.  each digital twin has an
-/// instance of actor keeping state calculated from the stream of observations
-/// sent to the system.
+/// the state actor is the heart of the system.  each digital twin has an
+/// instance of actor keeping state computed from an arriving stream of
+/// observations.
 pub struct StateActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: Option<ActorHandle>,
     pub state: HashMap<i32, f64>,
+    path: String,
 }
 
 #[async_trait]
 impl Actor for StateActor {
+    fn get_path(&mut self) -> String {
+        self.path.clone()
+    }
+
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -31,7 +36,10 @@ impl Actor for StateActor {
                 path: _,
                 values,
             } => {
-                self.state.extend(&values);
+                log::debug!("state actor {} update", self.path);
+
+                self.state.extend(&values); //update state
+
                 // report the update to our state to the output actor
                 if let Some(output_handle) = &self.output {
                     let logmsg = Message::PrintOneCmd {
@@ -39,40 +47,15 @@ impl Actor for StateActor {
                     };
                     output_handle.tell(logmsg).await;
                 }
-                // if this is a tell, respond with a copy of our new state
+
+                // respond with a copy of our new state if this is an 'ask'
                 if let Some(respond_to) = respond_to_opt {
                     let state_msg = Message::UpdateCmd {
                         timestamp: Utc::now(),
-                        path: String::from("/"),
+                        path: self.path.clone(),
                         values: self.state.clone(),
                     };
-                    respond_to.send(state_msg).expect("can not reply to tell");
-                }
-            }
-            Message::IsCompleteMsg {} => {
-                log::debug!("complete");
-                // we can only use the oneshot send once so priority is to
-                // send it onward to an output if defined or if not, send to
-                // the respond_to if defined
-                if let Some(output_handle) = &self.output {
-                    log::debug!("forwarding complete");
-                    // report our new state to the output actor
-                    let logmsg = Message::PrintOneCmd {
-                        text: format!("new state: {:?}", self.state),
-                    };
-                    output_handle.tell(logmsg).await;
-                    // forward the complete cmd to the output actor
-                    let senv = MessageEnvelope {
-                        message: message.clone(),
-                        respond_to_opt,
-                        ..Default::default()
-                    };
-                    output_handle.send(senv).await
-                } else if let Some(respond_to) = respond_to_opt {
-                    log::debug!("replying complete");
-                    respond_to
-                        .send(message)
-                        .expect("can not reply to tell IsCompleteMsg");
+                    respond_to.send(state_msg).expect("can not reply to ask");
                 }
             }
             _ => {}
@@ -82,9 +65,14 @@ impl Actor for StateActor {
 
 /// actor private constructor
 impl StateActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: Option<ActorHandle>) -> Self {
+    fn new(
+        path: String,
+        receiver: mpsc::Receiver<MessageEnvelope>,
+        output: Option<ActorHandle>,
+    ) -> Self {
         let state = HashMap::new(); // TODO: load from event store
         StateActor {
+            path,
             receiver,
             output,
             state,
@@ -93,14 +81,14 @@ impl StateActor {
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
     async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = StateActor::new(receiver, output);
+    let actor = StateActor::new(path, receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

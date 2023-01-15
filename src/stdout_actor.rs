@@ -9,10 +9,15 @@ use tokio::sync::mpsc;
 /// in combination with other *nix tools.
 pub struct StdoutActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
+    path: String,
 }
 
 #[async_trait]
 impl Actor for StdoutActor {
+    fn get_path(&mut self) -> String {
+        self.path.clone()
+    }
+
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -39,7 +44,10 @@ impl Actor for StdoutActor {
 /// actor private constructor
 impl StdoutActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
-        StdoutActor { receiver }
+        StdoutActor {
+            path: String::from("/"),
+            receiver,
+        }
     }
 }
 

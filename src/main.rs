@@ -3,7 +3,6 @@ use log::debug;
 use nv::json_update_decoder_actor;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
-use nv::state_actor;
 use nv::stdin_actor;
 use nv::stdout_actor;
 use tokio::runtime::Runtime;
@@ -63,10 +62,10 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(_: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
-                                                             // store state,
-                                                             // report changes
-    let json_decoder_actor = json_update_decoder_actor::new(bufsz, state_actor); // parse input
+                                           // let state_actor = state_actor::new(bufsz, Some(output)); // process telemetry,
+                                           //                                                          // store state,
+                                           //                                                          // report changes
+    let json_decoder_actor = json_update_decoder_actor::new(bufsz, Some(output)); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
     match input.ask(read_cmd).await {

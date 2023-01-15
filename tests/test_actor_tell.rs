@@ -1,7 +1,6 @@
 use nv::json_update_decoder_actor;
 use nv::message::Message;
 use nv::message::MessageEnvelope;
-use nv::state_actor;
 use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -10,11 +9,10 @@ use tokio::sync::oneshot;
 fn test_actor_tell() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let state_actor = state_actor::new(8, None); // parse input
-        let json_decoder_actor = json_update_decoder_actor::new(8, state_actor); // parse input
+        let json_decoder_actor = json_update_decoder_actor::new(8, None); // parse input
 
         let cmd = Message::PrintOneCmd {
-            text: "{\"1\": 1.0}".to_string(),
+            text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1, \"2\": 2, \"3\": 3} }"),
         };
         json_decoder_actor.tell(cmd).await;
 
@@ -29,9 +27,7 @@ fn test_actor_tell() {
         json_decoder_actor.send(envelope).await;
         let result = recv.await;
         let result_message = result.expect("failed with RecvErr");
+        log::debug!("result_message: {:?}", result_message);
         assert!(matches!(result_message, Message::IsCompleteMsg {},));
-
-        // TODO: this test is sending invalid json - will have to also use "Inspect" to be a useful
-        // test
     });
 }

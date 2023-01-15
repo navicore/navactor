@@ -25,6 +25,7 @@ extern crate serde_json;
 pub struct GraphDirector {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
+    path: String,
 }
 
 fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> {
@@ -55,6 +56,10 @@ fn extract_values_from_json(text: &String) -> Result<HashMap<i32, f64>, String> 
 
 #[async_trait]
 impl Actor for GraphDirector {
+    fn get_path(&mut self) -> String {
+        self.path.clone()
+    }
+
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         match envelope {
             MessageEnvelope {
