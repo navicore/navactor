@@ -1,5 +1,5 @@
-use nv::graph_director;
-use nv::json_update_decoder_actor;
+use nv::director;
+use nv::json_decoder;
 use nv::message::Message;
 use nv::message::MessageEnvelope;
 use test_log::test;
@@ -10,8 +10,8 @@ use tokio::sync::oneshot;
 fn test_actor_tell() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let graph_director = graph_director::new(String::from("/"), 8, None);
-        let json_decoder_actor = json_update_decoder_actor::new(8, graph_director); // parse input
+        let director = director::new(String::from("/"), 8, None);
+        let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         let cmd = Message::PrintOneCmd {
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1, \"2\": 2, \"3\": 3} }"),

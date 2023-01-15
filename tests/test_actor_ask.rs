@@ -1,6 +1,6 @@
 use chrono::Utc;
-use nv::graph_director;
-use nv::json_update_decoder_actor;
+use nv::director;
+use nv::json_decoder;
 use nv::message::Message;
 use nv::state_actor;
 use std::collections::HashMap;
@@ -68,8 +68,8 @@ fn test_decoder_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
 
-        let graph_director = graph_director::new(String::from("/"), 8, None);
-        let json_decoder_actor = json_update_decoder_actor::new(8, graph_director); // parse input
+        let director = director::new(String::from("/"), 8, None);
+        let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // init state
         let cmd = Message::PrintOneCmd {
