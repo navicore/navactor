@@ -10,6 +10,11 @@ Re-implement the DtLab DtPath with a graph lib (petgraph) and fully support grap
 Postpone network support and make a dtlab cli lab that is a useful personal
 data science tool.
 
+Eventually, with the addition of networking and sharding and replication, I hope
+to make IoT *seem like* an embarrassingly parallel problem where there is no
+special care given to coordinating inputs or queries, even though under
+the covers there is serial workflow.
+
 ----------
 
 Parts

@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use log::debug;
-use nv::director_w_sqlite;
+use nv::director_w_persist;
 use nv::json_decoder;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
@@ -63,8 +63,8 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let director_w_sqlite = director_w_sqlite::new(namespace.namespace, bufsz, Some(output));
-    let json_decoder_actor = json_decoder::new(bufsz, director_w_sqlite); // parse input
+    let director_w_persist = director_w_persist::new(namespace.namespace, bufsz, Some(output));
+    let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     match input.ask(Message::ReadAllCmd {}).await {
         IsCompleteMsg {} => Ok(()),
@@ -79,7 +79,7 @@ fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state
-    let director = director_w_sqlite::new(path.path.clone(), bufsz, None);
+    let director = director_w_persist::new(path.path.clone(), bufsz, None);
     let m = director.ask(Message::InspectCmd { path: path.path }).await;
     output.tell(m).await;
     // send complete to keep the job running long enough to print the above
