@@ -72,7 +72,7 @@ impl Actor for JsonDecoder {
                         let emsg = Message::ErrorReport {
                             datetime: Utc::now(),
                             path: None,
-                            text: String::from(etxt),
+                            text: etxt,
                         };
                         respond_to.send(emsg).expect("can not return error");
                     }
