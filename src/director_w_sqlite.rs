@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 /// actor graph director creates a graph and instantiates all the actors that
 /// it is forwarding commands to.  director also accepts metadata to create
 /// and store graph edges to support arbitrary paths
-pub struct DirectorWithSqlite {
+pub struct Director {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: Option<ActorHandle>,
     pub actors: HashMap<String, ActorHandle>,
@@ -22,23 +22,24 @@ pub struct DirectorWithSqlite {
 }
 
 #[async_trait]
-impl Actor for DirectorWithSqlite {
+impl Actor for Director {
     fn get_path(&mut self) -> String {
         self.namespace.clone()
     }
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
-            path,
             message,
             respond_to_opt,
             datetime: _,
         } = envelope;
         match &message {
             Message::UpdateCmd {
+                path,
                 datetime: _,
                 values: _,
-            } => {
+            }
+            | Message::InspectCmd { path } => {
                 //upsert actor
                 let actor = self
                     .actors
@@ -86,13 +87,13 @@ impl Actor for DirectorWithSqlite {
 }
 
 /// actor private constructor
-impl DirectorWithSqlite {
+impl Director {
     fn new(
         namespace: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
         output: Option<ActorHandle>,
     ) -> Self {
-        DirectorWithSqlite {
+        Director {
             namespace,
             actors: HashMap::new(),
             receiver,
@@ -103,13 +104,13 @@ impl DirectorWithSqlite {
 
 /// actor handle public constructor
 pub fn new(namespace: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
-    async fn start(mut actor: DirectorWithSqlite) {
+    async fn start(mut actor: Director) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = DirectorWithSqlite::new(namespace, receiver, output);
+    let actor = Director::new(namespace, receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

@@ -19,6 +19,7 @@ fn test_actor_ask() {
         values.insert(2, 2.9);
 
         let cmd = Message::UpdateCmd {
+            path: String::from("/"),
             datetime: Utc::now(),
             values,
         };
@@ -28,7 +29,11 @@ fn test_actor_ask() {
         let mut values = HashMap::new();
         values.insert(1, 1.8);
         let datetime = Utc::now();
-        let cmd = Message::UpdateCmd { datetime, values };
+        let cmd = Message::UpdateCmd {
+            path: String::from("/"),
+            datetime,
+            values,
+        };
         let reply = state_actor.ask(cmd).await;
 
         assert!(matches!(

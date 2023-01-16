@@ -25,34 +25,50 @@ impl Actor for StateActor {
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
-            path: _,
             message,
             respond_to_opt,
             datetime: _,
         } = envelope;
 
-        if let Message::UpdateCmd {
-            datetime: _,
-            values,
-        } = message
-        {
-            log::debug!("state actor {} update", self.path);
+        match message {
+            Message::UpdateCmd {
+                path: _,
+                datetime: _,
+                values,
+            } => {
+                log::debug!("state actor {} update", self.path);
 
-            self.state.extend(&values); //update state
-            let state_rpt = Message::StateReport {
-                path: self.path.clone(),
-                values: self.state.clone(),
-                datetime: Utc::now(),
-            };
+                self.state.extend(&values); //update state
+                let state_rpt = Message::StateReport {
+                    path: self.path.clone(),
+                    values: self.state.clone(),
+                    datetime: Utc::now(),
+                };
 
-            // report the update to our state to the output actor
-            if let Some(output_handle) = &self.output {
-                output_handle.tell(state_rpt.clone()).await;
+                // report the update to our state to the output actor
+                if let Some(output_handle) = &self.output {
+                    output_handle.tell(state_rpt.clone()).await;
+                }
+
+                // respond with a copy of our new state if this is an 'ask'
+                if let Some(respond_to) = respond_to_opt {
+                    respond_to.send(state_rpt).expect("can not reply to ask");
+                }
+            }
+            Message::InspectCmd { path: _ } => {
+                log::debug!("state actor {} inspect", self.path);
+                if let Some(respond_to) = respond_to_opt {
+                    let state_rpt = Message::StateReport {
+                        path: self.path.clone(),
+                        values: self.state.clone(),
+                        datetime: Utc::now(),
+                    };
+                    respond_to.send(state_rpt).expect("can not reply to ask");
+                }
             }
 
-            // respond with a copy of our new state if this is an 'ask'
-            if let Some(respond_to) = respond_to_opt {
-                respond_to.send(state_rpt).expect("can not reply to ask");
+            m => {
+                log::warn!("unexpected message {:?}", m);
             }
         }
     }

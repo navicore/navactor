@@ -29,7 +29,6 @@ impl Actor for Director {
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
-            path,
             message,
             respond_to_opt,
             datetime: _,
@@ -37,6 +36,7 @@ impl Actor for Director {
 
         match &message {
             Message::UpdateCmd {
+                path,
                 datetime: _,
                 values: _,
             } => {
