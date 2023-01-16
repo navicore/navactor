@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use log::debug;
-use nv::director;
+use nv::director_w_sqlite;
 use nv::json_decoder;
 use nv::message::Message;
 use nv::message::Message::IsCompleteMsg;
@@ -63,8 +63,8 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let director = director::new(namespace.namespace, bufsz, Some(output)); // parse input
-    let json_decoder_actor = json_decoder::new(bufsz, director); // parse input
+    let director_w_sqlite = director_w_sqlite::new(namespace.namespace, bufsz, Some(output)); // parse input
+    let json_decoder_actor = json_decoder::new(bufsz, director_w_sqlite); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
     match input.ask(read_cmd).await {
