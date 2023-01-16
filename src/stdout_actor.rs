@@ -30,7 +30,7 @@ impl Actor for StdoutActor {
                 path,
                 datetime: _,
                 values,
-            } => println!("{} new state: {:?}", path, values),
+            } => println!("{} current state: {:?}", path, values),
             Message::IsCompleteMsg {} => {
                 if let Some(respond_to) = respond_to_opt {
                     let complete_msg = Message::IsCompleteMsg {};
