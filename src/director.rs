@@ -33,6 +33,7 @@ impl Actor for Director {
             respond_to_opt,
             datetime: _,
         } = envelope;
+
         match &message {
             Message::UpdateCmd {
                 datetime: _,

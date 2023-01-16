@@ -63,7 +63,7 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let director_w_sqlite = director_w_sqlite::new(namespace.namespace, bufsz, Some(output)); // parse input
+    let director_w_sqlite = director_w_sqlite::new(namespace.namespace, bufsz, Some(output));
     let json_decoder_actor = json_decoder::new(bufsz, director_w_sqlite); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     let read_cmd = Message::ReadAllCmd {};
@@ -73,7 +73,24 @@ async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), Stri
     }
 }
 
-fn inspect(_: NvPath, _: usize, _: Runtime) {}
+fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
+    let result = run_async_inspect(path, bufsz);
+    runtime.block_on(result).expect("An error occurred");
+}
+
+async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
+    let output = stdout_actor::new(bufsz); // print state
+    let director = director_w_sqlite::new(path.path.clone(), bufsz, None);
+    let inspect_cmd = Message::InspectCmd {
+        path: path.path.clone(),
+    };
+    match director.ask(inspect_cmd).await {
+        m => {
+            output.tell(m).await;
+            Ok(())
+        }
+    }
+}
 
 fn main() {
     env_logger::init();

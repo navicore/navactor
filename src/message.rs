@@ -28,6 +28,9 @@ pub enum Message {
     PrintOneCmd {
         text: String,
     },
+    InspectCmd {
+        path: String,
+    },
     UpdateCmd {
         datetime: DateTime<Utc>,
         path: String,
