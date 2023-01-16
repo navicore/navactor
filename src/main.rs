@@ -81,9 +81,7 @@ fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
 async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state
     let director = director_w_sqlite::new(path.path.clone(), bufsz, None);
-    let inspect_cmd = Message::InspectCmd {
-        path: path.path.clone(),
-    };
+    let inspect_cmd = Message::InspectCmd {};
     match director.ask(inspect_cmd).await {
         m => {
             output.tell(m).await;

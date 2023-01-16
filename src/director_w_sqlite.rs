@@ -29,6 +29,7 @@ impl Actor for DirectorWithSqlite {
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
+            path,
             message,
             respond_to_opt,
             datetime: _,
@@ -36,7 +37,6 @@ impl Actor for DirectorWithSqlite {
         match &message {
             Message::UpdateCmd {
                 datetime: _,
-                path,
                 values: _,
             } => {
                 //upsert actor

@@ -25,6 +25,7 @@ impl Actor for StateActor {
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
+            path: _,
             message,
             respond_to_opt,
             datetime: _,
@@ -32,7 +33,6 @@ impl Actor for StateActor {
 
         if let Message::UpdateCmd {
             datetime: _,
-            path: _,
             values,
         } = message
         {

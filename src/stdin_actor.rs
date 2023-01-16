@@ -25,6 +25,7 @@ impl Actor for StdinActor {
 
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
+            path: _,
             message,
             respond_to_opt,
             datetime: _,

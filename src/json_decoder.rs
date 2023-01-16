@@ -41,6 +41,7 @@ impl Actor for JsonDecoder {
     }
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
+            path,
             message,
             respond_to_opt,
             datetime,
@@ -53,12 +54,12 @@ impl Actor for JsonDecoder {
                     //forward observations to actor
                     let msg = Message::UpdateCmd {
                         datetime: extract_datetime(&observations.datetime),
-                        path: observations.path.clone(),
                         values: observations.values,
                     };
 
                     // forward if output is configured
                     let senv = MessageEnvelope {
+                        path,
                         message: msg,
                         respond_to_opt, // delegate responding to an ask to director
                         datetime,

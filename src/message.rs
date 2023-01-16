@@ -16,6 +16,7 @@ pub struct Observations {
 /// the reply can be delivered.  These replies are not placed in envelopes.
 #[derive(Debug)]
 pub struct MessageEnvelope {
+    pub path: String,
     pub message: Message,
     pub respond_to_opt: Option<oneshot::Sender<Message>>,
     pub datetime: DateTime<Utc>,
@@ -28,12 +29,9 @@ pub enum Message {
     PrintOneCmd {
         text: String,
     },
-    InspectCmd {
-        path: String,
-    },
+    InspectCmd {},
     UpdateCmd {
         datetime: DateTime<Utc>,
-        path: String,
         values: HashMap<i32, f64>,
     },
     StateReport {
@@ -52,6 +50,7 @@ pub enum Message {
 impl Default for MessageEnvelope {
     fn default() -> Self {
         MessageEnvelope {
+            path: String::from("/"),
             message: Message::ReadAllCmd {},
             respond_to_opt: None,
             datetime: Utc::now(),
