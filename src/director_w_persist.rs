@@ -23,10 +23,6 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
-    fn get_path(&mut self) -> String {
-        self.namespace.clone()
-    }
-
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -40,6 +36,7 @@ impl Actor for Director {
                 values: _,
             }
             | Message::InspectCmd { path } => {
+                log::debug!("{} handling actor messsage", self.namespace);
                 //upsert actor
                 let actor = self
                     .actors
@@ -47,6 +44,8 @@ impl Actor for Director {
                     .or_insert_with(|| state_actor::new(path.clone(), 8, None));
 
                 let response = actor.ask(message).await;
+
+                // TODO: probably should tell the store actor to jrnl this here.
 
                 // reply with response if this is an 'ask' from the sender
                 if let Some(respond_to) = respond_to_opt {
@@ -110,8 +109,9 @@ pub fn new(namespace: String, bufsz: usize, output: Option<ActorHandle>) -> Acto
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = Director::new(namespace, receiver, output);
+    let actor = Director::new(namespace.clone(), receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
+    log::debug!("{} started", namespace);
     actor_handle
 }

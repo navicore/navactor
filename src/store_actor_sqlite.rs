@@ -10,7 +10,7 @@ extern crate serde;
 extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
-pub struct JsonDecoder {
+pub struct StoreActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
 }
@@ -34,7 +34,7 @@ fn extract_datetime(datetime_str: &str) -> DateTime<Utc> {
 }
 
 #[async_trait]
-impl Actor for JsonDecoder {
+impl Actor for StoreActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -88,21 +88,21 @@ impl Actor for JsonDecoder {
 }
 
 /// actor private constructor
-impl JsonDecoder {
+impl StoreActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        JsonDecoder { receiver, output }
+        StoreActor { receiver, output }
     }
 }
 
 /// actor handle public constructor
 pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
-    async fn start(mut actor: JsonDecoder) {
+    async fn start(mut actor: StoreActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = JsonDecoder::new(receiver, output);
+    let actor = StoreActor::new(receiver, output);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle

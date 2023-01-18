@@ -9,8 +9,6 @@ use tokio::sync::oneshot;
 pub trait Actor {
     /// the function to implement per actor
     async fn handle_envelope(&mut self, envelope: MessageEnvelope);
-
-    fn get_path(&mut self) -> String;
 }
 
 /// ActorHandle is the API for all actors

@@ -23,10 +23,6 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
-    fn get_path(&mut self) -> String {
-        self.namespace.clone()
-    }
-
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -40,6 +36,7 @@ impl Actor for Director {
                 datetime: _,
                 values: _,
             } => {
+                log::debug!("{} handling actor messsage", self.namespace);
                 //upsert actor
                 let actor = self
                     .actors

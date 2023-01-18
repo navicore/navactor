@@ -19,10 +19,6 @@ pub struct StateActor {
 
 #[async_trait]
 impl Actor for StateActor {
-    fn get_path(&mut self) -> String {
-        self.path.clone()
-    }
-
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -94,6 +90,14 @@ impl StateActor {
 /// actor handle public constructor
 pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
     async fn start<'a>(mut actor: StateActor) {
+        //TODO: before accepting live data, we must recalc our state from the jrnl.
+        // options:
+        // 1. we can have another one shot receiver that is read until an EOF msg
+        // 2. same as above but the ActorHandle has a convenience init and done function  that accepts
+        //    update commands
+        // 3. a mediator message where a send/recv pair is created by director and send is sent to
+        // store and recv is to actor and there is a done msg. YES
+        // ... then when the done msg arives the loop is broken out and the loop below runs
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
