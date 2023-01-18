@@ -1,10 +1,10 @@
-use chrono::Utc;
 use nv::director;
 use nv::json_decoder;
 use nv::message::Message;
 use nv::state_actor;
 use std::collections::HashMap;
 use test_log::test;
+use time::OffsetDateTime;
 use tokio::runtime::Runtime;
 
 #[test]
@@ -20,7 +20,7 @@ fn test_actor_ask() {
 
         let cmd = Message::UpdateCmd {
             path: String::from("/"),
-            datetime: Utc::now(),
+            datetime: OffsetDateTime::now_utc(),
             values,
         };
         state_actor.tell(cmd).await;
@@ -28,7 +28,7 @@ fn test_actor_ask() {
         // update state
         let mut values = HashMap::new();
         values.insert(1, 1.8);
-        let datetime = Utc::now();
+        let datetime = OffsetDateTime::now_utc();
         let cmd = Message::UpdateCmd {
             path: String::from("/"),
             datetime,

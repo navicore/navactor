@@ -1,7 +1,6 @@
-use chrono::DateTime;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use time::OffsetDateTime;
 use tokio::sync::oneshot;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,7 +17,7 @@ pub struct Observations {
 pub struct MessageEnvelope {
     pub message: Message,
     pub respond_to_opt: Option<oneshot::Sender<Message>>,
-    pub datetime: DateTime<Utc>,
+    pub datetime: OffsetDateTime,
 }
 
 /// all actor API interaction is via async messages
@@ -32,18 +31,18 @@ pub enum Message {
         path: String,
     },
     UpdateCmd {
-        datetime: DateTime<Utc>,
+        datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, f64>,
     },
     StateReport {
-        datetime: DateTime<Utc>,
+        datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, f64>,
     },
     ErrorReport {
         text: String,
-        datetime: DateTime<Utc>,
+        datetime: OffsetDateTime,
         path: Option<String>,
     },
 
@@ -54,7 +53,7 @@ impl Default for MessageEnvelope {
         MessageEnvelope {
             message: Message::ReadAllCmd {},
             respond_to_opt: None,
-            datetime: Utc::now(),
+            datetime: OffsetDateTime::now_utc(),
         }
     }
 }

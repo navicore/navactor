@@ -3,8 +3,8 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
-use chrono::Utc;
 use std::collections::HashMap;
+use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
 /// the state actor is the heart of the system.  each digital twin has an
@@ -20,6 +20,7 @@ pub struct StateActor {
 #[async_trait]
 impl Actor for StateActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+        log::debug!("handle_envelope: {:?}", envelope);
         let MessageEnvelope {
             message,
             respond_to_opt,
@@ -38,7 +39,7 @@ impl Actor for StateActor {
                 let state_rpt = Message::StateReport {
                     path: self.path.clone(),
                     values: self.state.clone(),
-                    datetime: Utc::now(),
+                    datetime: OffsetDateTime::now_utc(),
                 };
 
                 // report the update to our state to the output actor
@@ -57,7 +58,7 @@ impl Actor for StateActor {
                     let state_rpt = Message::StateReport {
                         path: self.path.clone(),
                         values: self.state.clone(),
-                        datetime: Utc::now(),
+                        datetime: OffsetDateTime::now_utc(),
                     };
                     respond_to.send(state_rpt).expect("can not reply to ask");
                 }
