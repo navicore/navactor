@@ -4,7 +4,8 @@ use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::message::Observations;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use time::format_description::well_known::Iso8601;
+use time::OffsetDateTime;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -23,12 +24,12 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
     Ok(observations)
 }
 
-fn extract_datetime(datetime_str: &str) -> DateTime<Utc> {
-    match DateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S%z") {
-        Ok(d) => d.with_timezone(&Utc),
+fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
+    match OffsetDateTime::parse(datetime_str, &Iso8601::DEFAULT) {
+        Ok(d) => d,
         Err(e) => {
-            log::warn!("can not parse datetime {} due to: {}", &datetime_str, e);
-            Utc::now()
+            log::warn!("can not parse datetime {} due to: {}", datetime_str, e);
+            OffsetDateTime::now_utc()
         }
     }
 }
@@ -66,7 +67,7 @@ impl Actor for JsonDecoder {
                     if let Some(respond_to) = respond_to_opt {
                         let etxt = format!("json parse error: {}", error);
                         let emsg = Message::ErrorReport {
-                            datetime: Utc::now(),
+                            datetime: OffsetDateTime::now_utc(),
                             path: None,
                             text: etxt,
                         };
