@@ -3,7 +3,7 @@ use log::debug;
 use nv::director_w_persist;
 use nv::json_decoder;
 use nv::message::Message;
-use nv::message::Message::IsCompleteMsg;
+use nv::message::Message::EndOfStream;
 use nv::stdin_actor;
 use nv::stdout_actor;
 use tokio::runtime::Runtime;
@@ -67,7 +67,7 @@ async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), Stri
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
     match input.ask(Message::ReadAllCmd {}).await {
-        IsCompleteMsg {} => Ok(()),
+        EndOfStream {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
 }
@@ -83,8 +83,8 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let m = director.ask(Message::InspectCmd { path: path.path }).await;
     output.tell(m).await;
     // send complete to keep the job running long enough to print the above
-    match output.ask(Message::IsCompleteMsg {}).await {
-        IsCompleteMsg {} => Ok(()),
+    match output.ask(Message::EndOfStream {}).await {
+        EndOfStream {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
 }

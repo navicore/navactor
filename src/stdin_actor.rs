@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 
 /// the stdin actor is only used in CLI mode.  it gets a single command to
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
-/// a IsCompleteMsg msg to the next hop to trigger any cleanup and shutdown.
+/// a EndOfStream msg to the next hop to trigger any cleanup and shutdown.
 pub struct StdinActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
@@ -23,6 +23,9 @@ impl Actor for StdinActor {
             message,
             respond_to_opt,
             datetime: _,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
 
         if let Message::ReadAllCmd {} = message {
@@ -35,7 +38,7 @@ impl Actor for StdinActor {
 
             // forward the respond_to handle so that the output actor can respond when all
             // is printed
-            let complete_msg = Message::IsCompleteMsg {};
+            let complete_msg = Message::EndOfStream {};
             let senv = MessageEnvelope {
                 message: complete_msg,
                 respond_to_opt,

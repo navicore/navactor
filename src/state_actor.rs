@@ -25,6 +25,9 @@ impl Actor for StateActor {
             message,
             respond_to_opt,
             datetime: _,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
 
         match message {

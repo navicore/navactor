@@ -18,6 +18,9 @@ impl Actor for StdoutActor {
             message,
             respond_to_opt,
             datetime: _,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
         match message {
             Message::PrintOneCmd { text } => println!("{}", text),
@@ -26,9 +29,9 @@ impl Actor for StdoutActor {
                 datetime: _,
                 values,
             } => println!("{} current state: {:?}", path, values),
-            Message::IsCompleteMsg {} => {
+            Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to_opt {
-                    let complete_msg = Message::IsCompleteMsg {};
+                    let complete_msg = Message::EndOfStream {};
                     respond_to
                         .send(complete_msg)
                         .expect("could not send completion token");

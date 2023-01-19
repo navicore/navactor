@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::message::create_init_lifecycle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::state_actor;
@@ -28,6 +29,9 @@ impl Actor for Director {
             message,
             respond_to_opt,
             datetime: _,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
         match &message {
             Message::UpdateCmd {
@@ -38,10 +42,24 @@ impl Actor for Director {
             | Message::InspectCmd { path } => {
                 log::debug!("{} handling actor messsage", self.namespace);
                 //upsert actor
-                let actor = self
-                    .actors
-                    .entry(path.clone())
-                    .or_insert_with(|| state_actor::new(path.clone(), 8, None));
+                let mut actor_is_in_init = false;
+                let actor = self.actors.entry(path.clone()).or_insert_with(|| {
+                    actor_is_in_init = true;
+                    state_actor::new(path.clone(), 8, None)
+                });
+
+                //if the above is a new actor, run init
+                if actor_is_in_init {
+                    let (init_cmd, load_cmd) = create_init_lifecycle(message.clone(), 8);
+                    actor.send(init_cmd).await;
+                    // TODO: need to get a response for below!!
+                    // TODO: need to get a response for below!!
+                    // TODO: need to get a response for below!!
+                    // TODO: need to get a response for below!!
+                } else {
+                    // TODO: need move 'ask' in here so that response from above is handled
+                    // TODO: need move 'ask' in here so that response from above is handled
+                }
 
                 let response = actor.ask(message).await;
 
@@ -64,7 +82,7 @@ impl Actor for Director {
                     o.send(senv).await;
                 }
             }
-            Message::IsCompleteMsg {} => {
+            Message::EndOfStream {} => {
                 log::debug!("complete");
 
                 // forward if we are configured with an output

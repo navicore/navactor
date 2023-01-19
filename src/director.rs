@@ -28,6 +28,9 @@ impl Actor for Director {
             message,
             respond_to_opt,
             datetime: _,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
 
         match &message {
@@ -62,7 +65,7 @@ impl Actor for Director {
                     o.send(senv).await;
                 }
             }
-            Message::IsCompleteMsg {} => {
+            Message::EndOfStream {} => {
                 log::debug!("complete");
 
                 // forward if we are configured with an output

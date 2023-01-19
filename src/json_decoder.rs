@@ -41,6 +41,9 @@ impl Actor for JsonDecoder {
             message,
             respond_to_opt,
             datetime,
+            stream_to: _,
+            stream_from: _,
+            next_message: _,
         } = envelope;
         // match the messages we know how to decode and forward them and everything else to the
         // next hop
@@ -59,6 +62,7 @@ impl Actor for JsonDecoder {
                         message: msg,
                         respond_to_opt, // delegate responding to an ask to director
                         datetime,
+                        ..Default::default()
                     };
                     self.output.send(senv).await;
                 }

@@ -20,7 +20,7 @@ fn test_actor_tell() {
 
         let (send, recv) = oneshot::channel();
 
-        let message = Message::IsCompleteMsg {};
+        let message = Message::EndOfStream {};
         let envelope = MessageEnvelope {
             message,
             respond_to_opt: Some(send),
@@ -30,6 +30,6 @@ fn test_actor_tell() {
         let result = recv.await;
         let result_message = result.expect("failed with RecvErr");
         log::debug!("result_message: {:?}", result_message);
-        assert!(matches!(result_message, Message::IsCompleteMsg {},));
+        assert!(matches!(result_message, Message::EndOfStream {},));
     });
 }
