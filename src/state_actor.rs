@@ -37,7 +37,7 @@ impl Actor for StateActor {
                     log::debug!("state actor {} init", self.path);
                     while let Some(message) = stream_from.recv().await {
                         match message {
-                            Message::UpdateCmd {
+                            Message::Update {
                                 path: _,
                                 datetime: _,
                                 values,
@@ -69,7 +69,7 @@ impl Actor for StateActor {
                     }
                 }
             }
-            Message::UpdateCmd {
+            Message::Update {
                 path: _,
                 datetime: _,
                 values,
@@ -78,7 +78,7 @@ impl Actor for StateActor {
 
                 self.state.extend(&values); //update state
             }
-            Message::InspectCmd { path: _ } => {
+            Message::Query { path: _ } => {
                 log::debug!("state actor {} inspect", self.path);
                 // no impl because all "respond_to" requests get a state_rpt
             }

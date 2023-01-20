@@ -18,7 +18,7 @@ fn test_actor_ask() {
         values.insert(1, 1.9);
         values.insert(2, 2.9);
 
-        let cmd = Message::UpdateCmd {
+        let cmd = Message::Update {
             path: String::from("/"),
             datetime: OffsetDateTime::now_utc(),
             values,
@@ -29,7 +29,7 @@ fn test_actor_ask() {
         let mut values = HashMap::new();
         values.insert(1, 1.8);
         let datetime = OffsetDateTime::now_utc();
-        let cmd = Message::UpdateCmd {
+        let cmd = Message::Update {
             path: String::from("/"),
             datetime,
             values,
@@ -66,7 +66,7 @@ fn test_decoder_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
 
-        let director = director::new(String::from("/"), 8, None);
+        let director = director::new(String::from("/"), 8, None, None);
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // init state

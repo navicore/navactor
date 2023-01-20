@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 /// and store graph edges to support arbitrary paths
 pub struct Director {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub store_actor: Option<ActorHandle>,
     pub output: Option<ActorHandle>,
     pub actors: HashMap<String, ActorHandle>,
     namespace: String,
@@ -33,21 +34,39 @@ impl Actor for Director {
             next_message: _,
             next_message_respond_to: _,
         } = envelope;
-
         match &message {
-            Message::UpdateCmd {
+            Message::Update {
                 path,
                 datetime: _,
                 values: _,
-            } => {
-                log::debug!("{} handling actor messsage", self.namespace);
+            }
+            | Message::Query { path } => {
                 //upsert actor
-                let actor = self
-                    .actors
-                    .entry(path.clone())
-                    .or_insert_with(|| state_actor::new(path.clone(), 8, None));
+                let mut actor_is_in_init = false;
+                let actor = self.actors.entry(path.clone()).or_insert_with(|| {
+                    actor_is_in_init = true;
+                    state_actor::new(path.clone(), 8, None)
+                });
 
-                let response = actor.ask(message).await;
+                let response = match &self.store_actor {
+                    Some(store_actor) if actor_is_in_init => {
+                        log::debug!(
+                            "{} handling actor '{}' messsage w/ actor init via store",
+                            self.namespace,
+                            path
+                        );
+                        actor
+                            .integrate(message.clone(), String::from(path), store_actor)
+                            .await
+                    }
+                    _ => {
+                        log::debug!("{} handling actor '{}' messsage", self.namespace, path);
+                        actor.ask(message).await
+                    }
+                };
+
+                // TODO: probably should tell the store actor to jrnl this
+                // Update for this path here.
 
                 // reply with response if this is an 'ask' from the sender
                 if let Some(respond_to) = respond_to {
@@ -93,26 +112,34 @@ impl Director {
         namespace: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
         output: Option<ActorHandle>,
+        store_actor: Option<ActorHandle>,
     ) -> Self {
         Director {
             namespace,
             actors: HashMap::new(),
             receiver,
             output,
+            store_actor,
         }
     }
 }
 
 /// actor handle public constructor
-pub fn new(namespace: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+pub fn new(
+    namespace: String,
+    bufsz: usize,
+    output: Option<ActorHandle>,
+    store_actor: Option<ActorHandle>,
+) -> ActorHandle {
     async fn start(mut actor: Director) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = Director::new(namespace, receiver, output);
+    let actor = Director::new(namespace.clone(), receiver, output, store_actor);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
+    log::debug!("{} started", namespace);
     actor_handle
 }

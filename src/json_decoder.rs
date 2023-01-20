@@ -52,7 +52,7 @@ impl Actor for JsonDecoder {
             Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                 Ok(observations) => {
                     //forward observations to actor
-                    let msg = Message::UpdateCmd {
+                    let msg = Message::Update {
                         path: String::from(&observations.path),
                         datetime: extract_datetime(&observations.datetime),
                         values: observations.values,

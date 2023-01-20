@@ -28,33 +28,50 @@ pub struct MessageEnvelope {
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message {
-    ReadAllCmd {},
-    PrintOneCmd {
-        text: String,
-    },
-    InspectCmd {
+    /// 'Query' is usually the 'ask' payload.  
+    Query {
         path: String,
     },
-    UpdateCmd {
+    /// 'Update' is usually the 'tell' payload
+    Update {
         datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, f64>,
     },
+    /// the response to most Query/ask interactions
     StateReport {
         datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, f64>,
     },
+    /// error propagation across actors
     ErrorReport {
         text: String,
         datetime: OffsetDateTime,
         path: Option<String>,
     },
 
+    /// the actor init process is complicated in that the actors must recalculate
+    /// their state from event source replays when they are first instantiated.
+    /// EndOfStream is used to complete the jrnl stream at init time.
     EndOfStream {},
+    /// InitCmd instructs the actor to flip into init mode and recalculate its
+    /// state from the incoming eventstream using a tokio receiver in the
+    /// envelope delivering the InitCmd.
     InitCmd {},
+    /// LoadCmd is sent to the persistence actor that will use the path to
+    /// read and send all the actor's previous events to the new instantiation of
+    /// that actor.  the tokio "sender" is presented to the actor looking up the
+    /// events in the envelope delivering the LoadCmd.
     LoadCmd {
         path: String,
+    },
+
+    /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
+    /// stdout in cli use cases
+    ReadAllCmd {},
+    PrintOneCmd {
+        text: String,
     },
 }
 
