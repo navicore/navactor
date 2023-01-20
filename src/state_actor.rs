@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 
 /// the state actor is the heart of the system.  each digital twin has an
 /// instance of actor keeping state computed from an arriving stream of
@@ -28,7 +27,7 @@ impl Actor for StateActor {
             datetime: _,
             stream_to: _,
             stream_from,
-            next_message,
+            next_message: _,
             next_message_respond_to,
         } = envelope;
 
@@ -45,15 +44,16 @@ impl Actor for StateActor {
                             } => {
                                 log::debug!("state actor {} init update", self.path);
                                 self.state.extend(&values); //update state
-                                                            //
-                                                            //
                             }
                             Message::EndOfStream {} => {
                                 log::debug!("state actor {} finished init", self.path);
                                 stream_from.close();
+                                break;
                             }
                             m => {
                                 log::warn!("during init unexpected: {:?}", m);
+                                stream_from.close();
+                                break;
                             }
                         }
                     }

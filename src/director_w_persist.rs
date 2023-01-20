@@ -1,6 +1,5 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
-use crate::message::create_init_lifecycle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::state_actor;
