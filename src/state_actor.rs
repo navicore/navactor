@@ -20,7 +20,7 @@ pub struct StateActor {
 #[async_trait]
 impl Actor for StateActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        log::debug!("handle_envelope: {:?}", envelope);
+        log::debug!("{} handle_envelope", self.path);
         let MessageEnvelope {
             message,
             respond_to,
@@ -34,7 +34,7 @@ impl Actor for StateActor {
         match message {
             Message::InitCmd {} => {
                 if let Some(mut stream_from) = stream_from {
-                    log::debug!("state actor {} init", self.path);
+                    log::debug!("{} init", self.path);
                     while let Some(message) = stream_from.recv().await {
                         match message {
                             Message::Update {
@@ -42,11 +42,11 @@ impl Actor for StateActor {
                                 datetime: _,
                                 values,
                             } => {
-                                log::debug!("state actor {} init update", self.path);
+                                log::debug!("{} init update", self.path);
                                 self.state.extend(&values); //update state
                             }
                             Message::EndOfStream {} => {
-                                log::debug!("state actor {} finished init", self.path);
+                                log::debug!("{} finished init", self.path);
                                 stream_from.close();
                                 break;
                             }
@@ -74,12 +74,12 @@ impl Actor for StateActor {
                 datetime: _,
                 values,
             } => {
-                log::debug!("state actor {} update", self.path);
+                log::debug!("{} update", self.path);
 
                 self.state.extend(&values); //update state
             }
             Message::Query { path: _ } => {
-                log::debug!("state actor {} inspect", self.path);
+                log::debug!("{} inspect", self.path);
                 // no impl because all "respond_to" requests get a state_rpt
             }
 

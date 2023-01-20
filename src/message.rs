@@ -66,7 +66,6 @@ pub enum Message {
     LoadCmd {
         path: String,
     },
-
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
