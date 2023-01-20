@@ -50,18 +50,18 @@ impl<'a> ActorHandle {
         recv.await.expect("other actor cannot reply")
     }
     /// set up a stream between two actors and the result will be the result of
-    /// the second actor processing next_message.
+    /// the this actor (self) processing next_message.
     ///
-    /// create a pair of MessageEnvelopes.  
+    /// creates a pair of MessageEnvelopes.  
     ///
     /// The first one has an InitCmd as message, a receiver, and a reply_to
     /// that returns the result of the message to the integrate caller once
-    /// the 'last_message' and then the EOS message arrives.
+    /// the 'last_message' and then the EndOfStream message arrive.
     ///
     /// The second one has a LoadCmd as message to tell the helper to read the
-    /// events for this path and write them to the send obj in the envelope.  After
-    /// the last jrnl store message is written, send the "next_message" and
-    /// then send an EOS.
+    /// events for this path and write them to the send obj passed in the
+    /// envelope.  After the last jrnl store message is written, send the
+    /// "next_message" and then send an EndOfStream.
     ///
     /// NOTE path is on the function because not all actors know their path.
     /// TODO: make this a state_actor-only function
