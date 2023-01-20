@@ -57,15 +57,10 @@ impl Actor for StateActor {
                             }
                         }
                     }
-                    let state_rpt = Message::StateReport {
-                        path: self.path.clone(),
-                        values: self.state.clone(),
-                        datetime: OffsetDateTime::now_utc(),
-                    };
 
                     // respond with a copy of our new state if this is an 'ask'
                     if let Some(r) = next_message_respond_to {
-                        r.send(state_rpt).expect("can not reply to ask");
+                        r.send(self.get_state_rpt()).expect("can not reply to ask");
                     }
                 }
             }
@@ -87,15 +82,11 @@ impl Actor for StateActor {
                 log::warn!("unexpected message {:?}", m);
             }
         }
-        let state_rpt = Message::StateReport {
-            path: self.path.clone(),
-            values: self.state.clone(),
-            datetime: OffsetDateTime::now_utc(),
-        };
+        let state_rpt = self.get_state_rpt();
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
-            output_handle.tell(state_rpt.clone()).await;
+            output_handle.tell(self.get_state_rpt()).await;
         }
 
         // respond with a copy of our new state if this is an 'ask'
@@ -107,6 +98,14 @@ impl Actor for StateActor {
 
 /// actor private constructor
 impl StateActor {
+    fn get_state_rpt(&self) -> Message {
+        Message::StateReport {
+            path: self.path.clone(),
+            values: self.state.clone(),
+            datetime: OffsetDateTime::now_utc(),
+        }
+    }
+
     fn new(
         path: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
@@ -125,14 +124,6 @@ impl StateActor {
 /// actor handle public constructor
 pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
     async fn start<'a>(mut actor: StateActor) {
-        //TODO: before accepting live data, we must recalc our state from the jrnl.
-        // options:
-        // 1. we can have another one shot receiver that is read until an EOF msg
-        // 2. same as above but the ActorHandle has a convenience init and done function  that accepts
-        //    update commands
-        // 3. a mediator message where a send/recv pair is created by director and send is sent to
-        // store and recv is to actor and there is a done msg. YES
-        // ... then when the done msg arives the loop is broken out and the loop below runs
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
