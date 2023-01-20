@@ -14,15 +14,28 @@ impl Actor for StoreActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to,
-            datetime,
-            stream_to: _,
+            respond_to: _,
+            datetime: _,
+            stream_to,
             stream_from: _,
-            next_message: _,
+            next_message,
             next_message_respond_to: _,
         } = envelope;
         match message {
             Message::LoadCmd { path } => {
+                log::debug!("handling LoadCmd for {}", path);
+                if let Some(stream_to) = stream_to {
+                    if let Some(m) = next_message {
+                        stream_to
+                            .send(m)
+                            .await
+                            .expect("can not integrate from helper");
+                        stream_to
+                            .send(Message::EndOfStream {})
+                            .await
+                            .expect("can not integrate from helper");
+                    }
+                }
 
                 // TODO: handle LoadCmd messages
                 // 1. open db with the path as key

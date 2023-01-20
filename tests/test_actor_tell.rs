@@ -23,7 +23,7 @@ fn test_actor_tell() {
         let message = Message::EndOfStream {};
         let envelope = MessageEnvelope {
             message,
-            respond_to_opt: Some(send),
+            respond_to: Some(send),
             ..Default::default()
         };
         json_decoder_actor.send(envelope).await;

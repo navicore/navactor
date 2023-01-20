@@ -51,7 +51,7 @@ impl Actor for Director {
                 });
 
                 let response = match &self.store_actor {
-                    Some(store_actor) if actor_is_in_init && false => {
+                    Some(store_actor) if actor_is_in_init => {
                         actor
                             .integrate(message.clone(), String::from(path), &store_actor)
                             .await

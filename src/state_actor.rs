@@ -33,15 +33,42 @@ impl Actor for StateActor {
         } = envelope;
 
         match message {
-            // Message::InitCmd {} => {
-            //     if let Some(stream_from) = stream_from {
-            //         log::debug!("state actor {} init", self.path);
-            //         while let Some(message) = stream_from.recv().await {
-            //             // TODO: refactor handle update cmd below to a fn
-            //             self.handle_envelope(envelope).await;
-            //         }
-            //     }
-            // }
+            Message::InitCmd {} => {
+                if let Some(mut stream_from) = stream_from {
+                    log::debug!("state actor {} init", self.path);
+                    while let Some(message) = stream_from.recv().await {
+                        match message {
+                            Message::UpdateCmd {
+                                path: _,
+                                datetime: _,
+                                values,
+                            } => {
+                                log::debug!("state actor {} init update", self.path);
+                                self.state.extend(&values); //update state
+                                                            //
+                                                            //
+                            }
+                            Message::EndOfStream {} => {
+                                log::debug!("state actor {} finished init", self.path);
+                                stream_from.close();
+                            }
+                            m => {
+                                log::warn!("during init unexpected: {:?}", m);
+                            }
+                        }
+                    }
+                    let state_rpt = Message::StateReport {
+                        path: self.path.clone(),
+                        values: self.state.clone(),
+                        datetime: OffsetDateTime::now_utc(),
+                    };
+
+                    // respond with a copy of our new state if this is an 'ask'
+                    if let Some(r) = next_message_respond_to {
+                        r.send(state_rpt).expect("can not reply to ask");
+                    }
+                }
+            }
             Message::UpdateCmd {
                 path: _,
                 datetime: _,
@@ -50,37 +77,30 @@ impl Actor for StateActor {
                 log::debug!("state actor {} update", self.path);
 
                 self.state.extend(&values); //update state
-                let state_rpt = Message::StateReport {
-                    path: self.path.clone(),
-                    values: self.state.clone(),
-                    datetime: OffsetDateTime::now_utc(),
-                };
-
-                // report the update to our state to the output actor
-                if let Some(output_handle) = &self.output {
-                    output_handle.tell(state_rpt.clone()).await;
-                }
-
-                // respond with a copy of our new state if this is an 'ask'
-                if let Some(respond_to) = respond_to {
-                    respond_to.send(state_rpt).expect("can not reply to ask");
-                }
             }
             Message::InspectCmd { path: _ } => {
                 log::debug!("state actor {} inspect", self.path);
-                if let Some(respond_to) = respond_to {
-                    let state_rpt = Message::StateReport {
-                        path: self.path.clone(),
-                        values: self.state.clone(),
-                        datetime: OffsetDateTime::now_utc(),
-                    };
-                    respond_to.send(state_rpt).expect("can not reply to ask");
-                }
+                // no impl because all "respond_to" requests get a state_rpt
             }
 
             m => {
                 log::warn!("unexpected message {:?}", m);
             }
+        }
+        let state_rpt = Message::StateReport {
+            path: self.path.clone(),
+            values: self.state.clone(),
+            datetime: OffsetDateTime::now_utc(),
+        };
+
+        // report the update to our state to the output actor
+        if let Some(output_handle) = &self.output {
+            output_handle.tell(state_rpt.clone()).await;
+        }
+
+        // respond with a copy of our new state if this is an 'ask'
+        if let Some(respond_to) = respond_to {
+            respond_to.send(state_rpt).expect("can not reply to ask");
         }
     }
 }
