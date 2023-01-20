@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 
 /// the state actor is the heart of the system.  each digital twin has an
 /// instance of actor keeping state computed from an arriving stream of
@@ -23,14 +24,24 @@ impl Actor for StateActor {
         log::debug!("handle_envelope: {:?}", envelope);
         let MessageEnvelope {
             message,
-            respond_to_opt,
+            respond_to,
             datetime: _,
             stream_to: _,
-            stream_from: _,
-            next_message: _,
+            stream_from,
+            next_message,
+            next_message_respond_to,
         } = envelope;
 
         match message {
+            // Message::InitCmd {} => {
+            //     if let Some(stream_from) = stream_from {
+            //         log::debug!("state actor {} init", self.path);
+            //         while let Some(message) = stream_from.recv().await {
+            //             // TODO: refactor handle update cmd below to a fn
+            //             self.handle_envelope(envelope).await;
+            //         }
+            //     }
+            // }
             Message::UpdateCmd {
                 path: _,
                 datetime: _,
@@ -51,13 +62,13 @@ impl Actor for StateActor {
                 }
 
                 // respond with a copy of our new state if this is an 'ask'
-                if let Some(respond_to) = respond_to_opt {
+                if let Some(respond_to) = respond_to {
                     respond_to.send(state_rpt).expect("can not reply to ask");
                 }
             }
             Message::InspectCmd { path: _ } => {
                 log::debug!("state actor {} inspect", self.path);
-                if let Some(respond_to) = respond_to_opt {
+                if let Some(respond_to) = respond_to {
                     let state_rpt = Message::StateReport {
                         path: self.path.clone(),
                         values: self.state.clone(),

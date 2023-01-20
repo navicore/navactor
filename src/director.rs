@@ -26,11 +26,12 @@ impl Actor for Director {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to_opt,
+            respond_to,
             datetime: _,
             stream_to: _,
             stream_from: _,
             next_message: _,
+            next_message_respond_to: _,
         } = envelope;
 
         match &message {
@@ -49,7 +50,7 @@ impl Actor for Director {
                 let response = actor.ask(message).await;
 
                 // reply with response if this is an 'ask' from the sender
-                if let Some(respond_to) = respond_to_opt {
+                if let Some(respond_to) = respond_to {
                     respond_to
                         .send(response.clone())
                         .expect("can not reply to ask");
@@ -59,7 +60,7 @@ impl Actor for Director {
                 if let Some(o) = &self.output {
                     let senv = MessageEnvelope {
                         message: response.clone(),
-                        respond_to_opt: None,
+                        respond_to: None,
                         ..Default::default()
                     };
                     o.send(senv).await;
@@ -72,11 +73,11 @@ impl Actor for Director {
                 if let Some(a) = &self.output {
                     let senv = MessageEnvelope {
                         message,
-                        respond_to_opt,
+                        respond_to,
                         ..Default::default()
                     };
                     a.send(senv).await // forward the good news
-                } else if let Some(respond_to) = respond_to_opt {
+                } else if let Some(respond_to) = respond_to {
                     // else we're the end of the line so reply if this is an ask
                     respond_to.send(message).expect("can not reply to ask");
                 }

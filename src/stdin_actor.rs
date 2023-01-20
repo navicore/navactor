@@ -21,11 +21,12 @@ impl Actor for StdinActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to_opt,
+            respond_to,
             datetime: _,
             stream_to: _,
             stream_from: _,
             next_message: _,
+            next_message_respond_to: _,
         } = envelope;
 
         if let Message::ReadAllCmd {} = message {
@@ -41,7 +42,7 @@ impl Actor for StdinActor {
             let complete_msg = Message::EndOfStream {};
             let senv = MessageEnvelope {
                 message: complete_msg,
-                respond_to_opt,
+                respond_to,
                 ..Default::default()
             };
             self.output.send(senv).await

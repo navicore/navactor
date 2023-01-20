@@ -16,11 +16,12 @@ impl Actor for StdoutActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to_opt,
+            respond_to,
             datetime: _,
             stream_to: _,
             stream_from: _,
             next_message: _,
+            next_message_respond_to: _,
         } = envelope;
         match message {
             Message::PrintOneCmd { text } => println!("{}", text),
@@ -30,7 +31,7 @@ impl Actor for StdoutActor {
                 values,
             } => println!("{} current state: {:?}", path, values),
             Message::EndOfStream {} => {
-                if let Some(respond_to) = respond_to_opt {
+                if let Some(respond_to) = respond_to {
                     let complete_msg = Message::EndOfStream {};
                     respond_to
                         .send(complete_msg)

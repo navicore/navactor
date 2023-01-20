@@ -39,11 +39,12 @@ impl Actor for JsonDecoder {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to_opt,
+            respond_to,
             datetime,
             stream_to: _,
             stream_from: _,
             next_message: _,
+            next_message_respond_to: _,
         } = envelope;
         // match the messages we know how to decode and forward them and everything else to the
         // next hop
@@ -60,7 +61,7 @@ impl Actor for JsonDecoder {
                     // forward if output is configured
                     let senv = MessageEnvelope {
                         message: msg,
-                        respond_to_opt, // delegate responding to an ask to director
+                        respond_to, // delegate responding to an ask to director
                         datetime,
                         ..Default::default()
                     };
@@ -68,7 +69,7 @@ impl Actor for JsonDecoder {
                 }
                 Err(error) => {
                     log::warn!("json parse error: {}", error);
-                    if let Some(respond_to) = respond_to_opt {
+                    if let Some(respond_to) = respond_to {
                         let etxt = format!("json parse error: {}", error);
                         let emsg = Message::ErrorReport {
                             datetime: OffsetDateTime::now_utc(),
@@ -83,7 +84,7 @@ impl Actor for JsonDecoder {
                 // forward everything else
                 let senv = MessageEnvelope {
                     message: m.clone(),
-                    respond_to_opt,
+                    respond_to,
                     ..Default::default()
                 };
                 self.output.send(senv).await;
