@@ -22,6 +22,10 @@ impl Actor for StoreActor {
             next_message_respond_to: _,
         } = envelope;
         match message {
+            Message::Update { path, .. } => {
+                log::debug!("jrnling Update for {}", path);
+                // TODO: store this is a db with the key as 'path'
+            }
             Message::LoadCmd { path } => {
                 log::debug!("handling LoadCmd for {}", path);
                 if let Some(stream_to) = stream_to {

@@ -28,25 +28,16 @@ impl Actor for Director {
         let MessageEnvelope {
             message,
             respond_to,
-            datetime: _,
-            stream_to: _,
-            stream_from: _,
-            next_message: _,
-            next_message_respond_to: _,
+            ..
         } = envelope;
+
         match &message {
-            Message::Update {
-                path,
-                datetime: _,
-                values: _,
-            }
-            | Message::Query { path } => {
-                //upsert actor
-                let mut actor_is_in_init = false;
-                let actor = self.actors.entry(path.clone()).or_insert_with(|| {
-                    actor_is_in_init = true;
-                    state_actor::new(path.clone(), 8, None)
-                });
+            Message::Update { path, .. } | Message::Query { path } => {
+                let actor_is_in_init = self.actors.get(path).is_none();
+                let actor = self
+                    .actors
+                    .entry(path.clone())
+                    .or_insert_with(|| state_actor::new(path.clone(), 8, None));
 
                 let response = match &self.store_actor {
                     Some(store_actor) if actor_is_in_init => {
@@ -61,12 +52,16 @@ impl Actor for Director {
                     }
                     _ => {
                         log::debug!("{} handling actor '{}' messsage", self.namespace, path);
-                        actor.ask(message).await
+                        actor.ask(message.clone()).await
                     }
                 };
 
-                // TODO: probably should tell the store actor to jrnl this
-                // Update for this path here.
+                // the store actor to jrnl this Update for this path here.
+                if let Message::Update { path: _, .. } = message {
+                    if let Some(store_actor) = &self.store_actor {
+                        store_actor.tell(message).await;
+                    }
+                }
 
                 // reply with response if this is an 'ask' from the sender
                 if let Some(respond_to) = respond_to {
@@ -88,14 +83,13 @@ impl Actor for Director {
             Message::EndOfStream {} => {
                 log::debug!("complete");
 
-                // forward if we are configured with an output
                 if let Some(a) = &self.output {
                     let senv = MessageEnvelope {
                         message,
                         respond_to,
                         ..Default::default()
                     };
-                    a.send(senv).await // forward the good news
+                    a.send(senv).await
                 } else if let Some(respond_to) = respond_to {
                     // else we're the end of the line so reply if this is an ask
                     respond_to.send(message).expect("can not reply to ask");
