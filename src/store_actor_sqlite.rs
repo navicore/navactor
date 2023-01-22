@@ -4,12 +4,12 @@ use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
 use sqlx::SqlitePool;
-use std::env;
 use std::fs::File;
 use tokio::sync::mpsc;
 
 pub struct StoreActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub dbconn: Option<sqlx::SqlitePool>,
 }
 
 #[async_trait]
@@ -58,15 +58,16 @@ impl Actor for StoreActor {
 
 /// actor private constructor
 impl StoreActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
-        StoreActor { receiver }
+    fn new(receiver: mpsc::Receiver<MessageEnvelope>, dbconn: Option<sqlx::SqlitePool>) -> Self {
+        StoreActor { receiver, dbconn }
     }
 }
 
 /// actor handle public constructor
 pub fn new(bufsz: usize) -> ActorHandle {
-    async fn start(mut actor: StoreActor) {
-        let db_url = &env::var("DATABASE_URL").unwrap_or(String::from("navactor.db"));
+    async fn init_db() -> sqlx::SqlitePool {
+        // TODO: default is memory but file comes from nv cli
+        let db_url = "navactor.db";
 
         match File::create(db_url) {
             Ok(_) => log::debug!("File {} has been created", db_url),
@@ -87,12 +88,19 @@ pub fn new(bufsz: usize) -> ActorHandle {
         .await
         .expect("cannot create table");
 
+        dbconn
+    }
+
+    async fn start(mut actor: StoreActor) {
+        let dbconn = init_db().await;
+        actor.dbconn = Some(dbconn);
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
     }
+
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = StoreActor::new(receiver);
+    let actor = StoreActor::new(receiver, None);
     let actor_handle = ActorHandle::new(sender);
     tokio::spawn(start(actor));
     actor_handle
