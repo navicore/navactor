@@ -59,7 +59,7 @@ struct Extractor {
 
 fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
     let result = run_async_update(namespace, bufsz);
-    runtime.block_on(result).expect("An error occurred");
+    runtime.block_on(result).expect("An error occurred")
 }
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
@@ -93,6 +93,8 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     }
 }
 
+/// control logging of nv and various libs via RUST_LOG env var like so:
+///std::env::set_var("RUST_LOG", "debug,sqlx=warn");
 fn main() {
     env_logger::init();
     debug!("nv started");
@@ -106,5 +108,6 @@ fn main() {
         Commands::Update(namespace) => update(namespace, bufsz, runtime),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
+
     debug!("nv stopped");
 }

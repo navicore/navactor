@@ -59,7 +59,11 @@ impl Actor for Director {
                 // the store actor to jrnl this Update for this path here.
                 if let Message::Update { path: _, .. } = message {
                     if let Some(store_actor) = &self.store_actor {
-                        store_actor.tell(message).await;
+                        //store_actor.tell(message).await;
+                        _ = store_actor.ask(message).await; // waiting for confirm before
+                                                            // triggering pipeline and risking
+                                                            // process termination while store
+                                                            // aactor is still writing
                     }
                 }
 

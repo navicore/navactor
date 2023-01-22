@@ -22,7 +22,7 @@ impl Actor for StoreActor {
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
-            respond_to: _,
+            respond_to,
             datetime: _,
             stream_to,
             stream_from: _,
@@ -37,31 +37,38 @@ impl Actor for StoreActor {
             } => {
                 // store this is a db with the key as 'path'
                 if let Some(dbconn) = &self.dbconn {
-                    log::debug!("jrnling Update for {}", path);
+                    log::debug!("jrnling Update for {}...", path);
 
                     let dt_wrapper = OffsetDateTimeWrapper { datetime };
                     let datetime_str = to_string(&dt_wrapper).unwrap();
 
                     sqlx::query("INSERT INTO updates (path, timestamp, values_str) VALUES (?,?,?)")
-                        .bind(path)
+                        .bind(path.clone())
                         .bind(datetime_str)
                         .bind(serde_json::to_string(&values).expect("cannot serialize values"))
                         .execute(dbconn)
                         .await
                         .expect("db insert failed");
+                    log::debug!("...jrnled Update for {}", path);
                 } else {
                     log::error!("db conn not set");
                 }
+                if let Some(respond_to) = respond_to {
+                    respond_to
+                        .send(Message::EndOfStream {})
+                        .expect("cannot respond to 'ask' with confirmation");
+                }
             }
             Message::LoadCmd { path } => {
-                log::debug!("handling LoadCmd for {}", path);
                 if let Some(stream_to) = stream_to {
+                    log::debug!("handling LoadCmd for {}", path);
                     // 1. query db with the path as key
                     // 2. write events to "stream_to"
                     // 3. write next_message to "stream_to"
                     // 4. write EndOfStream to "stream_to"
                     // 5. close stream_to
                     if let Some(dbconn) = &self.dbconn {
+                        log::debug!("handling LoadCmd jrnl retrieval for {}", path);
                         let rows: Vec<Message> =
                             sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
                                 .bind(path.clone())
@@ -86,6 +93,7 @@ impl Actor for StoreActor {
                                 .await
                                 .expect("cannot load from db");
                         for message in rows {
+                            log::debug!("handling LoadCmd jrnl item send for {}", path);
                             stream_to
                                 .send(message)
                                 .await
@@ -94,10 +102,12 @@ impl Actor for StoreActor {
                     }
 
                     if let Some(m) = next_message {
+                        log::debug!("handling LoadCmd next_message send for {}", path);
                         stream_to
                             .send(m)
                             .await
                             .expect("can not integrate from helper");
+                        log::debug!("handling LoadCmd EndOfStream send for {}", path);
                         stream_to
                             .send(Message::EndOfStream {})
                             .await
@@ -159,6 +169,16 @@ pub fn new(bufsz: usize) -> ActorHandle {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
+        // let sigint = signal(SignalKind::interrupt());
+        // let sigterm = signal(SignalKind::terminate());
+        // let sigint = signal(SignalKind::interrupt()).await;
+        // let sigterm = signal(SignalKind::terminate()).await;
+        // join!(sigint, sigterm);
+        // select! {
+        //     _ = sigint => println!("Ctrl+C received"),
+        //     _ = sigterm => println!("SIGTERM received"),
+        // }
+        //dbconn.close().await;
     }
 
     let (sender, receiver) = mpsc::channel(bufsz);
