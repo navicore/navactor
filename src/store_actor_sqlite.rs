@@ -3,6 +3,9 @@ use crate::actor::ActorHandle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
+use sqlx::SqlitePool;
+use std::env;
+use std::fs::File;
 use tokio::sync::mpsc;
 
 pub struct StoreActor {
@@ -63,6 +66,27 @@ impl StoreActor {
 /// actor handle public constructor
 pub fn new(bufsz: usize) -> ActorHandle {
     async fn start(mut actor: StoreActor) {
+        let db_url = &env::var("DATABASE_URL").unwrap_or(String::from("navactor.db"));
+
+        match File::create(db_url) {
+            Ok(_) => log::debug!("File {} has been created", db_url),
+            Err(e) => log::warn!("Failed to create file {}: {}", db_url, e),
+        }
+
+        let dbconn = SqlitePool::connect(db_url).await.expect("");
+
+        // Create table if it doesn't exist
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS updates (
+              path TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              'values' TEXT NOT NULL
+        )",
+        )
+        .execute(&dbconn)
+        .await
+        .expect("cannot create table");
+
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
