@@ -19,6 +19,7 @@ pub struct StateActor {
 
 #[async_trait]
 impl Actor for StateActor {
+    async fn stop(&mut self) {}
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         log::debug!("{} handle_envelope", self.path);
         let MessageEnvelope {

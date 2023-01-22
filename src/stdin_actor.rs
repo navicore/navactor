@@ -18,6 +18,7 @@ pub struct StdinActor {
 
 #[async_trait]
 impl Actor for StdinActor {
+    async fn stop(&mut self) {}
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,

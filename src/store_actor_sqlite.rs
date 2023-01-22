@@ -19,6 +19,11 @@ pub struct StoreActor {
 
 #[async_trait]
 impl Actor for StoreActor {
+    async fn stop(&mut self) {
+        if let Some(c) = &self.dbconn {
+            c.close().await;
+        }
+    }
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -159,26 +164,11 @@ pub fn new(bufsz: usize) -> ActorHandle {
 
     async fn start(mut actor: StoreActor) {
         let dbconn = init_db().await;
-        // TODO: dbcon seems to be None
-        // TODO: dbcon seems to be None
-        // TODO: dbcon seems to be None
-        // TODO: dbcon seems to be None
-        // TODO: dbcon seems to be None
-        // TODO: dbcon seems to be None
         actor.dbconn = Some(dbconn);
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
-        // let sigint = signal(SignalKind::interrupt());
-        // let sigterm = signal(SignalKind::terminate());
-        // let sigint = signal(SignalKind::interrupt()).await;
-        // let sigterm = signal(SignalKind::terminate()).await;
-        // join!(sigint, sigterm);
-        // select! {
-        //     _ = sigint => println!("Ctrl+C received"),
-        //     _ = sigterm => println!("SIGTERM received"),
-        // }
-        //dbconn.close().await;
+        actor.stop().await;
     }
 
     let (sender, receiver) = mpsc::channel(bufsz);

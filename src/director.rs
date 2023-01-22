@@ -24,6 +24,7 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
+    async fn stop(&mut self) {}
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
