@@ -106,7 +106,7 @@ impl StoreActor {
                         .expect("cannot return values");
 
                 Ok(Message::Update {
-                    path: path.clone(),
+                    path: String::from(path),
                     datetime: data_parsed.datetime,
                     values,
                 })
