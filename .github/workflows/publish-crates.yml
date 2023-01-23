@@ -1,5 +1,4 @@
-- name: publish crates
-  uses: katyo/publish-crates@v1
+- name: publish-crates
 
   steps:
     - uses: actions/checkout@v2
