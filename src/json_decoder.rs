@@ -42,10 +42,7 @@ impl Actor for JsonDecoder {
             message,
             respond_to,
             datetime,
-            stream_to: _,
-            stream_from: _,
-            next_message: _,
-            next_message_respond_to: _,
+            ..
         } = envelope;
         // match the messages we know how to decode and forward them and everything else to the
         // next hop
