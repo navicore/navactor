@@ -46,7 +46,7 @@ impl Actor for StateActor {
 
                 // once old state is recalculated, you can now process the new event
                 if let Some(nm) = next_message {
-                    self.update_state(nm.clone());
+                    self.update_state(nm);
 
                     // respond with a copy of our new state if this is an 'ask'
                     if let Some(r) = next_message_respond_to {

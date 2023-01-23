@@ -95,7 +95,7 @@ impl StoreActor {
     }
 
     /// retrieve the time series of events (observations) for the actor that is being resurrected
-    async fn get_jrnl(&self, dbconn: &SqlitePool, path: &String) -> Vec<Message> {
+    async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> Vec<Message> {
         sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
             .bind(path.clone())
             .try_map(|row: sqlx::sqlite::SqliteRow| {
