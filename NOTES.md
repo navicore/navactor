@@ -56,8 +56,12 @@ from chatGPT:
 ```
 Does "odometer vs speedometer" suggest "accumulator vs guage"?
 
-Yes, "odometer" and "speedometer" can be used as an analogy for "accumulator" and "gauge" respectively.
-An odometer is a device that measures the distance traveled by a vehicle and accumulates the distance traveled over time and a speedometer measure the instantaneous speed of a vehicle. In the same way, an accumulator in your telemetry system measures the accumulated count over time, and a gauge in your system measures the instantaneous value.
+Yes, "odometer" and "speedometer" can be used as an analogy for "accumulator"
+and "gauge" respectively. An odometer is a device that measures the distance
+traveled by a vehicle and accumulates the distance traveled over time and a
+speedometer measure the instantaneous speed of a vehicle. In the same way, an
+accumulator in your telemetry system measures the accumulated count over time,
+and a gauge in your system measures the instantaneous value.
 ```
 
 TODO
