@@ -1,10 +1,8 @@
 name: Publish-Crate
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  release:
+    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
