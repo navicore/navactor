@@ -1,9 +1,24 @@
 Navactor
 ============
 
-Status: Under construction - see [NOTES.md](NOTES.md)
+Under construction - see [NOTES.md](NOTES.md)
 
 # NOT READY FOR REAL WORK YET
+
+Overview
+----------
+
+A CLI tool as lab for the actor programming use cases.
+
+Ingest piped streams of CRLF- delimited observations, send them to actors,
+implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
+processing, and persist.
+
+The `nv` command will eventually also serve a networked API but the initial 
+model for workflow and performance is data-wrangling via the classic powerful `awk`.
+
+Status
+----------
 
 The current functionality is limited to support of "guage" observations
 presented in the internal observation json format via cli piped stream.
@@ -15,12 +30,6 @@ Messy but working code - I am learning Rust as I recreate the ideas from
 the [DtLab Project](https://home.dtlaboratory.com).  However, [Clippy](https://github.com/navicore/navactor/security/code-scanning) is happy with the code.
 
 The plan is to support all the features of [DtLab Project](https://home.dtlaboratory.com) - ie: networked REST-like API and outward webhooks for useful stateful IOT-ish applications.
-
-----------
-
-A CLI tool as lab for the actor programming use cases.  Ingest piped streams of
-CRLF- delimited observations, send them to actors, implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
-processing, and persist.
 
 Install
 ----------
