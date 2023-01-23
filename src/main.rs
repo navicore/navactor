@@ -1,11 +1,11 @@
 use clap::{Args, Parser, Subcommand};
-use nv::director;
-use nv::json_decoder;
-use nv::message::Message;
-use nv::message::Message::EndOfStream;
-use nv::stdin_actor;
-use nv::stdout_actor;
-use nv::store_actor_sqlite;
+use navactor::director;
+use navactor::json_decoder;
+use navactor::message::Message;
+use navactor::message::Message::EndOfStream;
+use navactor::stdin_actor;
+use navactor::stdout_actor;
+use navactor::store_actor_sqlite;
 use tokio::runtime::Runtime;
 
 #[derive(Parser)]

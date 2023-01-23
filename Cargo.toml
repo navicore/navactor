@@ -1,12 +1,14 @@
 [package]
-name = "nv"
+name = "navactor"
 version = "0.1.3"
 edition = "2021"
 license = "MIT"
 authors = ["Ed Sweeney <ed@onextent.com>"]
 description = "A cli tool for creating and updating actors from piped input"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "nv"
+path = "src/main.rs"
 
 [dependencies]
 async-trait = "0.1.63"

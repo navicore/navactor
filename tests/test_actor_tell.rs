@@ -1,7 +1,7 @@
-use nv::director;
-use nv::json_decoder;
-use nv::message::Message;
-use nv::message::MessageEnvelope;
+use navactor::director;
+use navactor::json_decoder;
+use navactor::message::Message;
+use navactor::message::MessageEnvelope;
 use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;

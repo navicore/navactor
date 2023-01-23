@@ -1,7 +1,7 @@
-use nv::director;
-use nv::json_decoder;
-use nv::message::Message;
-use nv::state_actor;
+use navactor::director;
+use navactor::json_decoder;
+use navactor::message::Message;
+use navactor::state_actor;
 use std::collections::HashMap;
 use test_log::test;
 use time::OffsetDateTime;
