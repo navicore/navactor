@@ -52,10 +52,12 @@ TODO
 1. ~~clap~~
 2. ~~ingest stdin stream into actor msgs~~
 3. ~~parse msgs in actor impls~~
-4. next internal msg format needs source timestamp, nv timestamp, path.
+4. ~~next internal msg format needs source timestamp, nv timestamp, path.~~
   a. ~~nv timestamp in envelope~~
   b. ~~nv source timestamp and path in payload hierarchy~~
-  c. unmarshal time strings
+  c. ~~unmarshal time strings~~
+5. ~~sqlx and sqlite~~
+6. cli control of db file and actor namespaces
 
 MORE
 ---------
