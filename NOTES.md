@@ -64,6 +64,28 @@ accumulator in your telemetry system measures the accumulated count over time,
 and a gauge in your system measures the instantaneous value.
 ```
 
+### biology metaphors and patters for inspiration
+
+protocells have 3 things to be "alive", ie: the functionalities for life:
+
+1. genes ( control via mutable inheritable information )
+2. container (identity, localization, reproduction )
+3. metabolism ( resource transformation, self-mainenance growth )
+
+Genees in this system is the type and its mappings for operators.  The type
+metadata is data that can be edited ( mutated, randomly mutated ) as it is
+used as a prototype for offspring.
+
+Containers for us are the actor instance.  Ideally the actor would manage its
+own persistance - but for now it gets help with director and store_actor - need
+bio metaphors for director and store_actor.
+
+Metabolism is message passing - internal automatic messages, external observation
+delivery, self initiated queries of or expressions of interest in other actors.
+
+TODO: what's missing to go to an agent metaphor?  How can an actor move itself
+from one namespace and host to another?
+
 TODO
 --------
 

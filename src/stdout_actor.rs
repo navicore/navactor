@@ -18,19 +18,13 @@ impl Actor for StdoutActor {
         let MessageEnvelope {
             message,
             respond_to,
-            datetime: _,
-            stream_to: _,
-            stream_from: _,
-            next_message: _,
-            next_message_respond_to: _,
+            ..
         } = envelope;
         match message {
             Message::PrintOneCmd { text } => println!("{}", text),
-            Message::StateReport {
-                path,
-                datetime: _,
-                values,
-            } => println!("{} current state: {:?}", path, values),
+            Message::StateReport { path, values, .. } => {
+                println!("{} current state: {:?}", path, values)
+            }
             Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to {
                     let complete_msg = Message::EndOfStream {};
