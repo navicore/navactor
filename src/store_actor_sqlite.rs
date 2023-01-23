@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 pub struct StoreActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub dbconn: Option<sqlx::SqlitePool>,
+    pub namespace: String,
 }
 
 #[async_trait]
@@ -31,7 +32,7 @@ impl Actor for StoreActor {
             datetime: _,
             stream_to,
             stream_from: _,
-            next_message,
+            next_message: _,
             next_message_respond_to: _,
         } = envelope;
         match message {
@@ -107,19 +108,11 @@ impl Actor for StoreActor {
                                 .expect("can not send jrnl event from helper");
                         }
                     }
+                    stream_to
+                        .send(Message::EndOfStream {})
+                        .await
+                        .expect("can not integrate from helper");
 
-                    if let Some(m) = next_message {
-                        log::trace!("handling LoadCmd next_message send for {}", path);
-                        stream_to
-                            .send(m)
-                            .await
-                            .expect("can not integrate from helper");
-                        log::trace!("handling LoadCmd EndOfStream send for {}", path);
-                        stream_to
-                            .send(Message::EndOfStream {})
-                            .await
-                            .expect("can not integrate from helper");
-                    }
                     stream_to.closed().await;
                 }
             }
@@ -130,24 +123,33 @@ impl Actor for StoreActor {
 
 /// actor private constructor
 impl StoreActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, dbconn: Option<sqlx::SqlitePool>) -> Self {
-        StoreActor { receiver, dbconn }
+    fn new(
+        receiver: mpsc::Receiver<MessageEnvelope>,
+        dbconn: Option<sqlx::SqlitePool>,
+        namespace: String,
+    ) -> Self {
+        StoreActor {
+            receiver,
+            dbconn,
+            namespace,
+        }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize) -> ActorHandle {
-    async fn init_db() -> sqlx::SqlitePool {
+pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
+    async fn init_db(namespace: String) -> sqlx::SqlitePool {
         // TODO: default is memory but file comes from nv cli
-        let db_url = "navactor.db";
-        let db_path = Path::new(db_url);
+        let db_url_string: String = format!("{}.db", namespace);
+        let db_url: &str = &db_url_string;
+        let db_path = Path::new(db_url.clone());
         if !db_path.exists() {
             match File::create(db_url) {
                 Ok(_) => log::debug!("File {} has been created", db_url),
                 Err(e) => log::warn!("Failed to create file {}: {}", db_url, e),
             }
         }
-        let dbconn = SqlitePool::connect(db_url).await.expect("");
+        let dbconn = SqlitePool::connect(db_url.clone()).await.expect("");
 
         // Create table if it doesn't exist
         sqlx::query(
@@ -164,8 +166,8 @@ pub fn new(bufsz: usize) -> ActorHandle {
         dbconn
     }
 
-    async fn start(mut actor: StoreActor) {
-        let dbconn = init_db().await;
+    async fn start(mut actor: StoreActor, namespace: String) {
+        let dbconn = init_db(namespace).await;
         actor.dbconn = Some(dbconn);
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -174,8 +176,8 @@ pub fn new(bufsz: usize) -> ActorHandle {
     }
 
     let (sender, receiver) = mpsc::channel(bufsz);
-    let actor = StoreActor::new(receiver, None);
+    let actor = StoreActor::new(receiver, None, namespace.clone());
     let actor_handle = ActorHandle::new(sender);
-    tokio::spawn(start(actor));
+    tokio::spawn(start(actor, namespace));
     actor_handle
 }

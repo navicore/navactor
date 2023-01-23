@@ -63,7 +63,7 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
-    let store_actor = store_actor_sqlite::new(bufsz); // print state changes
+    let store_actor = store_actor_sqlite::new(bufsz, namespace.namespace.clone()); // print state changes
     let director_w_persist =
         director::new(namespace.namespace, bufsz, Some(output), Some(store_actor));
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
@@ -80,8 +80,19 @@ fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
 }
 
 async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
+    let p = std::path::Path::new(&path.path);
+    let ns = p
+        .components()
+        .skip_while(|c| c == &std::path::Component::RootDir)
+        .next()
+        .unwrap()
+        .as_os_str()
+        .to_str()
+        .unwrap();
+    //let ns = p.iter().next().unwrap().to_str().unwrap();
+    log::trace!("inspect of ns {}", ns);
     let output = stdout_actor::new(bufsz); // print state
-    let store_actor = store_actor_sqlite::new(bufsz); // print state
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns)); // print state
     let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
     let m = director.ask(Message::Query { path: path.path }).await;
     output.tell(m).await;

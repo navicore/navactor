@@ -139,7 +139,7 @@ impl LifeCycleBuilder {
         (
             MessageEnvelope {
                 datetime: OffsetDateTime::now_utc(),
-                next_message: None,
+                next_message: self.first_message,
                 next_message_respond_to: self.first_message_respond_to,
                 respond_to: None,
                 stream_from: self.load_from,
@@ -148,7 +148,7 @@ impl LifeCycleBuilder {
             },
             MessageEnvelope {
                 datetime: OffsetDateTime::now_utc(),
-                next_message: self.first_message,
+                next_message: None,
                 next_message_respond_to: None,
                 respond_to: None,
                 stream_from: None,

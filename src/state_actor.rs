@@ -27,7 +27,7 @@ impl Actor for StateActor {
             datetime: _,
             stream_to: _,
             stream_from,
-            next_message: _,
+            next_message,
             next_message_respond_to,
         } = envelope;
 
@@ -59,9 +59,33 @@ impl Actor for StateActor {
                         }
                     }
 
-                    // respond with a copy of our new state if this is an 'ask'
-                    if let Some(r) = next_message_respond_to {
-                        r.send(self.get_state_rpt()).expect("can not reply to ask");
+                    // ugh DRY
+                    // ugh DRY
+                    // ugh DRY
+                    if let Some(nm) = next_message {
+                        match nm {
+                            Message::Update {
+                                path: _,
+                                datetime: _,
+                                values,
+                            } => {
+                                log::debug!("{} update with next_message", self.path);
+                                self.state.extend(&values); //update state
+                            }
+                            Message::Query { path: _ } => {
+                                log::debug!("{} inspect via next_message", self.path);
+                                // no impl because all "respond_to" requests get a state_rpt
+                            }
+
+                            m => {
+                                log::warn!("unexpected message {:?}", m);
+                            }
+                        }
+
+                        // respond with a copy of our new state if this is an 'ask'
+                        if let Some(r) = next_message_respond_to {
+                            r.send(self.get_state_rpt()).expect("can not reply to ask");
+                        }
                     }
                 }
             }
