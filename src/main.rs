@@ -83,8 +83,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let p = std::path::Path::new(&path.path);
     let ns = p
         .components()
-        .skip_while(|c| c == &std::path::Component::RootDir)
-        .next()
+        .find(|c| c == &std::path::Component::RootDir)
         .unwrap()
         .as_os_str()
         .to_str()
