@@ -42,8 +42,6 @@ impl Actor for StoreActor {
             } => {
                 // store this is a db with the key as 'path'
                 if let Some(dbconn) = &self.dbconn {
-                    log::debug!("jrnling Update for {}...", path);
-
                     let dt_wrapper = OffsetDateTimeWrapper { datetime };
                     let datetime_str = to_string(&dt_wrapper).unwrap();
 
@@ -54,7 +52,7 @@ impl Actor for StoreActor {
                         .execute(dbconn)
                         .await
                         .expect("db insert failed");
-                    log::debug!("...jrnled Update for {}", path);
+                    log::trace!("jrnled Update for {}", path);
                 } else {
                     log::error!("db conn not set");
                 }
@@ -66,14 +64,14 @@ impl Actor for StoreActor {
             }
             Message::LoadCmd { path } => {
                 if let Some(stream_to) = stream_to {
-                    log::debug!("handling LoadCmd for {}", path);
+                    log::trace!("handling LoadCmd for {}", path);
                     // 1. query db with the path as key
                     // 2. write events to "stream_to"
                     // 3. write next_message to "stream_to"
                     // 4. write EndOfStream to "stream_to"
                     // 5. close stream_to
                     if let Some(dbconn) = &self.dbconn {
-                        log::debug!("handling LoadCmd jrnl retrieval for {}", path);
+                        log::trace!("handling LoadCmd jrnl retrieval for {}", path);
                         let rows: Vec<Message> =
                             sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
                                 .bind(path.clone())
@@ -97,8 +95,12 @@ impl Actor for StoreActor {
                                 .fetch_all(dbconn)
                                 .await
                                 .expect("cannot load from db");
+                        log::trace!(
+                            "handling LoadCmd jrnl for {} items count: {}",
+                            path,
+                            rows.len()
+                        );
                         for message in rows {
-                            log::debug!("handling LoadCmd jrnl item send for {}", path);
                             stream_to
                                 .send(message)
                                 .await
@@ -107,12 +109,12 @@ impl Actor for StoreActor {
                     }
 
                     if let Some(m) = next_message {
-                        log::debug!("handling LoadCmd next_message send for {}", path);
+                        log::trace!("handling LoadCmd next_message send for {}", path);
                         stream_to
                             .send(m)
                             .await
                             .expect("can not integrate from helper");
-                        log::debug!("handling LoadCmd EndOfStream send for {}", path);
+                        log::trace!("handling LoadCmd EndOfStream send for {}", path);
                         stream_to
                             .send(Message::EndOfStream {})
                             .await

@@ -1,5 +1,4 @@
 use clap::{Args, Parser, Subcommand};
-use log::debug;
 use nv::director;
 use nv::json_decoder;
 use nv::message::Message;
@@ -97,7 +96,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
 ///std::env::set_var("RUST_LOG", "debug,sqlx=warn");
 fn main() {
     env_logger::init();
-    debug!("nv started");
+    log::info!("nv started");
 
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
@@ -109,5 +108,5 @@ fn main() {
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
 
-    debug!("nv stopped");
+    log::info!("nv stopped");
 }

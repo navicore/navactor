@@ -21,7 +21,6 @@ pub struct StateActor {
 impl Actor for StateActor {
     async fn stop(&mut self) {}
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        log::debug!("{} handle_envelope", self.path);
         let MessageEnvelope {
             message,
             respond_to,
@@ -36,6 +35,7 @@ impl Actor for StateActor {
             Message::InitCmd {} => {
                 if let Some(mut stream_from) = stream_from {
                     log::debug!("{} init", self.path);
+                    let mut count = 0;
                     while let Some(message) = stream_from.recv().await {
                         match message {
                             Message::Update {
@@ -43,11 +43,11 @@ impl Actor for StateActor {
                                 datetime: _,
                                 values,
                             } => {
-                                log::debug!("{} init update", self.path);
+                                count += 1;
                                 self.state.extend(&values); //update state
                             }
                             Message::EndOfStream {} => {
-                                log::debug!("{} finished init", self.path);
+                                log::debug!("{} finished init from {} events", self.path, count);
                                 stream_from.close();
                                 break;
                             }
