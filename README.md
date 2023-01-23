@@ -58,6 +58,14 @@ cat ./tests/data/single_observation_2_3.json | cargo run -- update actors
 The above creates a db file named after the namespace - root of any actor path.
 In this case, the namespace is 'actors'.
 
+Enable logging via:
+```bash
+#on the cli
+cat ./tests/data/single_observation_1_3.json | RUST_LOG="debug,sqlx=warn" nv update actors
+
+#or set and forget via
+export RUST_LOG="debug,sqlx=warn"
+```
 
 ----------
 
