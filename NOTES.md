@@ -77,8 +77,10 @@ metadata is data that can be edited ( mutated, randomly mutated ) as it is
 used as a prototype for offspring.
 
 Containers for us are the actor instance.  Ideally the actor would manage its
-own persistance - but for now it gets help with director and store_actor - need
-bio metaphors for director and store_actor.
+own persistence - but for now it gets help with director and store_actor - need
+bio metaphors for director and store_actor.  The metadata that supports the
+graph of actors and their messaging reinforces that identity and localizing
+aspects of the protocell metaphor.
 
 Metabolism is message passing - internal automatic messages, external observation
 delivery, self initiated queries of or expressions of interest in other actors.

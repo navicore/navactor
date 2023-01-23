@@ -83,12 +83,12 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let p = std::path::Path::new(&path.path);
     let ns = p
         .components()
-        .find(|c| c == &std::path::Component::RootDir)
+        .skip_while(|c| c == &std::path::Component::RootDir)
+        .next()
         .unwrap()
         .as_os_str()
         .to_str()
         .unwrap();
-    //let ns = p.iter().next().unwrap().to_str().unwrap();
     log::trace!("inspect of ns {}", ns);
     let output = stdout_actor::new(bufsz); // print state
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns)); // print state
