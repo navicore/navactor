@@ -34,28 +34,7 @@ impl Actor for Director {
 
         match &message {
             Message::Update { path, .. } | Message::Query { path } => {
-                let actor_is_in_init = self.actors.get(path).is_none();
-                let actor = self
-                    .actors
-                    .entry(path.clone())
-                    .or_insert_with(|| state_actor::new(path.clone(), 8, None));
-
-                let response = match &self.store_actor {
-                    Some(store_actor) if actor_is_in_init => {
-                        log::debug!(
-                            "{} handling actor '{}' messsage w/ actor init via store",
-                            self.namespace,
-                            path
-                        );
-                        actor
-                            .integrate(message.clone(), String::from(path), store_actor)
-                            .await
-                    }
-                    _ => {
-                        log::debug!("{} handling actor '{}' messsage", self.namespace, path);
-                        actor.ask(message.clone()).await
-                    }
-                };
+                let response = self.update_actor(path, message.clone()).await;
 
                 // the store actor to jrnl this Update for this path here.
                 if let Message::Update { path: _, .. } = message {
@@ -64,7 +43,7 @@ impl Actor for Director {
                         _ = store_actor.ask(message).await; // waiting for confirm before
                                                             // triggering pipeline and risking
                                                             // process termination while store
-                                                            // aactor is still writing
+                                                            // actor is still writing
                     }
                 }
 
@@ -78,7 +57,7 @@ impl Actor for Director {
                 // forward response if output is configured
                 if let Some(o) = &self.output {
                     let senv = MessageEnvelope {
-                        message: response.clone(),
+                        message: response,
                         respond_to: None,
                         ..Default::default()
                     };
@@ -119,6 +98,31 @@ impl Director {
             receiver,
             output,
             store_actor,
+        }
+    }
+
+    async fn update_actor(&mut self, path: &String, message: Message) -> Message {
+        let actor_is_in_init = self.actors.get(path).is_none();
+        let actor = self
+            .actors
+            .entry(path.clone())
+            .or_insert_with(|| state_actor::new(path.clone(), 8, None));
+
+        match &self.store_actor {
+            Some(store_actor) if actor_is_in_init => {
+                log::debug!(
+                    "{} handling actor '{}' messsage w/ actor init via store",
+                    self.namespace,
+                    path
+                );
+                actor
+                    .integrate(message.clone(), String::from(path), store_actor)
+                    .await
+            }
+            _ => {
+                log::debug!("{} handling actor '{}' messsage", self.namespace, path);
+                actor.ask(message.clone()).await
+            }
         }
     }
 }

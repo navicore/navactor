@@ -24,90 +24,39 @@ impl Actor for StateActor {
         let MessageEnvelope {
             message,
             respond_to,
-            datetime: _,
-            stream_to: _,
             stream_from,
             next_message,
             next_message_respond_to,
+            ..
         } = envelope;
 
-        match message {
-            Message::InitCmd {} => {
-                if let Some(mut stream_from) = stream_from {
-                    log::debug!("{} init", self.path);
-                    let mut count = 0;
-                    while let Some(message) = stream_from.recv().await {
-                        match message {
-                            Message::Update {
-                                path: _,
-                                datetime: _,
-                                values,
-                            } => {
-                                count += 1;
-                                self.state.extend(&values); //update state
-                            }
-                            Message::EndOfStream {} => {
-                                log::debug!("{} finished init from {} events", self.path, count);
-                                stream_from.close();
-                                break;
-                            }
-                            m => {
-                                log::warn!("during init unexpected: {:?}", m);
-                                stream_from.close();
-                                break;
-                            }
-                        }
+        if let Message::InitCmd {} = message {
+            // this is an init so read your old events to recalculate your state
+            if let Some(mut stream_from) = stream_from {
+                log::debug!("{} init", self.path);
+                let mut count = 0;
+                while let Some(message) = stream_from.recv().await {
+                    if !self.update_state(message.clone()) {
+                        stream_from.close();
+                    } else {
+                        count += 1;
                     }
+                }
+                log::debug!("{} finished init from {} events", self.path, count);
 
-                    // ugh DRY
-                    // ugh DRY
-                    // ugh DRY
-                    if let Some(nm) = next_message {
-                        match nm {
-                            Message::Update {
-                                path: _,
-                                datetime: _,
-                                values,
-                            } => {
-                                log::debug!("{} update with next_message", self.path);
-                                self.state.extend(&values); //update state
-                            }
-                            Message::Query { path: _ } => {
-                                log::debug!("{} inspect via next_message", self.path);
-                                // no impl because all "respond_to" requests get a state_rpt
-                            }
+                // once old state is recalculated, you can now process the new event
+                if let Some(nm) = next_message {
+                    self.update_state(nm);
 
-                            m => {
-                                log::warn!("unexpected message {:?}", m);
-                            }
-                        }
-
-                        // respond with a copy of our new state if this is an 'ask'
-                        if let Some(r) = next_message_respond_to {
-                            r.send(self.get_state_rpt()).expect("can not reply to ask");
-                        }
+                    // respond with a copy of our new state if this is an 'ask'
+                    if let Some(r) = next_message_respond_to {
+                        r.send(self.get_state_rpt()).expect("can not reply to ask");
                     }
                 }
             }
-            Message::Update {
-                path: _,
-                datetime: _,
-                values,
-            } => {
-                log::debug!("{} update", self.path);
-
-                self.state.extend(&values); //update state
-            }
-            Message::Query { path: _ } => {
-                log::debug!("{} inspect", self.path);
-                // no impl because all "respond_to" requests get a state_rpt
-            }
-
-            m => {
-                log::warn!("unexpected message {:?}", m);
-            }
+        } else {
+            self.update_state(message.clone());
         }
-        let state_rpt = self.get_state_rpt();
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
@@ -116,13 +65,37 @@ impl Actor for StateActor {
 
         // respond with a copy of our new state if this is an 'ask'
         if let Some(respond_to) = respond_to {
-            respond_to.send(state_rpt).expect("can not reply to ask");
+            respond_to
+                .send(self.get_state_rpt())
+                .expect("can not reply to ask");
         }
     }
 }
 
 /// actor private constructor
 impl StateActor {
+    fn update_state(&mut self, message: Message) -> bool {
+        let mut updated = false;
+        match message {
+            Message::Update { values, .. } => {
+                log::trace!("{} update", self.path);
+                updated = true;
+                self.state.extend(&values); //update state
+            }
+            Message::Query { path: _ } => {
+                log::trace!("{} inspect", self.path);
+                // no impl because all "respond_to" requests get a state_rpt
+            }
+            Message::EndOfStream {} => {
+                log::trace!("{} end of stream", self.path);
+            }
+            m => {
+                log::warn!("unexpected message {:?}", m);
+            }
+        }
+        updated
+    }
+
     fn get_state_rpt(&self) -> Message {
         Message::StateReport {
             path: self.path.clone(),

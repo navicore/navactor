@@ -23,11 +23,7 @@ impl Actor for StdinActor {
         let MessageEnvelope {
             message,
             respond_to,
-            datetime: _,
-            stream_to: _,
-            stream_from: _,
-            next_message: _,
-            next_message_respond_to: _,
+            ..
         } = envelope;
 
         if let Message::ReadAllCmd {} = message {
