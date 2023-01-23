@@ -75,8 +75,8 @@ TODO
   b. ~~nv source timestamp and path in payload hierarchy~~
   c. ~~unmarshal time strings~~
 5. ~~sqlx and sqlite~~
-6. REFACTOR - learn to make smaller async methods
-7. cli control of db file and actor namespaces
+6. ~~REFACTOR - learn to make smaller async methods~~
+7. ~~cli control of db file and actor namespaces~~
 8. default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator
 9. code other built-ins for ranges of keys for the default type
 
