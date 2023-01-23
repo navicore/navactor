@@ -12,7 +12,7 @@ Event sourcing from embedded sqlite store works.  Query state and resuming
 ingestion across multiple runs works.
 
 Messy but working code - I am learning Rust as I recreate the ideas from
-the [DtLab Project](https://home.dtlaboratory.com).  [Clippy](https://github.com/navicore/navactor/security/code-scanning) is happy with the code.
+the [DtLab Project](https://home.dtlaboratory.com).  However, [Clippy](https://github.com/navicore/navactor/security/code-scanning) is happy with the code.
 
 The plan is to support all the features of [DtLab Project](https://home.dtlaboratory.com) - ie: networked REST-like API and outward webhooks for useful stateful IOT-ish applications.
 
