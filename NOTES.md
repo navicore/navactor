@@ -76,9 +76,10 @@ TODO
   c. ~~unmarshal time strings~~
 5. ~~sqlx and sqlite~~
 6. REFACTOR - learn to make smaller async methods
-7. cli control of db file and actor namespaces
-8. default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator
-9. code other built-ins for ranges of keys for the default type
+7. make inspect optional arg to force namespace the way update does
+8. cli control of db file and actor namespaces
+9. default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator
+10. code other built-ins for ranges of keys for the default type
 
 MORE
 ---------
