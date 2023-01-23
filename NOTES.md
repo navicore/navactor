@@ -46,6 +46,11 @@ all state be a single db file
 cat my.jsonl | nv -d ./my.db > my-new-state-log.jsonl
 ```
 
+DESIGN IN PROGRESS
+--------
+
+### types and operators
+
 from chatGPT:
 
 ```
