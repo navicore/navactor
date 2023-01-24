@@ -35,6 +35,7 @@ impl Actor for StateActor {
             if let Some(mut stream_from) = stream_from {
                 log::debug!("{} init", self.path);
                 let mut count = 0;
+
                 while let Some(message) = stream_from.recv().await {
                     if !self.update_state(message.clone()) {
                         stream_from.close();
@@ -42,6 +43,7 @@ impl Actor for StateActor {
                         count += 1;
                     }
                 }
+
                 log::debug!("{} finished init from {} events", self.path, count);
 
                 // once old state is recalculated, you can now process the new event
@@ -80,6 +82,7 @@ impl StateActor {
             Message::Update { values, .. } => {
                 log::trace!("{} update", self.path);
                 updated = true;
+
                 self.state.extend(&values); //update state
             }
             Message::Query { path: _ } => {
@@ -126,9 +129,14 @@ pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHand
             actor.handle_envelope(envelope).await;
         }
     }
+
     let (sender, receiver) = mpsc::channel(bufsz);
+
     let actor = StateActor::new(path, receiver, output);
+
     let actor_handle = ActorHandle::new(sender);
+
     tokio::spawn(start(actor));
+
     actor_handle
 }

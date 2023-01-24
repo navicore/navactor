@@ -63,11 +63,16 @@ fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
 
 async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
     let output = stdout_actor::new(bufsz); // print state changes
+
     let store_actor = store_actor_sqlite::new(bufsz, namespace.namespace.clone()); // print state changes
+
     let director_w_persist =
         director::new(namespace.namespace, bufsz, Some(output), Some(store_actor));
+
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
+
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
+
     match input.ask(Message::ReadAllCmd {}).await {
         EndOfStream {} => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
@@ -76,6 +81,7 @@ async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), Stri
 
 fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
     let result = run_async_inspect(path, bufsz);
+
     runtime.block_on(result).expect("An error occurred");
 }
 
@@ -89,12 +95,18 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
         .as_os_str()
         .to_str()
         .unwrap();
+
     log::trace!("inspect of ns {}", ns);
     let output = stdout_actor::new(bufsz); // print state
+
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns)); // print state
+
     let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
+
     let m = director.ask(Message::Query { path: path.path }).await;
+
     output.tell(m).await;
+
     // send complete to keep the job running long enough to print the above
     match output.ask(Message::EndOfStream {}).await {
         EndOfStream {} => Ok(()),

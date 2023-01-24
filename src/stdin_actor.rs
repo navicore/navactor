@@ -37,11 +37,13 @@ impl Actor for StdinActor {
             // forward the respond_to handle so that the output actor can respond when all
             // is printed
             let complete_msg = Message::EndOfStream {};
+
             let senv = MessageEnvelope {
                 message: complete_msg,
                 respond_to,
                 ..Default::default()
             };
+
             self.output.send(senv).await
         } else {
             log::warn!("unexpected: {:?}", message);
@@ -63,9 +65,14 @@ pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
             actor.handle_envelope(envelope).await;
         }
     }
+
     let (sender, receiver) = mpsc::channel(bufsz);
+
     let actor = StdinActor::new(receiver, output);
+
     let actor_handle = ActorHandle::new(sender);
+
     tokio::spawn(start(actor));
+
     actor_handle
 }

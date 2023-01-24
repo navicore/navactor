@@ -63,6 +63,7 @@ impl Actor for JsonDecoder {
                         datetime,
                         ..Default::default()
                     };
+
                     self.output.send(senv).await;
                 }
                 Err(error) => {
@@ -74,6 +75,7 @@ impl Actor for JsonDecoder {
                             path: None,
                             text: etxt,
                         };
+
                         respond_to.send(emsg).expect("can not return error");
                     }
                 }
@@ -85,6 +87,7 @@ impl Actor for JsonDecoder {
                     respond_to,
                     ..Default::default()
                 };
+
                 self.output.send(senv).await;
             }
         }
@@ -105,9 +108,14 @@ pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
             actor.handle_envelope(envelope).await;
         }
     }
+
     let (sender, receiver) = mpsc::channel(bufsz);
+
     let actor = JsonDecoder::new(receiver, output);
+
     let actor_handle = ActorHandle::new(sender);
+
     tokio::spawn(start(actor));
+
     actor_handle
 }

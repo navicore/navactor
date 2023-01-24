@@ -37,17 +37,21 @@ impl<'a> ActorHandle {
             respond_to: None,
             ..Default::default()
         };
+
         self.send(envelope).await;
     }
     /// request <-> response
     pub async fn ask(&self, message: Message) -> Message {
         let (send, recv) = oneshot::channel();
+
         let envelope = MessageEnvelope {
             message,
             respond_to: Some(send),
             ..Default::default()
         };
+
         self.send(envelope).await;
+
         recv.await.expect("other actor cannot reply")
     }
     /// set up a stream between two actors and the result will be the result of

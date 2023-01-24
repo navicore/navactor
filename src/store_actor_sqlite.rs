@@ -55,11 +55,13 @@ impl Actor for StoreActor {
                     log::trace!("handling LoadCmd for {}", path);
                     if let Some(dbconn) = &self.dbconn {
                         let rows: Vec<Message> = self.get_jrnl(dbconn, &path).await;
+
                         log::trace!(
                             "handling LoadCmd jrnl for {} items count: {}",
                             path,
                             rows.len()
                         );
+
                         for message in rows {
                             stream_to
                                 .send(message)
@@ -67,6 +69,7 @@ impl Actor for StoreActor {
                                 .expect("can not send jrnl event from helper");
                         }
                     }
+
                     stream_to
                         .send(Message::EndOfStream {})
                         .await
@@ -100,6 +103,7 @@ impl StoreActor {
             .bind(path)
             .try_map(|row: sqlx::sqlite::SqliteRow| {
                 let data_parsed: OffsetDateTimeWrapper = from_str(row.get(0)).unwrap();
+
                 let values: HashMap<i32, f64> =
                     serde_json::from_str(row.try_get(1).expect("cannot extract values"))
                         .map_err(|e| sqlx::Error::Decode(Box::new(e)))
@@ -126,6 +130,7 @@ impl StoreActor {
         // store this is a db with the key as 'path'
         if let Some(dbconn) = &self.dbconn {
             let dt_wrapper = OffsetDateTimeWrapper { datetime };
+
             let datetime_str = to_string(&dt_wrapper).unwrap();
 
             sqlx::query("INSERT INTO updates (path, timestamp, values_str) VALUES (?,?,?)")
@@ -135,6 +140,7 @@ impl StoreActor {
                 .execute(dbconn)
                 .await
                 .expect("db insert failed");
+
             log::trace!("jrnled Update for {}", path);
         } else {
             log::error!("db conn not set");
@@ -147,14 +153,18 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
     async fn init_db(namespace: String) -> sqlx::SqlitePool {
         // TODO: default is memory but file comes from nv cli
         let db_url_string: String = format!("{}.db", namespace);
+
         let db_url: &str = &db_url_string;
+
         let db_path = Path::new(db_url);
+
         if !db_path.exists() {
             match File::create(db_url) {
                 Ok(_) => log::debug!("File {} has been created", db_url),
                 Err(e) => log::warn!("Failed to create file {}: {}", db_url, e),
             }
         }
+
         let dbconn = SqlitePool::connect(db_url).await.expect("");
 
         // Create table if it doesn't exist
@@ -174,16 +184,23 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
 
     async fn start(mut actor: StoreActor, namespace: String) {
         let dbconn = init_db(namespace).await;
+
         actor.dbconn = Some(dbconn);
+
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
+
         actor.stop().await;
     }
 
     let (sender, receiver) = mpsc::channel(bufsz);
+
     let actor = StoreActor::new(receiver, None, namespace.clone());
+
     let actor_handle = ActorHandle::new(sender);
+
     tokio::spawn(start(actor, namespace));
+
     actor_handle
 }

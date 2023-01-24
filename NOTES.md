@@ -88,6 +88,18 @@ delivery, self initiated queries of or expressions of interest in other actors.
 TODO: what's missing to go to an agent metaphor?  How can an actor move itself
 from one namespace and host to another?
 
+### first impl of genes
+
+A gene has:
+* a set OR ranges of legal telemetry indexes
+* mapping of operators to their input indexes
+* mapping of operators to their output indexes
+* the GENE-SPEC artifact could be literate programming text+code, something beautiful
+* the GENE-SPEC scope is a node on a path.. 
+* the instantiated actor gets all the specs its path infers and inheritance is overridden by nearness
+* metadata is just data / telemetry arriving - so metatdata has GENE-SPECs too
+* metadata can be embedded into the system by any GENE-SPEC and overriden by dynamic metadata
+
 TODO
 --------
 

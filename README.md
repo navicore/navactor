@@ -8,9 +8,9 @@ Under construction - see [NOTES.md](NOTES.md)
 Overview
 ----------
 
-A CLI tool as lab for the actor programming use cases.
+A CLI *nix-style tool as lab for actor programming.
 
-Ingest piped streams of CRLF- delimited observations, send them to actors,
+Mission: Ingest piped streams of CRLF-delimited observations, send them to actors,
 implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
 processing, and persist.
 

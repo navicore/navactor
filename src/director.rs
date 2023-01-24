@@ -115,6 +115,7 @@ impl Director {
                     self.namespace,
                     path
                 );
+
                 actor
                     .integrate(message.clone(), String::from(path), store_actor)
                     .await
@@ -139,10 +140,15 @@ pub fn new(
             actor.handle_envelope(envelope).await;
         }
     }
+
     let (sender, receiver) = mpsc::channel(bufsz);
+
     let actor = Director::new(namespace.clone(), receiver, output, store_actor);
+
     let actor_handle = ActorHandle::new(sender);
+
     tokio::spawn(start(actor));
+
     log::debug!("{} started", namespace);
     actor_handle
 }
