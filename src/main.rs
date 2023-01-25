@@ -74,8 +74,14 @@ async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), Stri
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
 
     match input.ask(Message::ReadAllCmd {}).await {
-        EndOfStream {} => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
+        EndOfStream {} => {
+            log::trace!("end of stream");
+            Ok(())
+        }
+        e => {
+            log::error!("{:?}", e);
+            Err("END and response: sucks.".to_string())
+        }
     }
 }
 

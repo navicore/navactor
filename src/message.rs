@@ -44,13 +44,16 @@ pub enum Message {
         path: String,
         values: HashMap<i32, f64>,
     },
-    /// error propagation across actors
-    ErrorReport {
+    JsonParseError {
         text: String,
         datetime: OffsetDateTime,
         path: Option<String>,
     },
-
+    JrnlError {
+        text: String,
+        datetime: OffsetDateTime,
+        path: Option<String>,
+    },
     /// the actor init process is complicated in that the actors must recalculate
     /// their state from event source replays when they are first instantiated.
     /// EndOfStream is used to complete the jrnl stream at init time.

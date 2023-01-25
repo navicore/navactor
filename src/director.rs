@@ -39,19 +39,36 @@ impl Actor for Director {
                 // the store actor to jrnl this Update for this path here.
                 if let Message::Update { path: _, .. } = message {
                     if let Some(store_actor) = &self.store_actor {
-                        //store_actor.tell(message).await;
-                        _ = store_actor.ask(message).await; // waiting for confirm before
-                                                            // triggering pipeline and risking
-                                                            // process termination while store
-                                                            // actor is still writing
+                        // waiting for confirm before
+                        // triggering pipeline and risking
+                        // process termination while store
+                        // actor is still writing
+                        let jrnl_msg = store_actor.ask(message).await;
+                        if let Some(respond_to) = respond_to {
+                            match jrnl_msg {
+                                Message::EndOfStream {} => {
+                                    // reply with response if this is an 'ask' from the sender
+                                    respond_to
+                                        .send(response.clone())
+                                        .expect("can not reply to ask");
+                                }
+                                Message::JrnlError { .. } => {
+                                    respond_to.send(jrnl_msg).expect("can not reply to ask");
+                                }
+                                m => {
+                                    log::warn!("Unexpected store message: {:?}", m);
+                                }
+                            }
+                        }
+                    } else {
+                        // TODO: fix this DRY violation - it is here because this code supports non-persist
+                        // reply with response if this is an 'ask' from the sender
+                        if let Some(respond_to) = respond_to {
+                            respond_to
+                                .send(response.clone())
+                                .expect("can not reply to ask");
+                        }
                     }
-                }
-
-                // reply with response if this is an 'ask' from the sender
-                if let Some(respond_to) = respond_to {
-                    respond_to
-                        .send(response.clone())
-                        .expect("can not reply to ask");
                 }
 
                 // forward response if output is configured
