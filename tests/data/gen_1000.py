@@ -36,7 +36,7 @@ total_minutes = minutes_per_day * args.number_of_days
 # Generate observations for the number of devices specified
 device_ids = list(range(1, args.number_of_devices + 1))
 
-for i in range(minutes_per_day * args.observations_per_minute):
+for i in range(total_minutes * args.observations_per_minute):
     # Shuffle the list of device IDs
     random.shuffle(device_ids)
     for device_id in device_ids:
