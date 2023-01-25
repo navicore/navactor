@@ -10,21 +10,28 @@ import pytz
 from datetime import datetime, timedelta
 import argparse
 
-# Initialize starting datetime
-start_datetime = datetime(2023, 1, 3, 0, 0, 0, tzinfo=pytz.UTC)
-
-# Create an ArgumentParser object
 parser = argparse.ArgumentParser()
 
-# Add the "observations_per_minute" and "number_of_devices" arguments
-parser.add_argument("observations_per_minute", type=int, help="Number of observations per minute per device.")
+parser.add_argument("observations_per_minute", type=int,
+                    help="Number of observations per minute per device.")
 parser.add_argument("number_of_devices", type=int, help="Number of devices.")
+parser.add_argument("number_of_days", type=int,
+                    help="Number of days to simulate.")
+parser.add_argument("start_date",
+                    type=str, help="Start date in format yyyy-mm-dd.")
 
 # Parse the command-line arguments
 args = parser.parse_args()
 
+# Convert the start_date string to a datetime object
+start_date = datetime.strptime(args.start_date, "%Y-%m-%d")
+start_datetime = datetime(start_date.year,
+                          start_date.month,
+                          start_date.day, 0, 0, 0, tzinfo=pytz.UTC)
+
 # Calculate the number of observations to generate
 minutes_per_day = 24 * 60
+total_minutes = minutes_per_day * args.number_of_days
 
 # Generate observations for the number of devices specified
 device_ids = list(range(1, args.number_of_devices + 1))
