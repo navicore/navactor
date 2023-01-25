@@ -173,7 +173,7 @@ impl StoreActor {
                 }
                 Err(e) => {
                     log::warn!("jrnling for {} failed: {:?}", path, e);
-                    return Err(e);
+                    Err(e)
                 }
             }
         } else {
