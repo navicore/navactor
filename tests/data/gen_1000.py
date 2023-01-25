@@ -28,12 +28,19 @@ for i in range(seconds_per_day * observations_per_second):
         # Generate a random number of milliseconds
         random_milliseconds = random.randint(-500, 500)
         # Increment datetime by 1 second plus random milliseconds
-        current_datetime = start_datetime + timedelta(seconds=i / observations_per_second, milliseconds=random_milliseconds)
-        
+        current_datetime = start_datetime + timedelta(
+                seconds=i / observations_per_second,
+                milliseconds=random_milliseconds)
         # Randomize values for keys 1, 2, and 3
-        values = {"1": round(random.uniform(0, 100), 2), "2": random.randint(0, 200), "3": round(random.uniform(0, 10), 2)}
-        # Create record
-        record = {"path": f"/actors/{device_id}", "datetime": current_datetime.isoformat(), "values": values}
-
-        # Print record as JSON
-        print(json.dumps(record))
+        values = {"1": round(random.uniform(0, 100), 2),
+                  "2": random.randint(0, 200),
+                  "3": round(random.uniform(0, 10), 2)}
+        # Generate random number to decide whether to suppress this observation
+        suppress_observation = random.randint(1, 10)
+        if suppress_observation != 10:
+            # Create record
+            record = {"path": f"/actors/{device_id}",
+                      "datetime": current_datetime.isoformat(),
+                      "values": values}
+            # Print record as JSON
+            print(json.dumps(record))
