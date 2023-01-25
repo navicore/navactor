@@ -130,5 +130,5 @@ fn main() {
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
 
-    log::info!("nv stopped");
+    log::info!("nv stopped.");
 }
