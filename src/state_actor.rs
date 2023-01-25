@@ -80,20 +80,18 @@ impl StateActor {
         let mut updated = false;
         match message {
             Message::Update { values, .. } => {
-                log::trace!("{} update", self.path);
                 updated = true;
 
                 self.state.extend(&values); //update state
             }
             Message::Query { path: _ } => {
-                log::trace!("{} inspect", self.path);
                 // no impl because all "respond_to" requests get a state_rpt
             }
             Message::EndOfStream {} => {
-                log::trace!("{} end of stream", self.path);
+                log::trace!("{} end of update stream", self.path);
             }
             m => {
-                log::warn!("unexpected message {:?}", m);
+                log::warn!("unexpected message in update stream: {:?}", m);
             }
         }
         updated

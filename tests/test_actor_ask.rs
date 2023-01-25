@@ -71,13 +71,13 @@ fn test_decoder_ask() {
 
         // init state
         let cmd = Message::PrintOneCmd {
-            text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
+            text: String::from("{ \"path\": \"/actors/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
         json_decoder_actor.tell(cmd).await;
 
         // update state
         let cmd = Message::PrintOneCmd {
-            text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
+            text: String::from("{ \"path\": \"/actors/1\", \"datetime\": \"2023-01-11T23:17:57+5000\", \"values\": {\"1\": 1.8} }"),
         };
         let reply = json_decoder_actor.ask(cmd).await;
 

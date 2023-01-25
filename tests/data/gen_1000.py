@@ -4,6 +4,12 @@
 # { "path": "/actors/1", "datetime": "2023-01-11T23:17:57+0000",
 # "values": {"1": 10.46, "2": 102, "3": 3.004} }
 
+# performance notes:
+#
+# 1 day 100 devices 10 per sec took 10 minutes to ingest 1.2 million recs.
+# - will try next to run w/o any println output actor
+#
+
 import json
 import random
 import pytz

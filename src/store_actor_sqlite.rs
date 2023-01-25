@@ -4,7 +4,7 @@ use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
-use serde_json::{from_str, to_string};
+use serde_json::from_str;
 use sqlx::Row;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
@@ -39,15 +39,26 @@ impl Actor for StoreActor {
                 path,
                 datetime,
                 values,
-            } => {
-                self.insert_update(&path, datetime, values).await;
-
-                if let Some(respond_to) = respond_to {
-                    respond_to
-                        .send(Message::EndOfStream {})
-                        .expect("cannot respond to 'ask' with confirmation");
+            } => match self.insert_update(&path, datetime, values).await {
+                Ok(_) => {
+                    if let Some(respond_to) = respond_to {
+                        respond_to
+                            .send(Message::EndOfStream {})
+                            .expect("cannot respond to 'ask' with confirmation");
+                    }
                 }
-            }
+                Err(e) => {
+                    if let Some(respond_to) = respond_to {
+                        respond_to
+                            .send(Message::JrnlError {
+                                text: e.to_string(),
+                                datetime: OffsetDateTime::now_utc(),
+                                path: Some(path),
+                            })
+                            .expect("cannot respond to 'ask' with confirmation");
+                    }
+                }
+            },
 
             Message::LoadCmd { path } => {
                 // play jrnl to resurected actor so that they can process 'next_message'
@@ -99,10 +110,14 @@ impl StoreActor {
 
     /// retrieve the time series of events (observations) for the actor that is being resurrected
     async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> Vec<Message> {
-        sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
+        let v = sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
             .bind(path)
             .try_map(|row: sqlx::sqlite::SqliteRow| {
-                let data_parsed: OffsetDateTimeWrapper = from_str(row.get(0)).unwrap();
+                //let date_parsed: OffsetDateTimeWrapper = from_str(row.get(0)).unwrap();
+                let date_parsed_i64: i64 = from_str(row.get(0)).unwrap();
+                let date_parsed: OffsetDateTimeWrapper = OffsetDateTimeWrapper {
+                    datetime_i64: date_parsed_i64,
+                };
 
                 let values: HashMap<i32, f64> =
                     serde_json::from_str(row.try_get(1).expect("cannot extract values"))
@@ -111,13 +126,27 @@ impl StoreActor {
 
                 Ok(Message::Update {
                     path: String::from(path),
-                    datetime: data_parsed.datetime,
+                    datetime: date_parsed.to_ts(),
                     values,
                 })
             })
             .fetch_all(dbconn)
             .await
-            .expect("cannot load from db")
+            .expect("cannot load from db");
+        log::trace!(
+            "fetched jrnl size {} for {}. first rec: {:?}",
+            v.len(),
+            path,
+            v.first()
+        );
+        log::trace!(
+            "fetched jrnl size {} for {}. last rec: {:?}",
+            v.len(),
+            path,
+            v.last()
+        );
+
+        v
     }
 
     /// record the latest event in the actors state
@@ -126,24 +155,30 @@ impl StoreActor {
         path: &String,
         datetime: OffsetDateTime,
         values: HashMap<i32, f64>,
-    ) {
+    ) -> Result<(), sqlx::error::Error> {
         // store this is a db with the key as 'path'
         if let Some(dbconn) = &self.dbconn {
-            let dt_wrapper = OffsetDateTimeWrapper { datetime };
+            let dt_wrapper = OffsetDateTimeWrapper::new(datetime);
 
-            let datetime_str = to_string(&dt_wrapper).unwrap();
-
-            sqlx::query("INSERT INTO updates (path, timestamp, values_str) VALUES (?,?,?)")
+            match sqlx::query("INSERT INTO updates (path, timestamp, values_str) VALUES (?,?,?)")
                 .bind(path.clone())
-                .bind(datetime_str)
+                .bind(dt_wrapper.datetime_i64)
                 .bind(serde_json::to_string(&values).expect("cannot serialize values"))
                 .execute(dbconn)
                 .await
-                .expect("db insert failed");
-
-            log::trace!("jrnled Update for {}", path);
+            {
+                Ok(_) => {
+                    log::trace!("jrnled Update for {}", path);
+                    Ok(())
+                }
+                Err(e) => {
+                    log::warn!("jrnling for {} failed: {:?}", path, e);
+                    Err(e)
+                }
+            }
         } else {
             log::error!("db conn not set");
+            Ok(())
         }
     }
 }
@@ -172,7 +207,8 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
             "CREATE TABLE IF NOT EXISTS updates (
               path TEXT NOT NULL,
               timestamp TEXT NOT NULL,
-              values_str TEXT NOT NULL
+              values_str TEXT NOT NULL,
+              PRIMARY KEY (path, timestamp)
         )",
         )
         .execute(&dbconn)

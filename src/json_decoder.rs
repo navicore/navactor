@@ -49,6 +49,7 @@ impl Actor for JsonDecoder {
         match &message {
             Message::PrintOneCmd { text } => match extract_values_from_json(text) {
                 Ok(observations) => {
+                    log::trace!("json parsed");
                     //forward observations to actor
                     let msg = Message::Update {
                         path: String::from(&observations.path),
@@ -70,7 +71,7 @@ impl Actor for JsonDecoder {
                     log::warn!("json parse error: {}", error);
                     if let Some(respond_to) = respond_to {
                         let etxt = format!("json parse error: {}", error);
-                        let emsg = Message::ErrorReport {
+                        let emsg = Message::JsonParseError {
                             datetime: OffsetDateTime::now_utc(),
                             path: None,
                             text: etxt,
