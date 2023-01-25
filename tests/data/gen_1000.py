@@ -13,23 +13,21 @@ from datetime import datetime, timedelta
 start_datetime = datetime(2023, 1, 3, 0, 0, 0, tzinfo=pytz.UTC)
 
 # Calculate the number of observations to generate
-observations_per_second = 10
-observation_rate = 5
-seconds_per_day = 24 * 60 * 60
-observations_per_day = observations_per_second * observation_rate
+observations_per_minute = 10
+minutes_per_day = 24 * 60
 
 # Generate observations for 10 devices
 device_ids = list(range(1, 11))
 
-for i in range(seconds_per_day * observations_per_second):
+for i in range(minutes_per_day * observations_per_minute):
     # Shuffle the list of device IDs
     random.shuffle(device_ids)
     for device_id in device_ids:
         # Generate a random number of milliseconds
         random_milliseconds = random.randint(-500, 500)
-        # Increment datetime by 1 second plus random milliseconds
+        # Increment datetime by 1 minute plus random milliseconds
         current_datetime = start_datetime + timedelta(
-                seconds=i / observations_per_second,
+                minutes=i / observations_per_minute,
                 milliseconds=random_milliseconds)
         # Randomize values for keys 1, 2, and 3
         values = {"1": round(random.uniform(0, 100), 2),
