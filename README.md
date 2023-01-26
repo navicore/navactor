@@ -23,7 +23,8 @@ powerful `awk`.
 The ideas that inspire Navactor and DtLab come from CS insights from the early
 eighties around tuple spaces for coordination languages and then later around 
 the actor programming model (TODO: links) - and now also influenced by emerging
-industry IOT medadata standards encoded in RDF that suggest dynamic graphs.
+industry IOT medadata standards encoded in RDF that suggest dynamic graphs of
+digital twins.
 
 ![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.png)
 
