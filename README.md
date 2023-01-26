@@ -7,7 +7,7 @@ Under construction - see [NOTES.md](NOTES.md)
 
 Available as a crate: https://crates.io/crates/navactor
 
-![Fun Mutation of DtLab Graphic](images/dtlab-mutant-1.png)
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-2.png)
 
 Overview
 ----------
