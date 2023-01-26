@@ -184,10 +184,11 @@ impl StoreActor {
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
-    async fn init_db(namespace: String) -> sqlx::SqlitePool {
-        // TODO: default is memory but file comes from nv cli
+pub fn new(bufsz: usize, namespace: String, write_ahead_logging: bool) -> ActorHandle {
+    async fn init_db(namespace: String, write_ahead_logging: bool) -> sqlx::SqlitePool {
+        //"sqlite://mydb.sqlite?journal_mode=wal"
         let db_url_string: String = format!("{}.db", namespace);
+        //let db_url_string: String = format!("{}.db?journal_mode=wal", namespace);
 
         let db_url: &str = &db_url_string;
 
@@ -201,6 +202,21 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
         }
 
         let dbconn = SqlitePool::connect(db_url).await.expect("");
+
+        if write_ahead_logging {
+            sqlx::query("PRAGMA journal_mode = WAL;")
+                .execute(&dbconn)
+                .await
+                .expect("");
+        }
+
+        // report on journal mode
+        let rows = sqlx::query("PRAGMA journal_mode;")
+            .fetch_all(&dbconn)
+            .await
+            .expect("can not check journal mode");
+        let journal_mode: String = rows[0].get("journal_mode");
+        log::debug!("connected to db in journal_mode: {:?}", journal_mode);
 
         // Create table if it doesn't exist
         sqlx::query(
@@ -218,8 +234,8 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
         dbconn
     }
 
-    async fn start(mut actor: StoreActor, namespace: String) {
-        let dbconn = init_db(namespace).await;
+    async fn start(mut actor: StoreActor, namespace: String, write_ahead_logging: bool) {
+        let dbconn = init_db(namespace, write_ahead_logging).await;
 
         actor.dbconn = Some(dbconn);
 
@@ -236,7 +252,7 @@ pub fn new(bufsz: usize, namespace: String) -> ActorHandle {
 
     let actor_handle = ActorHandle::new(sender);
 
-    tokio::spawn(start(actor, namespace));
+    tokio::spawn(start(actor, namespace, write_ahead_logging));
 
     actor_handle
 }
