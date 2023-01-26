@@ -23,6 +23,10 @@ struct Cli {
     buffer: Option<usize>,
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    silent: Option<bool>,
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    memory_only: Option<bool>,
     #[command(subcommand)]
     command: Commands,
 }
@@ -42,32 +46,35 @@ struct Namespace {
 }
 
 #[derive(Args)]
-struct NoArg {}
-
-#[derive(Args)]
 struct NvPath {
     /// actor path
     path: String,
 }
 
-#[derive(Args)]
-struct Extractor {
-    /// name of extractor
-    extractor: String,
-}
-
-fn update(namespace: Namespace, bufsz: usize, runtime: Runtime) {
-    let result = run_async_update(namespace, bufsz);
+fn update(namespace: Namespace, bufsz: usize, runtime: Runtime, silent: bool, memory_only: bool) {
+    let result = run_async_update(namespace, bufsz, silent, memory_only);
     runtime.block_on(result).expect("An error occurred")
 }
 
-async fn run_async_update(namespace: Namespace, bufsz: usize) -> Result<(), String> {
-    let output = stdout_actor::new(bufsz); // print state changes
+async fn run_async_update(
+    namespace: Namespace,
+    bufsz: usize,
+    silent: bool,
+    memory_only: bool,
+) -> Result<(), String> {
+    let output = if silent {
+        None
+    } else {
+        Some(stdout_actor::new(bufsz)) // print state changes
+    };
 
-    let store_actor = store_actor_sqlite::new(bufsz, namespace.namespace.clone()); // print state changes
+    let store_actor = if memory_only {
+        None
+    } else {
+        Some(store_actor_sqlite::new(bufsz, namespace.namespace.clone()))
+    };
 
-    let director_w_persist =
-        director::new(namespace.namespace, bufsz, Some(output), Some(store_actor));
+    let director_w_persist = director::new(namespace.namespace, bufsz, output, store_actor);
 
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
 
@@ -128,11 +135,13 @@ fn main() {
 
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
+    let silent: bool = cli.silent.unwrap_or(false);
+    let memory_only: bool = cli.memory_only.unwrap_or(false);
 
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
 
     match cli.command {
-        Commands::Update(namespace) => update(namespace, bufsz, runtime),
+        Commands::Update(namespace) => update(namespace, bufsz, runtime, silent, memory_only),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
 
