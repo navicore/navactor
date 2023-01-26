@@ -116,6 +116,20 @@ TODO
 8. default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator
 9. code other built-ins for ranges of keys for the default type
 
+performance 
+------------
+
+* 1 day 100 devices 10 per sec took 10 minutes to ingest 1.2 million recs.
+* 1 day 100 devices 10 per sec took 11 minutes to ingest 1.2 million recs.
+* - will try next to run w/o any println output actor
+* 1 day 100 devices 10 per sec took 9 minutes to ingest 1.2 million recs.
+* - will try next to run w/o any persist actor
+* 1 day 100 devices 10 per sec took 1 minutes to ingest 1.2 million recs.
+* - will try next to run with WAL journal_mode
+* 1 day 100 devices 10 per sec took 7 minutes to ingest 1.2 million recs.
+* 36% improvement!
+
+
 MORE
 ---------
 
