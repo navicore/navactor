@@ -82,6 +82,7 @@ cat ./tests/data/single_observation_1_3.json | RUST_LOG="debug,sqlx=warn" nv upd
 export RUST_LOG="debug,sqlx=warn"
 ```
 
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-5.png)
 ----------
 
 `nv` was bootstrapped from Alice Ryhl's very excellent and instructive blog post https://ryhl.io/blog/actors-with-tokio
