@@ -20,7 +20,7 @@ The `nv` command will eventually also work as a networked API server but the
 initial model for workflow and performance is data-wrangling via the classic
 powerful `awk`.
 
-![Fun Mutation of DtLab Graphic](images/dtlab-mutant-2.png)
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.png)
 
 Status
 ----------
