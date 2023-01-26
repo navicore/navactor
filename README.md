@@ -4,8 +4,6 @@ Navactor
 Under construction - see [NOTES.md](NOTES.md)
 
 # NOT READY FOR REAL WORK
-# NOT READY FOR REAL WORK
-# NOT READY FOR REAL WORK
 
 Available as a crate: https://crates.io/crates/navactor
 
