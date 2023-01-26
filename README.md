@@ -5,6 +5,10 @@ Under construction - see [NOTES.md](NOTES.md)
 
 # NOT READY FOR REAL WORK YET
 
+Available as a crate: https://crates.io/crates/navactor
+
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-1.png)
+
 Overview
 ----------
 

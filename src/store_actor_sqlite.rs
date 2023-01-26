@@ -186,9 +186,7 @@ impl StoreActor {
 /// actor handle public constructor
 pub fn new(bufsz: usize, namespace: String, write_ahead_logging: bool) -> ActorHandle {
     async fn init_db(namespace: String, write_ahead_logging: bool) -> sqlx::SqlitePool {
-        //"sqlite://mydb.sqlite?journal_mode=wal"
         let db_url_string: String = format!("{}.db", namespace);
-        //let db_url_string: String = format!("{}.db?journal_mode=wal", namespace);
 
         let db_url: &str = &db_url_string;
 
