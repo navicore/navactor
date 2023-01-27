@@ -63,16 +63,16 @@ Usage
 nv -h
 
 #create an actor with telemetry
-cat ./tests/data/single_observation_1_1.json | cargo run -- update actors
+cat ./tests/data/single_observation_1_1.json | nv update actors
 
 # inspect the state of the actor
-cargo run -- inspect /actors/one
+nv inspect /actors/one
 
-cat ./tests/data/single_observation_1_2.json | cargo run -- update actors
-cat ./tests/data/single_observation_1_3.json | cargo run -- update actors
-cargo run -- inspect /actors/one
-cat ./tests/data/single_observation_2_2.json | cargo run -- update actors
-cat ./tests/data/single_observation_2_3.json | cargo run -- update actors
+cat ./tests/data/single_observation_1_2.json | nv update actors
+cat ./tests/data/single_observation_1_3.json | nv update actors
+nv inspect /actors/one
+cat ./tests/data/single_observation_2_2.json | nv update actors
+cat ./tests/data/single_observation_2_3.json | nv update actors
 
 ```
 
