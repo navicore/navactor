@@ -58,6 +58,8 @@ cargo install --path .
 Usage
 ----------
 
+if running from source, replace `nv` with `cargo run --`
+
 ```bash
 #help
 nv -h
