@@ -126,7 +126,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
         .to_str()
         .unwrap();
 
-    log::trace!("inspect of ns {}", ns);
+    log::trace!("inspect of ns {ns}");
     let output = stdout_actor::new(bufsz); // print state
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false); // print state
@@ -156,7 +156,7 @@ fn main() {
     let memory_only: bool = cli.memory_only.unwrap_or(false);
     let write_ahead_logging: bool = cli.wal.unwrap_or(false);
 
-    let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {}", e));
+    let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
     match cli.command {
         Commands::Update(namespace) => update(

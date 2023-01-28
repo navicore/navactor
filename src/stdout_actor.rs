@@ -22,9 +22,9 @@ impl Actor for StdoutActor {
         } = envelope;
 
         match message {
-            Message::PrintOneCmd { text } => println!("{}", text),
+            Message::PrintOneCmd { text } => println!("{text}"),
             Message::StateReport { path, values, .. } => {
-                println!("{} current state: {:?}", path, values)
+                println!("{path} current state: {:?}", values)
             }
             Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to {
