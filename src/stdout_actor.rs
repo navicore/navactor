@@ -24,7 +24,7 @@ impl Actor for StdoutActor {
         match message {
             Message::PrintOneCmd { text } => println!("{text}"),
             Message::StateReport { path, values, .. } => {
-                println!("{path} current state: {:?}", values)
+                println!("{path} current state: {values:?}")
             }
             Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to {
