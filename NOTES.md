@@ -118,6 +118,18 @@ TODO
 8. default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator
 9. code other built-ins for ranges of keys for the default type
 
+for #8 above - the default gene is all rust, don't figure out config yet.
+* the default gene reserves keys 100 - 199 for guages
+* the guages rewrite the index they use as input
+* the default gene reserves keys 200 - 199 for accumulators
+* the accumulators rewrite the index they use as input
+
+parts for default gene (or any gene):
+1. factor interface to get operator with an int (key)
+1. operator trait that is a function
+  a. input accepts Update msg, Actor state
+  b. returns new actor state to be set
+
 performance 
 ------------
 
