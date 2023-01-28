@@ -85,7 +85,7 @@ impl Gene for DefaultGene {
                         }
                         i => {
                             return Err(OperatorError {
-                                reason: format!("unsupported idx: {}", i),
+                                reason: format!("unsupported idx: {i}"),
                             })
                         }
                     }
