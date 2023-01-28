@@ -53,7 +53,7 @@ impl Operator for AccumOperator {
     }
 }
 
-struct DefaultGene {}
+pub struct DefaultGene {}
 impl Gene for DefaultGene {
     fn apply_operators(&self, mut state: HashMap<i32, f64>, update: Message) -> Result<()> {
         if let Message::Update {

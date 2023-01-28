@@ -17,11 +17,17 @@ use tokio::runtime::Runtime;
 )] // Read from `Cargo.toml`
 #[command(propagate_version = true)]
 struct Cli {
-    #[arg(short, long)]
+    #[arg(
+        short,
+        long,
+        help = "Event store",
+        long_help = "This file is the journal of all input.  Delete this file to cause the actors to calculate their state from only new observations."
+    )]
     dbfile: Option<String>,
     #[arg(
         short,
         long,
+        help = "Actor mailbox size",
         long_help = "The number of unread messages allowed in an actor's mailbox.  Small numbers can cause the system to single-thread / serialize work.  Large numbers can harm data integrity / commits and leave a lot of unfinished work if the server stops."
     )]
     buffer: Option<usize>,
@@ -29,8 +35,10 @@ struct Cli {
     verbose: u8,
     #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
     silent: Option<bool>,
-    #[arg(long, action = clap::ArgAction::SetTrue, help = "no on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
+    #[arg(long, action = clap::ArgAction::SetTrue, help = "No on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
     memory_only: Option<bool>,
+    #[arg(long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
+    disable_duplicate_detection: Option<bool>,
     #[arg(long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
     wal: Option<bool>,
     #[command(subcommand)]
@@ -64,8 +72,16 @@ fn update(
     silent: bool,
     memory_only: bool,
     write_ahead_logging: bool,
+    disable_duplicate_detection: bool,
 ) {
-    let result = run_async_update(namespace, bufsz, silent, memory_only, write_ahead_logging);
+    let result = run_async_update(
+        namespace,
+        bufsz,
+        silent,
+        memory_only,
+        write_ahead_logging,
+        disable_duplicate_detection,
+    );
     runtime.block_on(result).expect("An error occurred")
 }
 
@@ -75,6 +91,7 @@ async fn run_async_update(
     silent: bool,
     memory_only: bool,
     write_ahead_logging: bool,
+    disable_duplicate_detection: bool,
 ) -> Result<(), String> {
     let output = if silent {
         None
@@ -89,6 +106,7 @@ async fn run_async_update(
             bufsz,
             namespace.namespace.clone(),
             write_ahead_logging,
+            disable_duplicate_detection,
         ))
     };
 
@@ -129,7 +147,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     log::trace!("inspect of ns {ns}");
     let output = stdout_actor::new(bufsz); // print state
 
-    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false); // print state
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
 
     let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
 
@@ -155,6 +173,7 @@ fn main() {
     let silent: bool = cli.silent.unwrap_or(false);
     let memory_only: bool = cli.memory_only.unwrap_or(false);
     let write_ahead_logging: bool = cli.wal.unwrap_or(false);
+    let disable_duplicate_detection: bool = cli.disable_duplicate_detection.unwrap_or(false);
 
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
@@ -166,6 +185,7 @@ fn main() {
             silent,
             memory_only,
             write_ahead_logging,
+            disable_duplicate_detection,
         ),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }
