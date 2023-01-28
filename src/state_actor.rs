@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::genes::Gene;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
@@ -15,6 +16,7 @@ pub struct StateActor {
     pub output: Option<ActorHandle>,
     pub state: HashMap<i32, f64>,
     path: String,
+    //gene: &Gene,
 }
 
 #[async_trait]
@@ -109,6 +111,7 @@ impl StateActor {
         path: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
         output: Option<ActorHandle>,
+        //gene: &Gene,
     ) -> Self {
         let state = HashMap::new(); // TODO: load from event store
         StateActor {

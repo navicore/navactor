@@ -34,40 +34,53 @@ impl Actor for Director {
 
         match &message {
             Message::Update { path, .. } | Message::Query { path } => {
+                // resurrect and forward if this is either Update or Query
                 let response = self.update_actor(path, message.clone()).await;
 
                 // the store actor to jrnl this Update for this path here.
-                if let Message::Update { path: _, .. } = message {
-                    if let Some(store_actor) = &self.store_actor {
-                        // waiting for confirm before
-                        // triggering pipeline and risking
-                        // process termination while store
-                        // actor is still writing
-                        let jrnl_msg = store_actor.ask(message).await;
-                        if let Some(respond_to) = respond_to {
-                            match jrnl_msg {
-                                Message::EndOfStream {} => {
-                                    // reply with response if this is an 'ask' from the sender
-                                    respond_to
-                                        .send(response.clone())
-                                        .expect("can not reply to ask");
-                                }
-                                Message::JrnlError { .. } => {
-                                    respond_to.send(jrnl_msg).expect("can not reply to ask");
-                                }
-                                m => {
-                                    log::warn!("Unexpected store message: {:?}", m);
+                match message {
+                    Message::Update { path: _, .. } => {
+                        if let Some(store_actor) = &self.store_actor {
+                            // waiting for confirm before
+                            // triggering pipeline and risking
+                            // process termination while store
+                            // actor is still writing
+                            let jrnl_msg = store_actor.ask(message).await;
+                            if let Some(respond_to) = respond_to {
+                                match jrnl_msg {
+                                    Message::EndOfStream {} => {
+                                        // reply with response if this is an 'ask' from the sender
+                                        respond_to
+                                            .send(response.clone())
+                                            .expect("can not reply to ask");
+                                    }
+                                    Message::JrnlError { .. } => {
+                                        respond_to.send(jrnl_msg).expect("can not reply to ask");
+                                    }
+                                    m => {
+                                        log::warn!("Unexpected store message: {:?}", m);
+                                    }
                                 }
                             }
+                        } else {
+                            // TODO: fix this DRY violation - it is here because this code supports non-persist
+                            // reply with response if this is an 'ask' from the sender
+                            if let Some(respond_to) = respond_to {
+                                respond_to
+                                    .send(response.clone())
+                                    .expect("can not reply to ask");
+                            }
                         }
-                    } else {
-                        // TODO: fix this DRY violation - it is here because this code supports non-persist
-                        // reply with response if this is an 'ask' from the sender
+                    }
+                    Message::Query { path: _, .. } => {
                         if let Some(respond_to) = respond_to {
                             respond_to
                                 .send(response.clone())
                                 .expect("can not reply to ask");
                         }
+                    }
+                    m => {
+                        log::warn!("unexpected message: {:?}", m);
                     }
                 }
 
@@ -119,11 +132,11 @@ impl Director {
     }
 
     async fn update_actor(&mut self, path: &String, message: Message) -> Message {
-        let actor_is_in_init = self.actors.get(path).is_none();
-        let actor = self
-            .actors
-            .entry(path.clone())
-            .or_insert_with(|| state_actor::new(path.clone(), 8, None));
+        let mut actor_is_in_init = false;
+        let actor = self.actors.entry(path.clone()).or_insert_with(|| {
+            actor_is_in_init = true;
+            state_actor::new(path.clone(), 8, None)
+        });
 
         match &self.store_actor {
             Some(store_actor) if actor_is_in_init => {

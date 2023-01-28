@@ -7,3 +7,4 @@ pub mod state_actor;
 pub mod stdin_actor;
 pub mod stdout_actor;
 pub mod store_actor_sqlite;
+pub mod genes;

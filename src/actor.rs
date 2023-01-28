@@ -83,11 +83,7 @@ impl<'a> ActorHandle {
 
         recv.await.expect("other actor cannot reply")
     }
-}
 
-/// ActorHandle is the only API for actors.  ActorHandle(s) may be passed
-/// around like erlang pids
-impl ActorHandle {
     // ActorHandle constructor is an internal API use in the convenience functions
     // of the various per-actor ActorHandle impls
     #[doc(hidden)]
