@@ -105,3 +105,9 @@ impl DefaultGene {
         Self {}
     }
 }
+
+impl Default for DefaultGene {
+    fn default() -> Self {
+        Self::new()
+    }
+}
