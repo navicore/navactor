@@ -37,6 +37,13 @@ impl Actor for Director {
                 // resurrect and forward if this is either Update or Query
                 let response = self.update_actor(path, message.clone()).await;
 
+                // TODO: need to jrnl the record first if we are to avoid double counting
+                // TODO: need to jrnl the record first if we are to avoid double counting
+                // TODO: need to jrnl the record first if we are to avoid double counting
+                // TODO: need to jrnl the record first if we are to avoid double counting
+                // TODO: need to jrnl the record first if we are to avoid double counting
+                // TODO: need to jrnl the record first if we are to avoid double counting
+
                 // the store actor to jrnl this Update for this path here.
                 match message {
                     Message::Update { path: _, .. } => {

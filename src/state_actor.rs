@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::genes::DefaultGene;
 use crate::genes::Gene;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
@@ -8,6 +9,12 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
+// TODO: reject late reporters based on genes
+// TODO: reject late reporters based on genes
+// TODO: reject late reporters based on genes
+// TODO: reject late reporters based on genes
+// TODO: by default, counters are ok for late reports but guages are not
+
 /// the state actor is the heart of the system.  each digital twin has an
 /// instance of actor keeping state computed from an arriving stream of
 /// observations.
@@ -15,8 +22,8 @@ pub struct StateActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: Option<ActorHandle>,
     pub state: HashMap<i32, f64>,
-    path: String,
-    //gene: &Gene,
+    pub path: String,
+    pub gene: Box<dyn Gene + Send + Sync>,
 }
 
 #[async_trait]
@@ -113,12 +120,15 @@ impl StateActor {
         output: Option<ActorHandle>,
         //gene: &Gene,
     ) -> Self {
+        let gene = Box::new(DefaultGene::new());
+        //gene: Box<dyn Gene>,
         let state = HashMap::new(); // TODO: load from event store
         StateActor {
             path,
             receiver,
             output,
             state,
+            gene,
         }
     }
 }

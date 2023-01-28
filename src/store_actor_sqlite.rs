@@ -17,6 +17,7 @@ pub struct StoreActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub dbconn: Option<sqlx::SqlitePool>,
     pub namespace: String,
+    pub disable_duplicate_detection: bool,
 }
 
 #[async_trait]
@@ -31,6 +32,7 @@ impl Actor for StoreActor {
             message,
             respond_to,
             stream_to,
+            datetime: sequence,
             ..
         } = envelope;
 
@@ -39,26 +41,34 @@ impl Actor for StoreActor {
                 path,
                 datetime,
                 values,
-            } => match self.insert_update(&path, datetime, values).await {
-                Ok(_) => {
-                    if let Some(respond_to) = respond_to {
-                        respond_to
-                            .send(Message::EndOfStream {})
-                            .expect("cannot respond to 'ask' with confirmation");
+            } => {
+                // if we don't want to reject dupes, use the envelope clock for key
+                let dt = if self.disable_duplicate_detection {
+                    sequence
+                } else {
+                    datetime
+                };
+                match self.insert_update(&path, dt, sequence, values).await {
+                    Ok(_) => {
+                        if let Some(respond_to) = respond_to {
+                            respond_to
+                                .send(Message::EndOfStream {})
+                                .expect("cannot respond to 'ask' with confirmation");
+                        }
+                    }
+                    Err(e) => {
+                        if let Some(respond_to) = respond_to {
+                            respond_to
+                                .send(Message::JrnlError {
+                                    text: e.to_string(),
+                                    datetime: OffsetDateTime::now_utc(),
+                                    path: Some(path),
+                                })
+                                .expect("cannot respond to 'ask' with confirmation");
+                        }
                     }
                 }
-                Err(e) => {
-                    if let Some(respond_to) = respond_to {
-                        respond_to
-                            .send(Message::JrnlError {
-                                text: e.to_string(),
-                                datetime: OffsetDateTime::now_utc(),
-                                path: Some(path),
-                            })
-                            .expect("cannot respond to 'ask' with confirmation");
-                    }
-                }
-            },
+            }
 
             Message::LoadCmd { path } => {
                 // play jrnl to resurected actor so that they can process 'next_message'
@@ -100,11 +110,13 @@ impl StoreActor {
         receiver: mpsc::Receiver<MessageEnvelope>,
         dbconn: Option<sqlx::SqlitePool>,
         namespace: String,
+        disable_duplicate_detection: bool,
     ) -> Self {
         StoreActor {
             receiver,
             dbconn,
             namespace,
+            disable_duplicate_detection,
         }
     }
 
@@ -154,18 +166,23 @@ impl StoreActor {
         &self,
         path: &String,
         datetime: OffsetDateTime,
+        sequence: OffsetDateTime,
         values: HashMap<i32, f64>,
     ) -> Result<(), sqlx::error::Error> {
         // store this is a db with the key as 'path'
         if let Some(dbconn) = &self.dbconn {
             let dt_wrapper = OffsetDateTimeWrapper::new(datetime);
+            let sequence_wrapper = OffsetDateTimeWrapper::new(sequence);
 
-            match sqlx::query("INSERT INTO updates (path, timestamp, values_str) VALUES (?,?,?)")
-                .bind(path.clone())
-                .bind(dt_wrapper.datetime_i64)
-                .bind(serde_json::to_string(&values).expect("cannot serialize values"))
-                .execute(dbconn)
-                .await
+            match sqlx::query(
+                "INSERT INTO updates (path, timestamp, sequence, values_str) VALUES (?,?,?,?)",
+            )
+            .bind(path.clone())
+            .bind(dt_wrapper.datetime_i64)
+            .bind(sequence_wrapper.datetime_i64)
+            .bind(serde_json::to_string(&values).expect("cannot serialize values"))
+            .execute(dbconn)
+            .await
             {
                 Ok(_) => {
                     log::trace!("jrnled Update for {}", path);
@@ -184,7 +201,12 @@ impl StoreActor {
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, namespace: String, write_ahead_logging: bool) -> ActorHandle {
+pub fn new(
+    bufsz: usize,
+    namespace: String,
+    write_ahead_logging: bool,
+    disable_duplicate_detection: bool,
+) -> ActorHandle {
     async fn init_db(namespace: String, write_ahead_logging: bool) -> sqlx::SqlitePool {
         let db_url_string: String = format!("{namespace}.db");
 
@@ -214,13 +236,14 @@ pub fn new(bufsz: usize, namespace: String, write_ahead_logging: bool) -> ActorH
             .await
             .expect("can not check journal mode");
         let journal_mode: String = rows[0].get("journal_mode");
-        log::debug!("connected to db in journal_mode: {:?}", journal_mode);
+        log::info!("connected to db in journal_mode: {:?}", journal_mode);
 
         // Create table if it doesn't exist
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS updates (
               path TEXT NOT NULL,
               timestamp TEXT NOT NULL,
+              sequence TEXT NOT NULL,
               values_str TEXT NOT NULL,
               PRIMARY KEY (path, timestamp)
         )",
@@ -246,7 +269,12 @@ pub fn new(bufsz: usize, namespace: String, write_ahead_logging: bool) -> ActorH
 
     let (sender, receiver) = mpsc::channel(bufsz);
 
-    let actor = StoreActor::new(receiver, None, namespace.clone());
+    let actor = StoreActor::new(
+        receiver,
+        None,
+        namespace.clone(),
+        disable_duplicate_detection,
+    );
 
     let actor_handle = ActorHandle::new(sender);
 
