@@ -1,6 +1,5 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
-use crate::message::ActorResult;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::state_actor;
@@ -25,9 +24,15 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
-    async fn stop(&mut self) {}
+    async fn stop(&self) {}
 
+    // TODO: I've spent a lot of time trying to refactor this into 3 fuctions
+    // but I'm stuck on them all dragging mut self along... learning....
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+        log::trace!(
+            "director namespace {} handling_envelope {envelope:?}",
+            self.namespace
+        );
         let MessageEnvelope {
             message,
             respond_to,
@@ -37,70 +42,80 @@ impl Actor for Director {
         match &message {
             Message::Update { path, .. } | Message::Query { path } => {
                 // resurrect and forward if this is either Update or Query
-                match self.update_actor(path, message.clone()).await {
-                    Ok(response) => {
-                        log::trace!("got  response {response:?}");
+                let mut actor_is_in_init = false;
+                let actor = self.actors.entry(path.clone()).or_insert_with(|| {
+                    actor_is_in_init = true;
+                    state_actor::new(path.clone(), 8, None)
+                });
 
-                        // the store actor to jrnl this Update for this path here.
-                        match message {
-                            Message::Update { path: _, .. } => {
-                                if let Some(store_actor) = &self.store_actor {
-                                    let jrnl_msg = store_actor.ask(message).await;
-                                    if let Some(respond_to) = respond_to {
-                                        match jrnl_msg {
-                                            Ok(r) => match r {
-                                                Message::EndOfStream {} => {
-                                                    respond_to
-                                                        .send(Ok(response.clone()))
-                                                        .expect("can not reply to ask");
-                                                }
-                                                // TODO: change JrnlError to an Error
-                                                // Message::JrnlError { .. } => {
-                                                //     respond_to
-                                                //         .send(r)
-                                                //         .expect("can not reply to ask");
-                                                // }
-                                                m => {
-                                                    log::warn!("Unexpected store message: {:?}", m);
-                                                }
-                                            },
-                                            Err(e) => {
-                                                log::warn!("error {e}");
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    if let Some(respond_to) = respond_to {
-                                        respond_to
-                                            .send(Ok(response.clone()))
-                                            .expect("can not reply to ask");
-                                    }
-                                }
+                let loaded: bool = match &self.store_actor {
+                    Some(store_actor) if actor_is_in_init => {
+                        match actor.integrate(String::from(path), store_actor).await {
+                            Ok(_) => {
+                                // actor has read its journal
+                                true
                             }
-                            Message::Query { path: _, .. } => {
-                                if let Some(respond_to) = respond_to {
-                                    respond_to
-                                        .send(Ok(response.clone()))
-                                        .expect("can not reply to ask");
-                                }
+                            Err(e) => {
+                                log::error!("can not load actor: {e}");
+                                false
                             }
-                            m => {
-                                log::warn!("unexpected message: {:?}", m);
-                            }
-                        }
-
-                        // forward response if output is configured
-                        if let Some(o) = &self.output {
-                            let senv = MessageEnvelope {
-                                message: response,
-                                respond_to: None,
-                                ..Default::default()
-                            };
-                            o.send(senv).await.expect("receiver not ready");
                         }
                     }
-                    Err(e) => {
-                        log::warn!("error {e}");
+                    _ => true,
+                };
+
+                if loaded {
+                    let journaled: bool = match message.clone() {
+                        Message::Update { path: _, .. } => {
+                            if let Some(store_actor) = &self.store_actor {
+                                // jrnl the new msg
+                                let jrnl_msg = store_actor.ask(message.clone()).await;
+                                match jrnl_msg {
+                                    Ok(r) => match r {
+                                        Message::EndOfStream {} => {
+                                            // successfully jrnled the msg, it is now safe to
+                                            // send it to the actor to process
+                                            true
+                                        }
+                                        m => {
+                                            log::warn!("Unexpected store message: {m:?}");
+                                            false
+                                        }
+                                    },
+                                    Err(e) => {
+                                        log::warn!("error {e}");
+                                        false
+                                    }
+                                }
+                            } else {
+                                // jrnl is disabled, jsut process the message
+                                true
+                            }
+                        }
+                        Message::Query { path: _, .. } => true,
+                        m => {
+                            log::warn!("unexpected message: {:?}", m);
+                            false
+                        }
+                    };
+
+                    if journaled {
+                        //send message to the actor and support ask results
+                        let r = actor.ask(message.clone()).await;
+                        if let Some(respond_to) = respond_to {
+                            respond_to.send(r.clone()).expect("can not reply to ask");
+                        }
+                        // forward response if output is configured
+                        if let Some(o) = &self.output {
+                            if let Ok(message) = r {
+                                let senv = MessageEnvelope {
+                                    message,
+                                    respond_to: None,
+                                    ..Default::default()
+                                };
+                                o.send(senv).await.expect("receiver not ready");
+                            }
+                        }
                     }
                 }
             }
@@ -138,40 +153,6 @@ impl Director {
             receiver,
             output,
             store_actor,
-        }
-    }
-
-    async fn update_actor(&mut self, path: &String, message: Message) -> ActorResult<Message> {
-        let mut actor_is_in_init = false;
-        let actor = self.actors.entry(path.clone()).or_insert_with(|| {
-            actor_is_in_init = true;
-            state_actor::new(path.clone(), 8, None)
-        });
-
-        // TODO: do another ask here only if integrate returns success or if this is not an init
-        match &self.store_actor {
-            Some(store_actor) if actor_is_in_init => {
-                log::debug!(
-                    "{} handling actor '{}' messsage w/ actor init via store",
-                    self.namespace,
-                    path
-                );
-
-                let result = actor.integrate(String::from(path), store_actor).await;
-                if let Ok(Message::EndOfStream {}) = result {
-                    log::debug!(
-                        //TODO:
-                        "ejs *********** this should be a result that lets us proceed with an ask"
-                    );
-                    actor.ask(message.clone()).await
-                } else {
-                    result // TODO: stop this ... should be results
-                }
-            }
-            _ => {
-                log::debug!("{} handling actor '{}' messsage", self.namespace, path);
-                actor.ask(message.clone()).await
-            }
         }
     }
 }

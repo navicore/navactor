@@ -12,7 +12,7 @@ use tokio::sync::oneshot;
 pub trait Actor {
     /// the function to implement per actor
     async fn handle_envelope(&mut self, envelope: MessageEnvelope);
-    async fn stop(&mut self);
+    async fn stop(&self);
 }
 
 /// ActorHandle is the API for all actors
@@ -44,6 +44,7 @@ impl<'a> ActorHandle {
             ..Default::default()
         };
 
+        log::trace!("tell sending envelope {envelope:?}");
         self.send(envelope).await
     }
 
@@ -57,11 +58,8 @@ impl<'a> ActorHandle {
             ..Default::default()
         };
 
-        log::trace!("sending envelope");
+        log::trace!("ask sending envelope: {envelope:?}");
         match self.send(envelope).await {
-            // Ok(_) => recv.await.map_err(|e| ActorError {
-            //     reason: e.to_string(),
-            // }),
             Ok(_) => recv.await.map_err(|e| ActorError {
                 reason: e.to_string(),
             })?,
