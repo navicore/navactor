@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::nvtime::OffsetDateTimeWrapper;
@@ -52,18 +53,16 @@ impl Actor for StoreActor {
                     Ok(_) => {
                         if let Some(respond_to) = respond_to {
                             respond_to
-                                .send(Message::EndOfStream {})
+                                .send(Ok(Message::EndOfStream {}))
                                 .expect("cannot respond to 'ask' with confirmation");
                         }
                     }
                     Err(e) => {
                         if let Some(respond_to) = respond_to {
                             respond_to
-                                .send(Message::JrnlError {
-                                    text: e.to_string(),
-                                    datetime: OffsetDateTime::now_utc(),
-                                    path: Some(path),
-                                })
+                                .send(Err(ActorError {
+                                    reason: e.to_string(),
+                                }))
                                 .expect("cannot respond to 'ask' with confirmation");
                         }
                     }

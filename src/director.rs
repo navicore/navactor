@@ -1,6 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
-use crate::actor::ActorResult;
+use crate::message::ActorResult;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::state_actor;
@@ -26,6 +26,7 @@ pub struct Director {
 #[async_trait]
 impl Actor for Director {
     async fn stop(&mut self) {}
+
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
@@ -50,14 +51,15 @@ impl Actor for Director {
                                             Ok(r) => match r {
                                                 Message::EndOfStream {} => {
                                                     respond_to
-                                                        .send(response.clone())
+                                                        .send(Ok(response.clone()))
                                                         .expect("can not reply to ask");
                                                 }
-                                                Message::JrnlError { .. } => {
-                                                    respond_to
-                                                        .send(r)
-                                                        .expect("can not reply to ask");
-                                                }
+                                                // TODO: change JrnlError to an Error
+                                                // Message::JrnlError { .. } => {
+                                                //     respond_to
+                                                //         .send(r)
+                                                //         .expect("can not reply to ask");
+                                                // }
                                                 m => {
                                                     log::warn!("Unexpected store message: {:?}", m);
                                                 }
@@ -70,7 +72,7 @@ impl Actor for Director {
                                 } else {
                                     if let Some(respond_to) = respond_to {
                                         respond_to
-                                            .send(response.clone())
+                                            .send(Ok(response.clone()))
                                             .expect("can not reply to ask");
                                     }
                                 }
@@ -78,7 +80,7 @@ impl Actor for Director {
                             Message::Query { path: _, .. } => {
                                 if let Some(respond_to) = respond_to {
                                     respond_to
-                                        .send(response.clone())
+                                        .send(Ok(response.clone()))
                                         .expect("can not reply to ask");
                                 }
                             }
@@ -114,7 +116,7 @@ impl Actor for Director {
                     a.send(senv).await.expect("cannot send");
                 } else if let Some(respond_to) = respond_to {
                     // else we're the end of the line so reply if this is an ask
-                    respond_to.send(message).expect("can not reply to ask");
+                    respond_to.send(Ok(message)).expect("can not reply to ask");
                 }
             }
             m => log::warn!("unexpected message: {:?}", m),
