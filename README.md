@@ -43,7 +43,7 @@ presented in the internal observation json format via *nix piped stream.
 { "path": "/actors/two", "datetime": "2023-01-11T23:17:57+0000", "values": {"1": 1, "2": 2, "3": 3}}
 { "path": "/actors/two", "datetime": "2023-01-11T23:17:58+0000", "values": {"1": 100}}
 { "path": "/metadata/mainfile", "datetime": "2023-01-11T23:17:59+0000", "values": {"2": 2.1, "3": 3}}
-{ "path": "/actors/two", "datetime": "2023-01-11T23:17:59+0000", "values": {"2": 2.1, "3": 3}}
+{ "path": "/actors/two", "datetime": "2023-01-11T23:17:59+0000", "values": {"2": 2.98765, "3": 3}}
 ```
 
 Event sourcing via an embedded sqlite store works.  Query state and resuming
