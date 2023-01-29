@@ -21,7 +21,7 @@ initial model for workflow and performance is data-wrangling via the classic
 powerful and undefeated [awk](https://www.gnu.org/software/gawk/manual/gawk.html).
 
 The ideas that inspire Navactor and DtLab come from CS insights from the early
-eighties around tuple [spaces](https://en.wikipedia.org/wiki/Tuple_space) for coordination languages and then later around 
+eighties around [tuple spaces](https://en.wikipedia.org/wiki/Tuple_space) for coordination languages and then later around 
 the [actor](https://en.wikipedia.org/wiki/Actor_model) programming model - and now also influenced by emerging
 industry [IOT medadata](https://infoscience.epfl.ch/record/273579?ln=en) standards encoded in RDF that suggest dynamic graphs of
 [digital twins](https://en.wikipedia.org/wiki/Digital_twin).
