@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::state_actor;
@@ -26,8 +27,8 @@ pub struct Director {
 impl Actor for Director {
     async fn stop(&self) {}
 
-    // TODO: I've spent a lot of time trying to refactor this into 3 fuctions
-    // but I'm stuck on them all dragging mut self along... learning....
+    // TODO: I've spent a lot of time trying to refactor this into 3 functions
+    // but I'm stuck on them all dragging mut self along... Learning....
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         log::trace!(
             "director namespace {} handling_envelope {envelope:?}",
@@ -116,6 +117,26 @@ impl Actor for Director {
                                 o.send(senv).await.expect("receiver not ready");
                             }
                         }
+                    } else {
+                        log::error!("cannot journal input to actor {path} - see logs");
+                        if let Some(respond_to) = respond_to {
+                            respond_to
+                                .send(Err(ActorError {
+                                    reason: String::from(format!(
+                                        "cannot journal input to actor {path}"
+                                    )),
+                                }))
+                                .expect("can not reply to ask");
+                        }
+                    }
+                } else {
+                    log::error!("cannot load actor {path} - see logs");
+                    if let Some(respond_to) = respond_to {
+                        respond_to
+                            .send(Err(ActorError {
+                                reason: String::from(format!("cannot load actor {path}")),
+                            }))
+                            .expect("can not reply to ask");
                     }
                 }
             }
