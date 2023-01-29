@@ -49,7 +49,7 @@ presented in the internal observation json format via *nix piped stream.
 Event sourcing via an embedded sqlite store works.  Query state and resuming
 ingestion across multiple runs works.
 
-Using the observation generator in the scripts dir, the current impl when run in
+Using the [observation generator](tests/data/gen_1000.py) in the scripts dir, the current impl when run in
 sqlite "warite ahead logging" mode (WAL), processes
 and persists 2000+ observations a second in a tiny disk and memory and cpu footprint.
 
