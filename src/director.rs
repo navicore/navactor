@@ -1,5 +1,4 @@
 use crate::actor::Actor;
-use crate::actor::ActorError;
 use crate::actor::ActorHandle;
 use crate::actor::ActorResult;
 use crate::message::Message;
@@ -112,7 +111,7 @@ impl Actor for Director {
                         respond_to,
                         ..Default::default()
                     };
-                    a.send(senv).await;
+                    a.send(senv).await.expect("cannot send");
                 } else if let Some(respond_to) = respond_to {
                     // else we're the end of the line so reply if this is an ask
                     respond_to.send(message).expect("can not reply to ask");
