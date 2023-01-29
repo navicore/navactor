@@ -122,9 +122,7 @@ impl Actor for Director {
                         if let Some(respond_to) = respond_to {
                             respond_to
                                 .send(Err(ActorError {
-                                    reason: String::from(format!(
-                                        "cannot journal input to actor {path}"
-                                    )),
+                                    reason: format!("cannot journal input to actor {path}"),
                                 }))
                                 .expect("can not reply to ask");
                         }
@@ -134,7 +132,7 @@ impl Actor for Director {
                     if let Some(respond_to) = respond_to {
                         respond_to
                             .send(Err(ActorError {
-                                reason: String::from(format!("cannot load actor {path}")),
+                                reason: format!("cannot load actor {path}"),
                             }))
                             .expect("can not reply to ask");
                     }
