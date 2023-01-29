@@ -18,18 +18,21 @@ processing, and persist.
 
 The `nv` command will eventually also work as a networked API server but the
 initial model for workflow and performance is data-wrangling via the classic
-powerful `awk`.
+powerful and undefeated [awk](https://www.gnu.org/software/gawk/manual/gawk.html).
 
 The ideas that inspire Navactor and DtLab come from CS insights from the early
-eighties around tuple spaces for coordination languages and then later around 
-the actor programming model (TODO: links) - and now also influenced by emerging
-industry IOT medadata standards encoded in RDF that suggest dynamic graphs of
-digital twins.
+eighties around tuple [spaces](https://en.wikipedia.org/wiki/Tuple_space) for coordination languages and then later around 
+the [actor](https://en.wikipedia.org/wiki/Actor_model) programming model - and now also influenced by emerging
+industry [IOT medadata](https://infoscience.epfl.ch/record/273579?ln=en) standards encoded in RDF that suggest dynamic graphs of
+[digital twins](https://en.wikipedia.org/wiki/Digital_twin).
 
 ![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.png)
 
 Status
 ----------
+
+Just a toy implementation in the beginning stages to validate implementation
+choices (Rust and Sqlite and Petgraph).
 
 Current functionality is limited to the support of "gauge" observations
 presented in the internal observation json format via *nix piped stream.
