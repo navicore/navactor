@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fmt;
 use time::OffsetDateTime;
 
-type Result<T> = std::result::Result<T, OperatorError>;
+type OperatorResult<T> = std::result::Result<T, OperatorError>;
 
 #[derive(Debug, Clone)]
 pub struct OperatorError {
@@ -22,7 +22,7 @@ pub trait Operator {
         idx: i32,
         value: f64,
         datetime: OffsetDateTime,
-    ) -> Result<f64>;
+    ) -> OperatorResult<f64>;
 }
 
 pub trait Gene {
@@ -30,19 +30,24 @@ pub trait Gene {
         &self,
         state: HashMap<i32, f64>,
         update: crate::genes::Message,
-    ) -> Result<()>;
+    ) -> OperatorResult<()>;
 }
 
 struct GuageOperator {}
 impl Operator for GuageOperator {
-    fn apply(_: &HashMap<i32, f64>, _: i32, value: f64, _: OffsetDateTime) -> Result<f64> {
+    fn apply(_: &HashMap<i32, f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
         Ok(value)
     }
 }
 
 struct AccumOperator {}
 impl Operator for AccumOperator {
-    fn apply(state: &HashMap<i32, f64>, idx: i32, value: f64, _: OffsetDateTime) -> Result<f64> {
+    fn apply(
+        state: &HashMap<i32, f64>,
+        idx: i32,
+        value: f64,
+        _: OffsetDateTime,
+    ) -> OperatorResult<f64> {
         if let Some(old_val) = state.get(&idx) {
             Ok(old_val + value)
         } else {
@@ -55,7 +60,7 @@ impl Operator for AccumOperator {
 
 pub struct DefaultGene {}
 impl Gene for DefaultGene {
-    fn apply_operators(&self, mut state: HashMap<i32, f64>, update: Message) -> Result<()> {
+    fn apply_operators(&self, mut state: HashMap<i32, f64>, update: Message) -> OperatorResult<()> {
         if let Message::Update {
             path: _,
             datetime,

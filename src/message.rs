@@ -21,8 +21,6 @@ pub struct MessageEnvelope {
     pub datetime: OffsetDateTime,
     pub stream_to: Option<mpsc::Sender<Message>>,
     pub stream_from: Option<mpsc::Receiver<Message>>,
-    pub next_message: Option<Message>,
-    pub next_message_respond_to: Option<oneshot::Sender<Message>>,
 }
 
 /// all actor API interaction is via async messages
@@ -85,8 +83,6 @@ impl Default for MessageEnvelope {
             datetime: OffsetDateTime::now_utc(),
             stream_to: None,
             stream_from: None,
-            next_message: None,
-            next_message_respond_to: None,
         }
     }
 }
@@ -95,8 +91,7 @@ struct LifeCycleBuilder {
     load_from: Option<mpsc::Receiver<Message>>,
     send_to: Option<mpsc::Sender<Message>>,
     send_to_path: Option<String>,
-    first_message: Option<Message>,
-    first_message_respond_to: Option<oneshot::Sender<Message>>,
+    respond_to: Option<oneshot::Sender<Message>>,
 }
 
 impl LifeCycleBuilder {
@@ -105,9 +100,13 @@ impl LifeCycleBuilder {
             load_from: None,
             send_to: None,
             send_to_path: None,
-            first_message: None,
-            first_message_respond_to: None,
+            respond_to: None,
         }
+    }
+
+    fn with_respond_to(mut self, respons_to: oneshot::Sender<Message>) -> LifeCycleBuilder {
+        self.respond_to = Some(respons_to);
+        self
     }
 
     fn with_load_from(mut self, load_from: mpsc::Receiver<Message>) -> LifeCycleBuilder {
@@ -125,34 +124,17 @@ impl LifeCycleBuilder {
         self
     }
 
-    fn with_first_message(mut self, first_message: Message) -> LifeCycleBuilder {
-        self.first_message = Some(first_message);
-        self
-    }
-
-    fn with_first_message_respond_to(
-        mut self,
-        first_message_respond_to: Option<oneshot::Sender<Message>>,
-    ) -> LifeCycleBuilder {
-        self.first_message_respond_to = first_message_respond_to;
-        self
-    }
-
     fn build(self) -> (MessageEnvelope, MessageEnvelope) {
         (
             MessageEnvelope {
                 datetime: OffsetDateTime::now_utc(),
-                next_message: self.first_message,
-                next_message_respond_to: self.first_message_respond_to,
-                respond_to: None,
+                respond_to: self.respond_to,
                 stream_from: self.load_from,
                 stream_to: None,
                 message: Message::InitCmd {},
             },
             MessageEnvelope {
                 datetime: OffsetDateTime::now_utc(),
-                next_message: None,
-                next_message_respond_to: None,
                 respond_to: None,
                 stream_from: None,
                 stream_to: self.send_to,
@@ -166,16 +148,14 @@ impl LifeCycleBuilder {
 
 // factory function
 pub fn create_init_lifecycle(
-    message: Message,
     path: String,
     bufsz: usize,
-    send: Option<oneshot::Sender<Message>>,
+    respond_to: oneshot::Sender<Message>,
 ) -> (MessageEnvelope, MessageEnvelope) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()
         .with_load_from(rx)
         .with_send_to(tx, path)
-        .with_first_message(message)
-        .with_first_message_respond_to(send);
+        .with_respond_to(respond_to);
     builder.build()
 }

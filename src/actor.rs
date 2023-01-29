@@ -2,8 +2,22 @@ use crate::message::create_init_lifecycle;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
+use std::fmt;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+
+pub type ActorResult<T> = std::result::Result<T, ActorError>;
+
+#[derive(Debug, Clone)]
+pub struct ActorError {
+    reason: String,
+}
+
+impl fmt::Display for ActorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unsuccessful operation: {}", self.reason)
+    }
+}
 
 /// all actors must implement this trait
 #[async_trait]
@@ -24,24 +38,29 @@ impl<'a> ActorHandle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
     #[doc(hidden)]
-    pub async fn send(&self, envelope: MessageEnvelope) {
+    pub async fn send(&self, envelope: MessageEnvelope) -> ActorResult<()> {
         self.sender
             .send(envelope)
             .await
-            .expect("other actor cannot receive");
+            //.expect("actor cannot receive");
+            .map_err(|e| ActorError {
+                reason: e.to_string(),
+            })
     }
+
     /// fire and forget
-    pub async fn tell(&self, message: Message) {
+    pub async fn tell(&self, message: Message) -> ActorResult<()> {
         let envelope = MessageEnvelope {
             message,
             respond_to: None,
             ..Default::default()
         };
 
-        self.send(envelope).await;
+        self.send(envelope).await
     }
+
     /// request <-> response
-    pub async fn ask(&self, message: Message) -> Message {
+    pub async fn ask(&self, message: Message) -> ActorResult<Message> {
         let (send, recv) = oneshot::channel();
 
         let envelope = MessageEnvelope {
@@ -50,38 +69,27 @@ impl<'a> ActorHandle {
             ..Default::default()
         };
 
-        self.send(envelope).await;
-
-        recv.await.expect("other actor cannot reply")
+        log::trace!("sending envelope");
+        match self.send(envelope).await {
+            Ok(_) => recv.await.map_err(|e| ActorError {
+                reason: e.to_string(),
+            }),
+            Err(e) => Err(e),
+        }
     }
-    /// set up a stream between two actors and the result will be the result of
-    /// the this actor (self) processing next_message.
-    ///
-    /// creates a pair of MessageEnvelopes.  
-    ///
-    /// The first one has an InitCmd as message, a receiver, and a reply_to
-    /// that returns the result of the message to the integrate caller once
-    /// the 'last_message' and then the EndOfStream message arrive.
-    ///
-    /// The second one has a LoadCmd as message to tell the helper to read the
-    /// events for this path and write them to the send obj passed in the
-    /// envelope.  After the last jrnl store message is written, send the
-    /// "next_message" and then send an EndOfStream.
-    ///
-    /// NOTE path is on the function because not all actors know their path.
-    /// TODO: make this a state_actor-only function
-    ///
-    /// this is first used to enable the resurrection of actors
-    pub async fn integrate(&self, message: Message, path: String, helper: &ActorHandle) -> Message {
+
+    pub async fn integrate(&self, path: String, helper: &ActorHandle) -> ActorResult<Message> {
         let (send, recv) = oneshot::channel();
 
-        let (init_cmd, load_cmd) = create_init_lifecycle(message.clone(), path, 8, Some(send));
+        let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
-        helper.send(load_cmd).await;
+        helper.send(load_cmd).await.expect("cannot send");
 
-        self.send(init_cmd).await;
+        self.send(init_cmd).await.expect("cannot send");
 
-        recv.await.expect("other actor cannot reply")
+        recv.await.map_err(|e| ActorError {
+            reason: e.to_string(),
+        })
     }
 
     // ActorHandle constructor is an internal API use in the convenience functions

@@ -65,7 +65,7 @@ impl Actor for JsonDecoder {
                         ..Default::default()
                     };
 
-                    self.output.send(senv).await;
+                    self.output.send(senv).await.expect("cannot send");
                 }
                 Err(error) => {
                     log::warn!("json parse error: {}", error);
@@ -89,7 +89,7 @@ impl Actor for JsonDecoder {
                     ..Default::default()
                 };
 
-                self.output.send(senv).await;
+                self.output.send(senv).await.expect("cannot send");
             }
         }
     }

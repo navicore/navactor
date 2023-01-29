@@ -34,51 +34,62 @@ impl Actor for StateActor {
             message,
             respond_to,
             stream_from,
-            next_message,
-            next_message_respond_to,
             ..
         } = envelope;
 
-        if let Message::InitCmd {} = message {
-            // this is an init so read your old events to recalculate your state
-            if let Some(mut stream_from) = stream_from {
-                log::debug!("{} init", self.path);
-                let mut count = 0;
+        match message {
+            Message::InitCmd { .. } => {
+                log::trace!("{} init started...", self.path);
+                // this is an init so read your old events to recalculate your state
+                if let Some(mut stream_from) = stream_from {
+                    log::debug!("{} init", self.path);
+                    let mut count = 0;
 
-                while let Some(message) = stream_from.recv().await {
-                    if !self.update_state(message.clone()) {
-                        stream_from.close();
-                    } else {
-                        count += 1;
+                    while let Some(message) = stream_from.recv().await {
+                        if !self.update_state(message.clone()) {
+                            stream_from.close();
+                        } else {
+                            count += 1;
+                        }
                     }
-                }
 
-                log::debug!("{} finished init from {} events", self.path, count);
+                    log::debug!("{} finished init from {} events", self.path, count);
 
-                // once old state is recalculated, you can now process the new event
-                if let Some(nm) = next_message {
-                    self.update_state(nm);
-
-                    // respond with a copy of our new state if this is an 'ask'
-                    if let Some(r) = next_message_respond_to {
-                        r.send(self.get_state_rpt()).expect("can not reply to ask");
+                    if let Some(respond_to) = respond_to {
+                        respond_to
+                            .send(Message::EndOfStream {})
+                            .expect("can not reply to init");
                     }
                 }
             }
-        } else {
-            self.update_state(message.clone());
+            Message::Update { .. } => {
+                log::trace!("{} handling update", self.path);
+                self.update_state(message.clone());
+                if let Some(respond_to) = respond_to {
+                    respond_to
+                        .send(self.get_state_rpt())
+                        .expect("can not reply to ask");
+                }
+            }
+            Message::Query { .. } => {
+                // respond with a copy of our new state if this is an 'ask'
+                if let Some(respond_to) = respond_to {
+                    respond_to
+                        .send(self.get_state_rpt())
+                        .expect("can not reply to ask");
+                }
+            }
+            m => {
+                log::warn!("unexpected message: {m:?}");
+            }
         }
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
-            output_handle.tell(self.get_state_rpt()).await;
-        }
-
-        // respond with a copy of our new state if this is an 'ask'
-        if let Some(respond_to) = respond_to {
-            respond_to
-                .send(self.get_state_rpt())
-                .expect("can not reply to ask");
+            output_handle
+                .tell(self.get_state_rpt())
+                .await
+                .expect("cannot tell");
         }
     }
 }
@@ -114,6 +125,8 @@ impl StateActor {
         }
     }
 
+    /// state will populated from event store before any other processing via
+    /// the lifecycle processing coordinated by the director
     fn new(
         path: String,
         receiver: mpsc::Receiver<MessageEnvelope>,
@@ -121,8 +134,7 @@ impl StateActor {
         //gene: &Gene,
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
-        //gene: Box<dyn Gene>,
-        let state = HashMap::new(); // TODO: load from event store
+        let state = HashMap::new();
         StateActor {
             path,
             receiver,

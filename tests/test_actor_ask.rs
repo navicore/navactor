@@ -23,7 +23,8 @@ fn test_actor_ask() {
             datetime: OffsetDateTime::now_utc(),
             values,
         };
-        state_actor.tell(cmd).await;
+        let r = state_actor.tell(cmd).await;
+        assert_eq!(r.ok(), Some(()));
 
         // update state
         let mut values = HashMap::new();
@@ -38,25 +39,25 @@ fn test_actor_ask() {
 
         assert!(matches!(
             reply,
-            Message::StateReport {
+            Ok(Message::StateReport {
                 datetime: _,
                 path: _,
                 values: _
-            },
+            }),
         ));
 
-        if let Message::StateReport {
+        if let Ok(Message::StateReport {
             datetime: _,
             path: _,
             values: new_values,
-        } = reply
+        }) = reply
         {
             // ensure that the initial state for 2 is still there but that the initial state for 1
             // was updated
-            let v1 = new_values.get(&1).expect("should be there");
-            assert_eq!(v1, &1.8);
-            let v2 = new_values.get(&2).expect("should be there");
-            assert_eq!(v2, &2.9);
+            let v1 = new_values.get(&1);
+            assert_eq!(v1.unwrap(), &1.8);
+            let v2 = new_values.get(&2);
+            assert_eq!(v2.unwrap(), &2.9);
         }
     })
 }
@@ -71,37 +72,38 @@ fn test_decoder_ask() {
 
         // init state
         let cmd = Message::PrintOneCmd {
-            text: String::from("{ \"path\": \"/actors/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
+            text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
-        json_decoder_actor.tell(cmd).await;
+        let r = json_decoder_actor.tell(cmd).await;
+        assert_eq!(r.ok(), Some(()));
 
         // update state
         let cmd = Message::PrintOneCmd {
-            text: String::from("{ \"path\": \"/actors/1\", \"datetime\": \"2023-01-11T23:17:57+5000\", \"values\": {\"1\": 1.8} }"),
+            text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
         };
         let reply = json_decoder_actor.ask(cmd).await;
 
         assert!(matches!(
             reply,
-            Message::StateReport {
+            Ok(Message::StateReport {
                 datetime: _,
                 path: _,
                 values: _
-            },
+            }),
         ));
 
-        if let Message::StateReport {
+        if let Ok(Message::StateReport {
             datetime: _,
             path: _,
             values: new_values,
-        } = reply
+        }) = reply
         {
             // ensure that the initial state for 2 is still there but that the initial state for 1
             // was updated
-            let v1 = new_values.get(&1).expect("should be there");
-            assert_eq!(v1, &1.8);
-            let v2 = new_values.get(&2).expect("should be there");
-            assert_eq!(v2, &2.9);
+            let v1 = new_values.get(&1);
+            assert_eq!(v1.unwrap(), &1.8);
+            let v2 = new_values.get(&2);
+            assert_eq!(v2.unwrap(), &2.9);
         }
     })
 }

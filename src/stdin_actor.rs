@@ -31,11 +31,10 @@ impl Actor for StdinActor {
 
             while let Some(text) = lines.next_line().await.expect("failed to read stream") {
                 let msg = Message::PrintOneCmd { text };
-                self.output.tell(msg).await
+                self.output.tell(msg).await.expect("cannot send");
                 // note - since these are all tells, you won't know the failures
                 // without logs or monitoring.  an http impl would of coarse do
-                // an ask if it wanted to propogate a 409 or it would do a tell
-                // if it was returning a 201 'accept' but not processed.
+                // an ask if it wanted to propagate a 409.
             }
 
             // forward the respond_to handle so that the output actor can respond when all
@@ -48,7 +47,7 @@ impl Actor for StdinActor {
                 ..Default::default()
             };
 
-            self.output.send(senv).await
+            self.output.send(senv).await.expect("cannot send");
         } else {
             log::warn!("unexpected: {:?}", message);
         }
