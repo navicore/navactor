@@ -150,3 +150,4 @@ MORE
 * Operator expression could be processed an embedded lang runtime or a new DSL
 * enable https://github.com/tokio-rs/console
 
+![Fun Mutation of DtLab Graphic](images/diodes-1.png)
