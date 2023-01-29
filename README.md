@@ -28,7 +28,7 @@ programming model - and now also influenced by emerging industry
 encoded in RDF that suggest dynamic graphs of 
 [digital twins](https://en.wikipedia.org/wiki/Digital_twin).
 
-![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.png)
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.jpg)
 
 Status
 ----------
@@ -106,7 +106,7 @@ cat ./tests/data/single_observation_1_3.json | RUST_LOG="debug,sqlx=warn" nv upd
 export RUST_LOG="debug,sqlx=warn"
 ```
 
-![Fun Mutation of DtLab Graphic](images/diodes-2.png)
+![Fun Mutation of DtLab Graphic](images/diodes-2.jpeg)
 ----------
 
 `nv` was bootstrapped from Alice Ryhl's very excellent and instructive blog post https://ryhl.io/blog/actors-with-tokio

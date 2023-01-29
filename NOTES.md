@@ -5,7 +5,7 @@ A CLI tool as lab for the actor programming use cases.  Ingest piped streams of
 CRLF- delimited observations, send them to actors, implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
 processing, and persist.
 
-![Fun Mutation of DtLab Graphic](images/dtlab-mutant-4.png)
+![Fun Mutation of DtLab Graphic](images/dtlab-mutant-4.jpg)
 
 Re-implement the DtLab DtPath with a graph lib (petgraph) and fully support graphs instead of trees.
 
@@ -150,4 +150,4 @@ MORE
 * Operator expression could be processed an embedded lang runtime or a new DSL
 * enable https://github.com/tokio-rs/console
 
-![Fun Mutation of DtLab Graphic](images/diodes-1.png)
+![Fun Mutation of DtLab Graphic](images/diodes-1.jpeg)
