@@ -28,10 +28,8 @@ impl Actor for StdoutActor {
             }
             Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to {
-                    let complete_msg = Message::EndOfStream {};
-
                     respond_to
-                        .send(complete_msg)
+                        .send(Ok(Message::EndOfStream {}))
                         .expect("could not send completion token");
                 }
             }

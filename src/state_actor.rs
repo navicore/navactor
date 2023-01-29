@@ -57,7 +57,7 @@ impl Actor for StateActor {
 
                     if let Some(respond_to) = respond_to {
                         respond_to
-                            .send(Message::EndOfStream {})
+                            .send(Ok(Message::EndOfStream {}))
                             .expect("can not reply to init");
                     }
                 }
@@ -67,7 +67,7 @@ impl Actor for StateActor {
                 self.update_state(message.clone());
                 if let Some(respond_to) = respond_to {
                     respond_to
-                        .send(self.get_state_rpt())
+                        .send(Ok(self.get_state_rpt()))
                         .expect("can not reply to ask");
                 }
             }
@@ -75,7 +75,7 @@ impl Actor for StateActor {
                 // respond with a copy of our new state if this is an 'ask'
                 if let Some(respond_to) = respond_to {
                     respond_to
-                        .send(self.get_state_rpt())
+                        .send(Ok(self.get_state_rpt()))
                         .expect("can not reply to ask");
                 }
             }

@@ -39,6 +39,6 @@ fn test_actor_tell() {
 
         log::debug!("result_message: {:?}", result_message);
 
-        assert!(matches!(result_message, Message::EndOfStream {},));
+        assert!(matches!(result_message, Ok(Message::EndOfStream {}),));
     });
 }

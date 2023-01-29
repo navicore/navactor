@@ -37,8 +37,8 @@ struct Cli {
     silent: Option<bool>,
     #[arg(long, action = clap::ArgAction::SetTrue, help = "No on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
     memory_only: Option<bool>,
-    #[arg(long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
-    disable_duplicate_detection: Option<bool>,
+    #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
+    no_duplicate_detection: Option<bool>,
     #[arg(long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
     wal: Option<bool>,
     #[command(subcommand)]
@@ -72,7 +72,7 @@ fn update(
     silent: bool,
     memory_only: bool,
     write_ahead_logging: bool,
-    disable_duplicate_detection: bool,
+    no_dupelicate_detection: bool,
 ) {
     let result = run_async_update(
         namespace,
@@ -80,7 +80,7 @@ fn update(
         silent,
         memory_only,
         write_ahead_logging,
-        disable_duplicate_detection,
+        no_dupelicate_detection,
     );
     runtime.block_on(result).expect("An error occurred")
 }
@@ -91,7 +91,7 @@ async fn run_async_update(
     silent: bool,
     memory_only: bool,
     write_ahead_logging: bool,
-    disable_duplicate_detection: bool,
+    no_dupelicate_detection: bool,
 ) -> Result<(), String> {
     let output = if silent {
         None
@@ -106,7 +106,7 @@ async fn run_async_update(
             bufsz,
             namespace.namespace.clone(),
             write_ahead_logging,
-            disable_duplicate_detection,
+            no_dupelicate_detection,
         ))
     };
 
@@ -178,7 +178,7 @@ fn main() {
     let silent: bool = cli.silent.unwrap_or(false);
     let memory_only: bool = cli.memory_only.unwrap_or(false);
     let write_ahead_logging: bool = cli.wal.unwrap_or(false);
-    let disable_duplicate_detection: bool = cli.disable_duplicate_detection.unwrap_or(false);
+    let no_dupelicate_detection: bool = cli.no_duplicate_detection.unwrap_or(false);
 
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
@@ -190,7 +190,7 @@ fn main() {
             silent,
             memory_only,
             write_ahead_logging,
-            disable_duplicate_detection,
+            no_dupelicate_detection,
         ),
         Commands::Inspect(path) => inspect(path, bufsz, runtime),
     }

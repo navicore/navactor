@@ -1,8 +1,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+
+pub type ActorResult<T> = std::result::Result<T, ActorError>;
+
+#[derive(Debug, Clone)]
+pub struct ActorError {
+    pub reason: String,
+}
+
+impl fmt::Display for ActorError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "bad actor state: {}", self.reason)
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Observations {
@@ -17,7 +31,7 @@ pub struct Observations {
 #[derive(Debug)]
 pub struct MessageEnvelope {
     pub message: Message,
-    pub respond_to: Option<oneshot::Sender<Message>>,
+    pub respond_to: Option<oneshot::Sender<ActorResult<Message>>>,
     pub datetime: OffsetDateTime,
     pub stream_to: Option<mpsc::Sender<Message>>,
     pub stream_from: Option<mpsc::Receiver<Message>>,
@@ -41,16 +55,6 @@ pub enum Message {
         datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, f64>,
-    },
-    JsonParseError {
-        text: String,
-        datetime: OffsetDateTime,
-        path: Option<String>,
-    },
-    JrnlError {
-        text: String,
-        datetime: OffsetDateTime,
-        path: Option<String>,
     },
     /// the actor init process is complicated in that the actors must recalculate
     /// their state from event source replays when they are first instantiated.
@@ -91,7 +95,7 @@ struct LifeCycleBuilder {
     load_from: Option<mpsc::Receiver<Message>>,
     send_to: Option<mpsc::Sender<Message>>,
     send_to_path: Option<String>,
-    respond_to: Option<oneshot::Sender<Message>>,
+    respond_to: Option<oneshot::Sender<ActorResult<Message>>>,
 }
 
 impl LifeCycleBuilder {
@@ -104,8 +108,11 @@ impl LifeCycleBuilder {
         }
     }
 
-    fn with_respond_to(mut self, respons_to: oneshot::Sender<Message>) -> LifeCycleBuilder {
-        self.respond_to = Some(respons_to);
+    fn with_respond_to(
+        mut self,
+        respond_to: oneshot::Sender<ActorResult<Message>>,
+    ) -> LifeCycleBuilder {
+        self.respond_to = Some(respond_to);
         self
     }
 
@@ -150,7 +157,7 @@ impl LifeCycleBuilder {
 pub fn create_init_lifecycle(
     path: String,
     bufsz: usize,
-    respond_to: oneshot::Sender<Message>,
+    respond_to: oneshot::Sender<ActorResult<Message>>,
 ) -> (MessageEnvelope, MessageEnvelope) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()

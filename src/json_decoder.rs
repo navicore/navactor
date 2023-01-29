@@ -1,5 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use crate::message::Observations;
@@ -71,13 +72,10 @@ impl Actor for JsonDecoder {
                     log::warn!("json parse error: {}", error);
                     if let Some(respond_to) = respond_to {
                         let etxt = format!("json parse error: {error}");
-                        let emsg = Message::JsonParseError {
-                            datetime: OffsetDateTime::now_utc(),
-                            path: None,
-                            text: etxt,
-                        };
 
-                        respond_to.send(emsg).expect("can not return error");
+                        respond_to
+                            .send(Err(ActorError { reason: etxt }))
+                            .expect("can not return error");
                     }
                 }
             },

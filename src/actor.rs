@@ -1,23 +1,11 @@
 use crate::message::create_init_lifecycle;
+use crate::message::ActorError;
+use crate::message::ActorResult;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
-use std::fmt;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-
-pub type ActorResult<T> = std::result::Result<T, ActorError>;
-
-#[derive(Debug, Clone)]
-pub struct ActorError {
-    reason: String,
-}
-
-impl fmt::Display for ActorError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "unsuccessful operation: {}", self.reason)
-    }
-}
 
 /// all actors must implement this trait
 #[async_trait]
@@ -71,25 +59,36 @@ impl<'a> ActorHandle {
 
         log::trace!("sending envelope");
         match self.send(envelope).await {
+            // Ok(_) => recv.await.map_err(|e| ActorError {
+            //     reason: e.to_string(),
+            // }),
             Ok(_) => recv.await.map_err(|e| ActorError {
                 reason: e.to_string(),
-            }),
+            })?,
+
             Err(e) => Err(e),
         }
     }
 
     pub async fn integrate(&self, path: String, helper: &ActorHandle) -> ActorResult<Message> {
-        let (send, recv) = oneshot::channel();
+        let (send, recv): (
+            oneshot::Sender<ActorResult<Message>>,
+            oneshot::Receiver<ActorResult<Message>>,
+        ) = oneshot::channel();
 
         let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
-        helper.send(load_cmd).await.expect("cannot send");
+        helper.send(load_cmd).await.map_err(|e| ActorError {
+            reason: e.to_string(),
+        })?;
 
-        self.send(init_cmd).await.expect("cannot send");
+        self.send(init_cmd).await.map_err(|e| ActorError {
+            reason: e.to_string(),
+        })?;
 
         recv.await.map_err(|e| ActorError {
             reason: e.to_string(),
-        })
+        })?
     }
 
     // ActorHandle constructor is an internal API use in the convenience functions
