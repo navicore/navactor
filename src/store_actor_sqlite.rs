@@ -71,6 +71,7 @@ impl Actor for StoreActor {
             }
 
             Message::LoadCmd { path } => {
+                log::trace!("{path} load started...");
                 // play jrnl to resurected actor so that they can process 'next_message'
                 if let Some(stream_to) = stream_to {
                     log::trace!("handling LoadCmd for {}", path);

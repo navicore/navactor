@@ -17,7 +17,7 @@ fn test_actor_tell() {
         let cmd = Message::PrintOneCmd {
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1, \"2\": 2, \"3\": 3} }"),
         };
-        json_decoder_actor.tell(cmd).await;
+        json_decoder_actor.tell(cmd).await.expect("cannot tell");
 
         let (send, recv) = oneshot::channel();
 
@@ -29,7 +29,7 @@ fn test_actor_tell() {
             ..Default::default()
         };
 
-        json_decoder_actor.send(envelope).await;
+        json_decoder_actor.send(envelope).await.expect("cannot send");
 
         let result = recv.await;
 

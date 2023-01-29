@@ -31,7 +31,7 @@ impl Actor for StdinActor {
 
             while let Some(text) = lines.next_line().await.expect("failed to read stream") {
                 let msg = Message::PrintOneCmd { text };
-                self.output.tell(msg).await
+                self.output.tell(msg).await;
                 // note - since these are all tells, you won't know the failures
                 // without logs or monitoring.  an http impl would of coarse do
                 // an ask if it wanted to propogate a 409 or it would do a tell
@@ -48,7 +48,7 @@ impl Actor for StdinActor {
                 ..Default::default()
             };
 
-            self.output.send(senv).await
+            self.output.send(senv).await;
         } else {
             log::warn!("unexpected: {:?}", message);
         }

@@ -117,7 +117,7 @@ async fn run_async_update(
     let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
 
     match input.ask(Message::ReadAllCmd {}).await {
-        EndOfStream {} => {
+        Ok(EndOfStream {}) => {
             log::trace!("end of stream");
             Ok(())
         }
@@ -151,13 +151,18 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
 
     let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
 
-    let m = director.ask(Message::Query { path: path.path }).await;
-
-    output.tell(m).await;
+    match director.ask(Message::Query { path: path.path }).await {
+        Ok(m) => {
+            output.tell(m).await.expect("can not tell");
+        }
+        Err(e) => {
+            log::error!("error {e}")
+        }
+    }
 
     // send complete to keep the job running long enough to print the above
     match output.ask(Message::EndOfStream {}).await {
-        EndOfStream {} => Ok(()),
+        Ok(EndOfStream {}) => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }
 }
