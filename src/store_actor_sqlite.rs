@@ -23,7 +23,7 @@ pub struct StoreActor {
 
 #[async_trait]
 impl Actor for StoreActor {
-    async fn stop(&mut self) {
+    async fn stop(&self) {
         if let Some(c) = &self.dbconn {
             c.close().await;
         }
@@ -145,12 +145,6 @@ impl StoreActor {
             .fetch_all(dbconn)
             .await
             .expect("cannot load from db");
-        log::trace!(
-            "fetched jrnl size {} for {}. first rec: {:?}",
-            v.len(),
-            path,
-            v.first()
-        );
         log::trace!(
             "fetched jrnl size {} for {}. last rec: {:?}",
             v.len(),

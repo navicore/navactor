@@ -37,7 +37,7 @@ fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
 
 #[async_trait]
 impl Actor for JsonDecoder {
-    async fn stop(&mut self) {}
+    async fn stop(&self) {}
     async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
         let MessageEnvelope {
             message,
