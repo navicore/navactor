@@ -86,7 +86,10 @@ impl Actor for StateActor {
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
-            output_handle.tell(self.get_state_rpt()).await;
+            output_handle
+                .tell(self.get_state_rpt())
+                .await
+                .expect("cannot tell");
         }
     }
 }

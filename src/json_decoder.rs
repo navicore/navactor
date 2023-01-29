@@ -89,7 +89,7 @@ impl Actor for JsonDecoder {
                     ..Default::default()
                 };
 
-                self.output.send(senv).await;
+                self.output.send(senv).await.expect("cannot send");
             }
         }
     }

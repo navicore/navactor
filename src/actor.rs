@@ -83,9 +83,9 @@ impl<'a> ActorHandle {
 
         let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
-        helper.send(load_cmd).await;
+        helper.send(load_cmd).await.expect("cannot send");
 
-        self.send(init_cmd).await;
+        self.send(init_cmd).await.expect("cannot send");
 
         recv.await.map_err(|e| ActorError {
             reason: e.to_string(),
