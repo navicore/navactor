@@ -41,8 +41,10 @@ jobs:
       - name: Install required cargo
         run: cargo install clippy-sarif sarif-fmt
 
-      - name: Block usage of `expect` and `unwrap`
-        run: cargo clippy 
+          #- name: Block usage of `expect` and `unwrap`
+      - name: Run rust-clippy
+        run: 
+          cargo clippy 
           --all-features 
           --deny deny(clippy::expect_fun_call) 
           --deny deny(clippy::unwrap_used) 
