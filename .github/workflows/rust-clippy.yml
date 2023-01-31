@@ -42,21 +42,21 @@ jobs:
         run: cargo install clippy-sarif sarif-fmt
 
           #- name: Block usage of `expect` and `unwrap`
-      - name: Run rust-clippy
-        run: 
-          cargo clippy 
-          --all-features 
-          --deny deny(clippy::expect_fun_call) 
-          --deny deny(clippy::unwrap_used) 
-          --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
-        continue-on-error: true
-      
       # - name: Run rust-clippy
-      #   run:
-      #     cargo clippy
-      #     --all-features
+      #   run: 
+      #     cargo clippy 
+      #     --all-features 
+      #     --deny deny(clippy::expect_fun_call) 
+      #     --deny deny(clippy::unwrap_used) 
       #     --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
       #   continue-on-error: true
+      
+      - name: Run rust-clippy
+        run:
+          cargo clippy
+          --all-features
+          --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+        continue-on-error: true
 
       - name: Upload analysis results to GitHub
         uses: github/codeql-action/upload-sarif@v2
