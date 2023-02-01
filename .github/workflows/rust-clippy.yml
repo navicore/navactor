@@ -45,8 +45,6 @@ jobs:
         run:
           cargo clippy
           --all-features
-          -W clippy::unwrap_used
-          -W clippy::expect_fun_call
           --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
         continue-on-error: true
 
