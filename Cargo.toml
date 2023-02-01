@@ -11,6 +11,7 @@ name = "nv"
 path = "src/main.rs"
 
 [dependencies]
+approx = "0.5.1"
 async-trait = "0.1.64"
 clap = { version = "4", features = ["derive"] }
 env_logger = "0.10.0"

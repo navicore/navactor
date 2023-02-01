@@ -1,3 +1,4 @@
+use approx::assert_ulps_eq;
 use navactor::actor::ActorState;
 use navactor::genes::DefaultGene;
 use navactor::genes::Gene;
@@ -33,5 +34,5 @@ fn test_default_gene() {
     assert_eq!(new_state.get(&1).unwrap(), &2.7);
     // test accumulator
     assert_eq!(new_state.get(&100).unwrap(), &2.91);
-    //assert_eq!(new_state.get(&199).unwrap(), &7.31); // TODO
+    assert_ulps_eq!(new_state.get(&199).unwrap(), &7.31, max_ulps = 4);
 }

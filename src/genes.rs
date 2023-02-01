@@ -41,7 +41,11 @@ impl Operator for AccumOperator {
         _: OffsetDateTime,
     ) -> OperatorResult<f64> {
         if let Some(old_val) = state.get(&idx) {
-            Ok(old_val + value)
+            let new_val = old_val + value;
+            println!("oldval: {old_val}");
+            println!("observation: {value}");
+            println!("newval: {new_val}");
+            Ok(new_val)
         } else {
             Err(OperatorError {
                 reason: String::from("idx invalid"),
