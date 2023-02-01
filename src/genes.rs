@@ -1,5 +1,5 @@
+use crate::actor::ActorState;
 use crate::message::Message;
-use std::collections::HashMap;
 use std::fmt;
 use time::OffsetDateTime;
 
@@ -18,32 +18,24 @@ impl fmt::Display for OperatorError {
 
 pub trait Operator {
     fn apply(
-        state: &HashMap<i32, f64>,
+        state: &ActorState<f64>,
         idx: i32,
         value: f64,
         datetime: OffsetDateTime,
     ) -> OperatorResult<f64>;
 }
 
-pub trait Gene {
-    fn apply_operators(
-        &self,
-        state: HashMap<i32, f64>,
-        update: crate::genes::Message,
-    ) -> OperatorResult<()>;
-}
-
-struct GuageOperator {}
+pub struct GuageOperator {}
 impl Operator for GuageOperator {
-    fn apply(_: &HashMap<i32, f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
+    fn apply(_: &ActorState<f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
         Ok(value)
     }
 }
 
-struct AccumOperator {}
+pub struct AccumOperator {}
 impl Operator for AccumOperator {
     fn apply(
-        state: &HashMap<i32, f64>,
+        state: &ActorState<f64>,
         idx: i32,
         value: f64,
         _: OffsetDateTime,
@@ -58,19 +50,31 @@ impl Operator for AccumOperator {
     }
 }
 
+pub trait Gene {
+    fn apply_operators(
+        &self,
+        state: ActorState<f64>,
+        update: crate::genes::Message,
+    ) -> OperatorResult<ActorState<f64>>;
+}
+
 pub struct DefaultGene {}
 impl Gene for DefaultGene {
-    fn apply_operators(&self, mut state: HashMap<i32, f64>, update: Message) -> OperatorResult<()> {
+    fn apply_operators(
+        &self,
+        mut state: ActorState<f64>,
+        update: Message,
+    ) -> OperatorResult<ActorState<f64>> {
         if let Message::Update {
             path: _,
             datetime,
             values,
         } = update
         {
-            for &idx in state.clone().keys() {
+            for &idx in values.keys() {
                 if let Some(in_val) = values.get(&idx) {
                     match idx {
-                        i if (100..200).contains(&i) => {
+                        i if (0..100).contains(&i) => {
                             // this is a guage
                             match GuageOperator::apply(&state, i, *in_val, datetime) {
                                 Ok(new_val) => {
@@ -79,7 +83,7 @@ impl Gene for DefaultGene {
                                 Err(e) => return Err(e),
                             }
                         }
-                        i if (200..300).contains(&i) => {
+                        i if (100..200).contains(&i) => {
                             // this is an accumulator
                             match AccumOperator::apply(&state, i, *in_val, datetime) {
                                 Ok(new_val) => {
@@ -101,7 +105,7 @@ impl Gene for DefaultGene {
                 }
             }
         }
-        Ok(())
+        Ok(state)
     }
 }
 

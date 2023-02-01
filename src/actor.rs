@@ -7,6 +7,8 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
+pub type ActorState<T> = std::collections::HashMap<i32, T>;
+
 /// all actors must implement this trait
 #[async_trait]
 pub trait Actor {

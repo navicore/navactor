@@ -1,11 +1,11 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
+use crate::actor::ActorState;
 use crate::genes::DefaultGene;
 use crate::genes::Gene;
 use crate::message::Message;
 use crate::message::MessageEnvelope;
 use async_trait::async_trait;
-use std::collections::HashMap;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 pub struct StateActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: Option<ActorHandle>,
-    pub state: HashMap<i32, f64>,
+    pub state: ActorState<f64>,
     pub path: String,
     pub gene: Box<dyn Gene + Send + Sync>,
 }
@@ -134,7 +134,7 @@ impl StateActor {
         //gene: &Gene,
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
-        let state = HashMap::new();
+        let state = ActorState::new();
         StateActor {
             path,
             receiver,
