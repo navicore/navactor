@@ -82,7 +82,12 @@ fn update(
         write_ahead_logging,
         no_dupelicate_detection,
     );
-    runtime.block_on(result).expect("An error occurred")
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("can not launch thread: {e}");
+        }
+    }
 }
 
 async fn run_async_update(
@@ -131,7 +136,12 @@ async fn run_async_update(
 fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
     let result = run_async_inspect(path, bufsz);
 
-    runtime.block_on(result).expect("An error occurred");
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
 }
 
 async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
@@ -152,11 +162,14 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
 
     match director.ask(Message::Query { path: path.path }).await {
-        Ok(m) => {
-            output.tell(m).await.expect("can not tell");
-        }
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
         Err(e) => {
-            log::error!("error {e}")
+            log::error!("error {e}");
         }
     }
 
