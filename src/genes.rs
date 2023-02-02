@@ -114,7 +114,7 @@ impl Gene for DefaultGene {
 }
 
 impl DefaultGene {
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         Self {}
     }
 }

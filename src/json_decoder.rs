@@ -96,12 +96,12 @@ impl Actor for JsonDecoder {
 /// actor private constructor
 impl JsonDecoder {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        JsonDecoder { receiver, output }
+        Self { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+#[must_use] pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: JsonDecoder) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;

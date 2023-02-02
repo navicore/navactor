@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 
 /// the stdin actor is only used in CLI mode.  it gets a single command to
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
-/// a EndOfStream msg to the next hop to trigger any cleanup and shutdown.
+/// a `EndOfStream` msg to the next hop to trigger any cleanup and shutdown.
 pub struct StdinActor {
     pub receiver: mpsc::Receiver<MessageEnvelope>,
     pub output: ActorHandle,
@@ -26,7 +26,7 @@ impl Actor for StdinActor {
             ..
         } = envelope;
 
-        if let Message::ReadAllCmd {} = message {
+        if matches!(message, Message::ReadAllCmd {}) {
             let mut lines = BufReader::new(stdin()).lines();
 
             while let Some(text) = lines.next_line().await.expect("failed to read stream") {
@@ -57,12 +57,12 @@ impl Actor for StdinActor {
 /// actor private constructor
 impl StdinActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
-        StdinActor { receiver, output }
+        Self { receiver, output }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+#[must_use] pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: StdinActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;

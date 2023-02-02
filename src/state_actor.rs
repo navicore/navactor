@@ -135,18 +135,12 @@ impl StateActor {
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
         let state = ActorState::new();
-        StateActor {
-            path,
-            receiver,
-            output,
-            state,
-            gene,
-        }
+        Self { receiver, output, state, path, gene }
     }
 }
 
 /// actor handle public constructor
-pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+#[must_use] pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
     async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;

@@ -167,8 +167,8 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     }
 }
 
-/// control logging of nv and various libs via RUST_LOG env var like so:
-///std::env::set_var("RUST_LOG", "debug,sqlx=warn");
+/// control logging of nv and various libs via `RUST_LOG` env var like so:
+///`std::env::set_var("RUST_LOG`", "debug,sqlx=warn");
 fn main() {
     env_logger::init();
     log::info!("nv started");

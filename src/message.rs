@@ -81,7 +81,7 @@ pub enum Message {
 
 impl Default for MessageEnvelope {
     fn default() -> Self {
-        MessageEnvelope {
+        Self {
             message: Message::ReadAllCmd {},
             respond_to: None,
             datetime: OffsetDateTime::now_utc(),
@@ -99,8 +99,8 @@ struct LifeCycleBuilder {
 }
 
 impl LifeCycleBuilder {
-    fn new() -> LifeCycleBuilder {
-        LifeCycleBuilder {
+    fn new() -> Self {
+        Self {
             load_from: None,
             send_to: None,
             send_to_path: None,
@@ -111,12 +111,12 @@ impl LifeCycleBuilder {
     fn with_respond_to(
         mut self,
         respond_to: oneshot::Sender<ActorResult<Message>>,
-    ) -> LifeCycleBuilder {
+    ) -> Self {
         self.respond_to = Some(respond_to);
         self
     }
 
-    fn with_load_from(mut self, load_from: mpsc::Receiver<Message>) -> LifeCycleBuilder {
+    fn with_load_from(mut self, load_from: mpsc::Receiver<Message>) -> Self {
         self.load_from = Some(load_from);
         self
     }
@@ -125,7 +125,7 @@ impl LifeCycleBuilder {
         mut self,
         send_to: mpsc::Sender<Message>,
         send_to_path: String,
-    ) -> LifeCycleBuilder {
+    ) -> Self {
         self.send_to = Some(send_to);
         self.send_to_path = Some(send_to_path);
         self
@@ -154,7 +154,7 @@ impl LifeCycleBuilder {
 }
 
 // factory function
-pub fn create_init_lifecycle(
+#[must_use] pub fn create_init_lifecycle(
     path: String,
     bufsz: usize,
     respond_to: oneshot::Sender<ActorResult<Message>>,

@@ -17,13 +17,13 @@ pub trait Actor {
     async fn stop(&self);
 }
 
-/// ActorHandle is the API for all actors
+/// `ActorHandle` is the API for all actors
 pub struct ActorHandle {
     #[doc(hidden)]
     pub sender: mpsc::Sender<MessageEnvelope>,
 }
 
-/// ActorHandle is the API for all actors via `ask` and `tell`
+/// `ActorHandle` is the API for all actors via `ask` and `tell`
 impl<'a> ActorHandle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
@@ -70,7 +70,7 @@ impl<'a> ActorHandle {
         }
     }
 
-    pub async fn integrate(&self, path: String, helper: &ActorHandle) -> ActorResult<Message> {
+    pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message> {
         let (send, recv): (
             oneshot::Sender<ActorResult<Message>>,
             oneshot::Receiver<ActorResult<Message>>,
@@ -94,7 +94,7 @@ impl<'a> ActorHandle {
     // ActorHandle constructor is an internal API use in the convenience functions
     // of the various per-actor ActorHandle impls
     #[doc(hidden)]
-    pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
+    #[must_use] pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
         Self { sender }
     }
 }
