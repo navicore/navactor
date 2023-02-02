@@ -6,6 +6,7 @@ use navactor::message::Message;
 use test_log::test;
 use time::OffsetDateTime;
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_default_gene() {
     let mut state: ActorState<f64> = ActorState::new();
