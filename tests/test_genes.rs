@@ -34,6 +34,7 @@ fn test_default_gene() {
     assert_eq!(new_state.get(&0).unwrap(), &2.9);
     assert_eq!(new_state.get(&1).unwrap(), &2.7);
     // test accumulator
-    assert_eq!(new_state.get(&100).unwrap(), &2.91);
+    let tv1: f64 = 2.91;
+    assert_eq!(new_state.get(&100).unwrap(), &tv1);
     assert_ulps_eq!(new_state.get(&199).unwrap(), &7.31, max_ulps = 4);
 }
