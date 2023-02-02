@@ -43,12 +43,12 @@ impl Actor for StdoutActor {
 /// actor private constructor
 impl StdoutActor {
     fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
-        StdoutActor { receiver }
+        Self { receiver }
     }
 }
 
 /// actor handle public constructor
-pub fn new(bufsz: usize) -> ActorHandle {
+#[must_use] pub fn new(bufsz: usize) -> ActorHandle {
     async fn start(mut actor: StdoutActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;

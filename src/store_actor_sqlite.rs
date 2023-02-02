@@ -112,7 +112,7 @@ impl StoreActor {
         namespace: String,
         disable_duplicate_detection: bool,
     ) -> Self {
-        StoreActor {
+        Self {
             receiver,
             dbconn,
             namespace,
@@ -195,7 +195,7 @@ impl StoreActor {
 }
 
 /// actor handle public constructor
-pub fn new(
+#[must_use] pub fn new(
     bufsz: usize,
     namespace: String,
     write_ahead_logging: bool,

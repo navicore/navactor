@@ -166,7 +166,7 @@ impl Director {
         output: Option<ActorHandle>,
         store_actor: Option<ActorHandle>,
     ) -> Self {
-        Director {
+        Self {
             namespace,
             actors: HashMap::new(),
             receiver,
@@ -177,7 +177,7 @@ impl Director {
 }
 
 /// actor handle public constructor
-pub fn new(
+#[must_use] pub fn new(
     namespace: String,
     bufsz: usize,
     output: Option<ActorHandle>,

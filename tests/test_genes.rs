@@ -27,7 +27,7 @@ fn test_default_gene() {
     };
 
     let r = g1.apply_operators(state, msg);
-    assert!(r.is_ok(), "{:?}", r);
+    assert!(r.is_ok(), "{r:?}");
     let new_state = r.unwrap();
     // test guage
     assert_eq!(new_state.get(&0).unwrap(), &2.9);
