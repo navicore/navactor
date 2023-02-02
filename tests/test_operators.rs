@@ -24,6 +24,7 @@ fn test_accumulator() {
     assert_eq!(r.ok(), Some(6.9));
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_accumulator_with_dec() {
     let mut state: ActorState<f64> = ActorState::new();
