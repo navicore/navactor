@@ -152,7 +152,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
         .unwrap()
         .as_os_str()
         .to_str()
-        .unwrap();
+        .unwrap_or_default();
 
     log::trace!("inspect of ns {ns}");
     let output = stdout_actor::new(bufsz); // print state
