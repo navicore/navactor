@@ -106,5 +106,5 @@ fn test_decoder_ask() {
             let v2 = new_values.get(&2);
             assert_eq!(v2.unwrap(), &2.9);
         }
-    })
+    });
 }
