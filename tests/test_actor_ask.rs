@@ -1,3 +1,4 @@
+use approx::assert_ulps_eq;
 use navactor::director;
 use navactor::json_decoder;
 use navactor::message::Message;
@@ -103,9 +104,10 @@ fn test_decoder_ask() {
             // ensure that the initial state for 2 is still there but that the initial state for 1
             // was updated
             let v1 = new_values.get(&1);
-            assert_eq!(v1.unwrap(), &1.8);
+            assert_ulps_eq!(v1.unwrap(), &1.8, max_ulps = 4);
             let v2: Option<&f64> = new_values.get(&2);
-            assert!((v2.unwrap() - &2.9).abs() < std::f64::EPSILON); // this is insane
+            assert_ulps_eq!(v2.unwrap(), &2.9, max_ulps = 4);
+
         }
     });
 }
