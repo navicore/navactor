@@ -70,6 +70,8 @@ impl<'a> ActorHandle {
         }
     }
 
+    /// call to coordinate the instantiation of a new acotr with the help
+    /// of another actor - usually a datastore journal service
     pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message> {
         let (send, recv): (
             oneshot::Sender<ActorResult<Message>>,
@@ -94,7 +96,8 @@ impl<'a> ActorHandle {
     // ActorHandle constructor is an internal API use in the convenience functions
     // of the various per-actor ActorHandle impls
     #[doc(hidden)]
-    #[must_use] pub fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
+    #[must_use]
+    pub const fn new(sender: mpsc::Sender<MessageEnvelope>) -> Self {
         Self { sender }
     }
 }
