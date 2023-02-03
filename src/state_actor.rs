@@ -56,9 +56,9 @@ impl Actor for StateActor {
                     log::debug!("{} finished init from {} events", self.path, count);
 
                     if let Some(respond_to) = respond_to {
-                        respond_to
-                            .send(Ok(Message::EndOfStream {}))
-                            .expect("can not reply to init");
+                        if let Err(err) = respond_to.send(Ok(Message::EndOfStream {})) {
+                            log::error!("Error sending reply to init: {:?}", err);
+                        }
                     }
                 }
             }
@@ -66,17 +66,17 @@ impl Actor for StateActor {
                 log::trace!("{} handling update", self.path);
                 self.update_state(message.clone());
                 if let Some(respond_to) = respond_to {
-                    respond_to
-                        .send(Ok(self.get_state_rpt()))
-                        .expect("can not reply to ask");
+                    if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
+                        log::error!("Error sending reply to ask: {:?}", err);
+                    }
                 }
             }
             Message::Query { .. } => {
                 // respond with a copy of our new state if this is an 'ask'
                 if let Some(respond_to) = respond_to {
-                    respond_to
-                        .send(Ok(self.get_state_rpt()))
-                        .expect("can not reply to ask");
+                    if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
+                        log::error!("Error sending reply to ask: {:?}", err);
+                    }
                 }
             }
             m => {
@@ -86,10 +86,9 @@ impl Actor for StateActor {
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
-            output_handle
-                .tell(self.get_state_rpt())
-                .await
-                .expect("cannot tell");
+            if let Err(err) = output_handle.tell(self.get_state_rpt()).await {
+                log::error!("Error telling output actor: {:?}", err);
+            }
         }
     }
 }
@@ -135,12 +134,19 @@ impl StateActor {
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
         let state = ActorState::new();
-        Self { receiver, output, state, path, gene }
+        Self {
+            receiver,
+            output,
+            state,
+            path,
+            gene,
+        }
     }
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+#[must_use]
+pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
     async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
