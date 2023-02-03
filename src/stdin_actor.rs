@@ -29,16 +29,20 @@ impl Actor for StdinActor {
         if matches!(message, Message::ReadAllCmd {}) {
             let mut lines = BufReader::new(stdin()).lines();
 
-            while let Some(text) = lines.next_line().await.expect("failed to read stream") {
+            while let Some(text) = lines.next_line().await.unwrap_or_else(|e| {
+                log::error!("failed to read stream: {:?}", e);
+                return None;
+            }) {
                 let msg = Message::PrintOneCmd { text };
-                self.output.tell(msg).await.expect("cannot send");
-                // note - since these are all tells, you won't know the failures
-                // without logs or monitoring.  an http impl would of coarse do
-                // an ask if it wanted to propagate a 409.
+                match self.output.tell(msg).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        log::error!("cannot send message: {:?}", e);
+                        return;
+                    }
+                }
             }
 
-            // forward the respond_to handle so that the output actor can respond when all
-            // is printed
             let complete_msg = Message::EndOfStream {};
 
             let senv = MessageEnvelope {
@@ -47,7 +51,12 @@ impl Actor for StdinActor {
                 ..Default::default()
             };
 
-            self.output.send(senv).await.expect("cannot send");
+            match self.output.send(senv).await {
+                Ok(()) => {}
+                Err(e) => {
+                    log::error!("cannot send end-of-stream message: {:?}", e);
+                }
+            }
         } else {
             log::warn!("unexpected: {:?}", message);
         }
@@ -62,7 +71,8 @@ impl StdinActor {
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+#[must_use]
+pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
     async fn start(mut actor: StdinActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
