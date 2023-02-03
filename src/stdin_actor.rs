@@ -31,7 +31,7 @@ impl Actor for StdinActor {
 
             while let Some(text) = lines.next_line().await.unwrap_or_else(|e| {
                 log::error!("failed to read stream: {:?}", e);
-                return None;
+                None
             }) {
                 let msg = Message::PrintOneCmd { text };
                 match self.output.tell(msg).await {
