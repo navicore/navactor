@@ -43,7 +43,6 @@ impl Actor for StoreActor {
                 datetime,
                 values,
             } => {
-                // if we don't want to reject dupes, use the envelope clock for key
                 let dt = if self.disable_duplicate_detection {
                     sequence
                 } else {
@@ -52,54 +51,64 @@ impl Actor for StoreActor {
                 match self.insert_update(&path, dt, sequence, values).await {
                     Ok(_) => {
                         if let Some(respond_to) = respond_to {
-                            respond_to
-                                .send(Ok(Message::EndOfStream {}))
-                                .expect("cannot respond to 'ask' with confirmation");
+                            match respond_to.send(Ok(Message::EndOfStream {})) {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    log::error!(
+                                        "Cannot respond to 'ask' with confirmation: {:?}",
+                                        err
+                                    );
+                                }
+                            }
                         }
                     }
                     Err(e) => {
                         if let Some(respond_to) = respond_to {
-                            respond_to
-                                .send(Err(ActorError {
-                                    reason: e.to_string(),
-                                }))
-                                .expect("cannot respond to 'ask' with confirmation");
+                            match respond_to.send(Err(ActorError {
+                                reason: e.to_string(),
+                            })) {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    log::error!(
+                                        "Cannot respond to 'ask' with confirmation: {:?}",
+                                        err
+                                    );
+                                }
+                            }
                         }
                     }
                 }
             }
-
             Message::LoadCmd { path } => {
                 log::trace!("{path} load started...");
-                // play jrnl to resurected actor so that they can process 'next_message'
                 if let Some(stream_to) = stream_to {
-                    log::trace!("handling LoadCmd for {}", path);
+                    log::trace!("Handling LoadCmd for {}", path);
                     if let Some(dbconn) = &self.dbconn {
                         let rows: Vec<Message> = self.get_jrnl(dbconn, &path).await;
-
                         log::trace!(
-                            "handling LoadCmd jrnl for {} items count: {}",
+                            "Handling LoadCmd jrnl for {} items count: {}",
                             path,
                             rows.len()
                         );
-
                         for message in rows {
-                            stream_to
-                                .send(message)
-                                .await
-                                .expect("can not send jrnl event from helper");
+                            match stream_to.send(message).await {
+                                Ok(_) => (),
+                                Err(err) => {
+                                    log::error!("Can not send jrnl event from helper: {}", err);
+                                }
+                            }
                         }
                     }
-
-                    stream_to
-                        .send(Message::EndOfStream {})
-                        .await
-                        .expect("can not integrate from helper");
-
+                    match stream_to.send(Message::EndOfStream {}).await {
+                        Ok(_) => (),
+                        Err(err) => {
+                            log::error!("Can not integrate from helper: {}", err);
+                        }
+                    }
                     stream_to.closed().await;
                 }
             }
-            m => log::warn!("unexpected: {:?}", m),
+            m => log::warn!("Unexpected: {:?}", m),
         }
     }
 }
@@ -195,7 +204,8 @@ impl StoreActor {
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(
+#[must_use]
+pub fn new(
     bufsz: usize,
     namespace: String,
     write_ahead_logging: bool,
