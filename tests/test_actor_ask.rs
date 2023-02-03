@@ -104,7 +104,7 @@ fn test_decoder_ask() {
             // was updated
             let v1 = new_values.get(&1);
             assert_eq!(v1.unwrap(), &1.8);
-            let v2 = new_values.get(&2);
+            let v2: Option<&f64> = new_values.get(&2);
             assert_eq!(v2.unwrap(), &2.9);
         }
     });
