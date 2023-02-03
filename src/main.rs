@@ -74,7 +74,7 @@ struct NvPath {
 fn update(
     namespace: Namespace,
     bufsz: usize,
-    runtime: Runtime,
+    runtime: &Runtime,
     silent: OptionVariant,
     memory_only: OptionVariant,
     write_ahead_logging: OptionVariant,
@@ -224,7 +224,7 @@ fn main() {
         Commands::Update(namespace) => update(
             namespace,
             bufsz,
-            runtime,
+            &runtime,
             silent.unwrap_or(OptionVariant::Off),
             memory_only.unwrap_or(OptionVariant::Off),
             write_ahead_logging.unwrap_or(OptionVariant::Off),
