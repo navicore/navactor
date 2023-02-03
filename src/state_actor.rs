@@ -46,10 +46,10 @@ impl Actor for StateActor {
                     let mut count = 0;
 
                     while let Some(message) = stream_from.recv().await {
-                        if !self.update_state(message.clone()) {
-                            stream_from.close();
-                        } else {
+                        if self.update_state(message.clone()) {
                             count += 1;
+                        } else {
+                            stream_from.close();
                         }
                     }
 
