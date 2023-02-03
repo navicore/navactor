@@ -63,6 +63,7 @@ fn test_actor_ask() {
     })
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_decoder_ask() {
     let rt = Runtime::new().unwrap();
