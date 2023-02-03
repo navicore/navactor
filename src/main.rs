@@ -148,12 +148,9 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
     let p = std::path::Path::new(&path.path);
     let ns = p
         .components()
-        .find(|c| c != &std::path::Component::RootDir)
-        .unwrap()
-        .as_os_str()
-        .to_str()
-        .unwrap_or_default();
-
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
     log::trace!("inspect of ns {ns}");
     let output = stdout_actor::new(bufsz); // print state
 

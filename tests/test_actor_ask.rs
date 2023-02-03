@@ -60,7 +60,7 @@ fn test_actor_ask() {
             let v2 = new_values.get(&2);
             assert_eq!(v2.unwrap(), &2.9);
         }
-    })
+    });
 }
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
