@@ -30,7 +30,7 @@ impl Actor for StdoutActor {
                 if let Some(respond_to) = respond_to {
                     respond_to
                         .send(Ok(Message::EndOfStream {}))
-                        .expect("could not send completion token");
+                        .unwrap_or_else(|e| log::error!("cannot respond to ask: {:?}", e));
                 }
             }
             _ => {
@@ -48,7 +48,8 @@ impl StdoutActor {
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(bufsz: usize) -> ActorHandle {
+#[must_use]
+pub fn new(bufsz: usize) -> ActorHandle {
     async fn start(mut actor: StdoutActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
