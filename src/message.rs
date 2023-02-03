@@ -99,7 +99,7 @@ struct LifeCycleBuilder {
 }
 
 impl LifeCycleBuilder {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             load_from: None,
             send_to: None,
