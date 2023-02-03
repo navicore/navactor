@@ -8,6 +8,12 @@ use navactor::stdout_actor;
 use navactor::store_actor_sqlite;
 use tokio::runtime::Runtime;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OptionVariant {
+    On,
+    Off,
+}
+
 #[derive(Parser)]
 #[command(
     author,
@@ -69,10 +75,10 @@ fn update(
     namespace: Namespace,
     bufsz: usize,
     runtime: Runtime,
-    silent: bool,
-    memory_only: bool,
-    write_ahead_logging: bool,
-    no_dupelicate_detection: bool,
+    silent: OptionVariant,
+    memory_only: OptionVariant,
+    write_ahead_logging: OptionVariant,
+    no_dupelicate_detection: OptionVariant,
 ) {
     let result = run_async_update(
         namespace,
@@ -93,33 +99,31 @@ fn update(
 async fn run_async_update(
     namespace: Namespace,
     bufsz: usize,
-    silent: bool,
-    memory_only: bool,
-    write_ahead_logging: bool,
-    no_dupelicate_detection: bool,
+    silent: OptionVariant,
+    memory_only: OptionVariant,
+    write_ahead_logging: OptionVariant,
+    no_duplicate_detection: OptionVariant,
 ) -> Result<(), String> {
-    let output = if silent {
-        None
-    } else {
-        Some(stdout_actor::new(bufsz)) // print state changes
+    let output = match silent {
+        OptionVariant::Off => Some(stdout_actor::new(bufsz)),
+        OptionVariant::On => None,
     };
 
-    let store_actor = if memory_only {
-        None
-    } else {
-        Some(store_actor_sqlite::new(
+    let store_actor = match memory_only {
+        OptionVariant::Off => Some(store_actor_sqlite::new(
             bufsz,
             namespace.namespace.clone(),
-            write_ahead_logging,
-            no_dupelicate_detection,
-        ))
+            write_ahead_logging == OptionVariant::On,
+            no_duplicate_detection == OptionVariant::On,
+        )),
+        OptionVariant::On => None,
     };
 
     let director_w_persist = director::new(namespace.namespace, bufsz, output, store_actor);
 
-    let json_decoder_actor = json_decoder::new(bufsz, director_w_persist); // parse input
+    let json_decoder_actor = json_decoder::new(bufsz, director_w_persist);
 
-    let input = stdin_actor::new(bufsz, json_decoder_actor); // read from stdin
+    let input = stdin_actor::new(bufsz, json_decoder_actor);
 
     match input.ask(Message::ReadAllCmd {}).await {
         Ok(EndOfStream {}) => {
@@ -133,7 +137,7 @@ async fn run_async_update(
     }
 }
 
-fn inspect(path: NvPath, bufsz: usize, runtime: Runtime) {
+fn inspect(path: NvPath, bufsz: usize, runtime: &Runtime) {
     let result = run_async_inspect(path, bufsz);
 
     match runtime.block_on(result) {
@@ -185,10 +189,34 @@ fn main() {
 
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
-    let silent: bool = cli.silent.unwrap_or(false);
-    let memory_only: bool = cli.memory_only.unwrap_or(false);
-    let write_ahead_logging: bool = cli.wal.unwrap_or(false);
-    let no_dupelicate_detection: bool = cli.no_duplicate_detection.unwrap_or(false);
+    let silent = cli.silent.map(|s| {
+        if s {
+            OptionVariant::On
+        } else {
+            OptionVariant::Off
+        }
+    });
+    let memory_only = cli.memory_only.map(|m| {
+        if m {
+            OptionVariant::On
+        } else {
+            OptionVariant::Off
+        }
+    });
+    let write_ahead_logging = cli.wal.map(|w| {
+        if w {
+            OptionVariant::On
+        } else {
+            OptionVariant::Off
+        }
+    });
+    let no_dupelicate_detection = cli.no_duplicate_detection.map(|n| {
+        if n {
+            OptionVariant::On
+        } else {
+            OptionVariant::Off
+        }
+    });
 
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
@@ -197,12 +225,12 @@ fn main() {
             namespace,
             bufsz,
             runtime,
-            silent,
-            memory_only,
-            write_ahead_logging,
-            no_dupelicate_detection,
+            silent.unwrap_or(OptionVariant::Off),
+            memory_only.unwrap_or(OptionVariant::Off),
+            write_ahead_logging.unwrap_or(OptionVariant::Off),
+            no_dupelicate_detection.unwrap_or(OptionVariant::Off),
         ),
-        Commands::Inspect(path) => inspect(path, bufsz, runtime),
+        Commands::Inspect(path) => inspect(path, bufsz, &runtime),
     }
 
     log::info!("nv stopped.");
