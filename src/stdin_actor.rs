@@ -65,7 +65,7 @@ impl Actor for StdinActor {
 
 /// actor private constructor
 impl StdinActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
+    const fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
         Self { receiver, output }
     }
 }

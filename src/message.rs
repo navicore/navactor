@@ -108,10 +108,7 @@ impl LifeCycleBuilder {
         }
     }
 
-    fn with_respond_to(
-        mut self,
-        respond_to: oneshot::Sender<ActorResult<Message>>,
-    ) -> Self {
+    fn with_respond_to(mut self, respond_to: oneshot::Sender<ActorResult<Message>>) -> Self {
         self.respond_to = Some(respond_to);
         self
     }
@@ -121,11 +118,7 @@ impl LifeCycleBuilder {
         self
     }
 
-    fn with_send_to(
-        mut self,
-        send_to: mpsc::Sender<Message>,
-        send_to_path: String,
-    ) -> Self {
+    fn with_send_to(mut self, send_to: mpsc::Sender<Message>, send_to_path: String) -> Self {
         self.send_to = Some(send_to);
         self.send_to_path = Some(send_to_path);
         self
@@ -146,7 +139,7 @@ impl LifeCycleBuilder {
                 stream_from: None,
                 stream_to: self.send_to,
                 message: Message::LoadCmd {
-                    path: self.send_to_path.unwrap(),
+                    path: self.send_to_path.unwrap_or_default(),
                 },
             },
         )
@@ -154,7 +147,8 @@ impl LifeCycleBuilder {
 }
 
 // factory function
-#[must_use] pub fn create_init_lifecycle(
+#[must_use]
+pub fn create_init_lifecycle(
     path: String,
     bufsz: usize,
     respond_to: oneshot::Sender<ActorResult<Message>>,

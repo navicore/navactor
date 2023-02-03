@@ -42,7 +42,7 @@ impl Actor for StdoutActor {
 
 /// actor private constructor
 impl StdoutActor {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
+    const fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
         Self { receiver }
     }
 }
