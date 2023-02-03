@@ -31,11 +31,10 @@ fn test_default_gene() {
     assert!(r.is_ok(), "{r:?}");
     let new_state = r.unwrap();
     // test guage
-    assert_eq!(new_state.get(&0).unwrap(), &2.9);
-    assert_eq!(new_state.get(&1).unwrap(), &2.7);
+    assert_ulps_eq!(new_state.get(&0).unwrap(), &2.9, max_ulps = 4);
+    assert_ulps_eq!(new_state.get(&1).unwrap(), &2.7, max_ulps = 4);
     // test accumulator
     let tv1: f64 = 2.91;
-    //assert_eq!(new_state.get(&100).unwrap(), &tv1);
     assert_ulps_eq!(new_state.get(&100).unwrap(), &tv1, max_ulps = 4);
     assert_ulps_eq!(new_state.get(&199).unwrap(), &7.31, max_ulps = 4);
 }
