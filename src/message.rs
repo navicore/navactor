@@ -29,7 +29,7 @@ pub struct Observations {
 /// sender objects - these are set when a `tell` message is sent so that
 /// the reply can be delivered.  These replies are not placed in envelopes.
 #[derive(Debug)]
-pub struct MessageEnvelope {
+pub struct Envelope {
     pub message: Message,
     pub respond_to: Option<oneshot::Sender<ActorResult<Message>>>,
     pub datetime: OffsetDateTime,
@@ -79,7 +79,7 @@ pub enum Message {
     },
 }
 
-impl Default for MessageEnvelope {
+impl Default for Envelope {
     fn default() -> Self {
         Self {
             message: Message::ReadAllCmd {},
@@ -124,16 +124,16 @@ impl LifeCycleBuilder {
         self
     }
 
-    fn build(self) -> (MessageEnvelope, MessageEnvelope) {
+    fn build(self) -> (Envelope, Envelope) {
         (
-            MessageEnvelope {
+            Envelope {
                 datetime: OffsetDateTime::now_utc(),
                 respond_to: self.respond_to,
                 stream_from: self.load_from,
                 stream_to: None,
                 message: Message::InitCmd {},
             },
-            MessageEnvelope {
+            Envelope {
                 datetime: OffsetDateTime::now_utc(),
                 respond_to: None,
                 stream_from: None,
@@ -152,7 +152,7 @@ pub fn create_init_lifecycle(
     path: String,
     bufsz: usize,
     respond_to: oneshot::Sender<ActorResult<Message>>,
-) -> (MessageEnvelope, MessageEnvelope) {
+) -> (Envelope, Envelope) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()
         .with_load_from(rx)

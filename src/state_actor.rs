@@ -4,7 +4,7 @@ use crate::actor::ActorState;
 use crate::genes::DefaultGene;
 use crate::genes::Gene;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 /// instance of actor keeping state computed from an arriving stream of
 /// observations.
 pub struct StateActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
     pub output: Option<ActorHandle>,
     pub state: ActorState<f64>,
     pub path: String,
@@ -29,8 +29,8 @@ pub struct StateActor {
 #[async_trait]
 impl Actor for StateActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        let MessageEnvelope {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
+        let Envelope {
             message,
             respond_to,
             stream_from,
@@ -128,7 +128,7 @@ impl StateActor {
     /// the lifecycle processing coordinated by the director
     fn new(
         path: String,
-        receiver: mpsc::Receiver<MessageEnvelope>,
+        receiver: mpsc::Receiver<Envelope>,
         output: Option<ActorHandle>,
         //gene: &Gene,
     ) -> Self {

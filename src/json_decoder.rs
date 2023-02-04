@@ -2,7 +2,7 @@ use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::ActorError;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use crate::message::Observations;
 use async_trait::async_trait;
 use time::format_description::well_known::Iso8601;
@@ -13,7 +13,7 @@ extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonDecoder {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
     pub output: ActorHandle,
 }
 
@@ -38,8 +38,8 @@ fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
 #[async_trait]
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        let MessageEnvelope {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
+        let Envelope {
             message,
             respond_to,
             datetime,
@@ -59,7 +59,7 @@ impl Actor for JsonDecoder {
                     };
 
                     // forward if output is configured
-                    let senv = MessageEnvelope {
+                    let senv = Envelope {
                         message: msg,
                         respond_to, // delegate responding to an ask to director
                         datetime,
@@ -81,7 +81,7 @@ impl Actor for JsonDecoder {
             },
             m => {
                 // forward everything else
-                let senv = MessageEnvelope {
+                let senv = Envelope {
                     message: m.clone(),
                     respond_to,
                     ..Default::default()
@@ -95,7 +95,7 @@ impl Actor for JsonDecoder {
 
 /// actor private constructor
 impl JsonDecoder {
-    fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
+    fn new(receiver: mpsc::Receiver<Envelope>, output: ActorHandle) -> Self {
         Self { receiver, output }
     }
 }

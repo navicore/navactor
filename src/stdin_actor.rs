@@ -1,7 +1,7 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use async_trait::async_trait;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
@@ -12,15 +12,15 @@ use tokio::sync::mpsc;
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
 /// a `EndOfStream` msg to the next hop to trigger any cleanup and shutdown.
 pub struct StdinActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
     pub output: ActorHandle,
 }
 
 #[async_trait]
 impl Actor for StdinActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        let MessageEnvelope {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
+        let Envelope {
             message,
             respond_to,
             ..
@@ -45,7 +45,7 @@ impl Actor for StdinActor {
 
             let complete_msg = Message::EndOfStream {};
 
-            let senv = MessageEnvelope {
+            let senv = Envelope {
                 message: complete_msg,
                 respond_to,
                 ..Default::default()
@@ -65,7 +65,7 @@ impl Actor for StdinActor {
 
 /// actor private constructor
 impl StdinActor {
-    const fn new(receiver: mpsc::Receiver<MessageEnvelope>, output: ActorHandle) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope>, output: ActorHandle) -> Self {
         Self { receiver, output }
     }
 }
