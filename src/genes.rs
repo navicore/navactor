@@ -1,4 +1,4 @@
-use crate::actor::ActorState;
+use crate::actor::State;
 use crate::message::Message;
 use std::fmt;
 use time::OffsetDateTime;
@@ -18,7 +18,7 @@ impl fmt::Display for OperatorError {
 
 pub trait Operator {
     fn apply(
-        state: &ActorState<f64>,
+        state: &State<f64>,
         idx: i32,
         value: f64,
         datetime: OffsetDateTime,
@@ -27,7 +27,7 @@ pub trait Operator {
 
 pub struct GuageOperator {}
 impl Operator for GuageOperator {
-    fn apply(_: &ActorState<f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
+    fn apply(_: &State<f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
         Ok(value)
     }
 }
@@ -35,7 +35,7 @@ impl Operator for GuageOperator {
 pub struct AccumOperator {}
 impl Operator for AccumOperator {
     fn apply(
-        state: &ActorState<f64>,
+        state: &State<f64>,
         idx: i32,
         value: f64,
         _: OffsetDateTime,
@@ -60,18 +60,18 @@ impl Operator for AccumOperator {
 pub trait Gene {
     fn apply_operators(
         &self,
-        state: ActorState<f64>,
+        state: State<f64>,
         update: crate::genes::Message,
-    ) -> OperatorResult<ActorState<f64>>;
+    ) -> OperatorResult<State<f64>>;
 }
 
 pub struct DefaultGene {}
 impl Gene for DefaultGene {
     fn apply_operators(
         &self,
-        mut state: ActorState<f64>,
+        mut state: State<f64>,
         update: Message,
-    ) -> OperatorResult<ActorState<f64>> {
+    ) -> OperatorResult<State<f64>> {
         if let Message::Update {
             path: _,
             datetime,

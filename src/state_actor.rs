@@ -1,6 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::actor::ActorState;
+use crate::actor::State;
 use crate::genes::DefaultGene;
 use crate::genes::Gene;
 use crate::message::Message;
@@ -21,7 +21,7 @@ use tokio::sync::mpsc;
 pub struct StateActor {
     pub receiver: mpsc::Receiver<Envelope>,
     pub output: Option<Handle>,
-    pub state: ActorState<f64>,
+    pub state: State<f64>,
     pub path: String,
     pub gene: Box<dyn Gene + Send + Sync>,
 }
@@ -133,7 +133,7 @@ impl StateActor {
         //gene: &Gene,
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
-        let state = ActorState::new();
+        let state = State::new();
         Self {
             receiver,
             output,
