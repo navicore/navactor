@@ -40,17 +40,20 @@ impl Operator for AccumOperator {
         value: f64,
         _: OffsetDateTime,
     ) -> OperatorResult<f64> {
-        if let Some(old_val) = state.get(&idx) {
-            let new_val = old_val + value;
-            println!("oldval: {old_val}");
-            println!("observation: {value}");
-            println!("newval: {new_val}");
-            Ok(new_val)
-        } else {
-            Err(OperatorError {
-                reason: String::from("idx invalid"),
-            })
-        }
+        state.get(&idx).map_or_else(
+            || {
+                Err(OperatorError {
+                    reason: String::from("idx invalid"),
+                })
+            },
+            |old_val| {
+                let new_val = old_val + value;
+                println!("oldval: {}", old_val);
+                println!("observation: {}", value);
+                println!("newval: {}", new_val);
+                Ok(new_val)
+            },
+        )
     }
 }
 
@@ -114,7 +117,8 @@ impl Gene for DefaultGene {
 }
 
 impl DefaultGene {
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self {}
     }
 }
