@@ -2,7 +2,7 @@ use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::ActorError;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;
@@ -15,7 +15,7 @@ use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
 pub struct StoreActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
     pub dbconn: Option<sqlx::SqlitePool>,
     pub namespace: String,
     pub disable_duplicate_detection: bool,
@@ -28,8 +28,8 @@ impl Actor for StoreActor {
             c.close().await;
         }
     }
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        let MessageEnvelope {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
+        let Envelope {
             message,
             respond_to,
             stream_to,
@@ -116,7 +116,7 @@ impl Actor for StoreActor {
 impl StoreActor {
     /// actor private constructor
     fn new(
-        receiver: mpsc::Receiver<MessageEnvelope>,
+        receiver: mpsc::Receiver<Envelope>,
         dbconn: Option<sqlx::SqlitePool>,
         namespace: String,
         disable_duplicate_detection: bool,

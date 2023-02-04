@@ -48,9 +48,9 @@ impl Operator for AccumOperator {
             },
             |old_val| {
                 let new_val = old_val + value;
-                println!("oldval: {}", old_val);
-                println!("observation: {}", value);
-                println!("newval: {}", new_val);
+                println!("oldval: {old_val}");
+                println!("observation: {value}");
+                println!("newval: {new_val}");
                 Ok(new_val)
             },
         )

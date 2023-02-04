@@ -1,7 +1,7 @@
 use navactor::director;
 use navactor::json_decoder;
 use navactor::message::Message;
-use navactor::message::MessageEnvelope;
+use navactor::message::Envelope;
 use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -26,7 +26,7 @@ fn test_actor_tell() {
 
         let message = Message::EndOfStream {};
 
-        let envelope = MessageEnvelope {
+        let envelope = Envelope {
             message,
             respond_to: Some(send),
             ..Default::default()

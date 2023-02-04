@@ -1,21 +1,21 @@
 use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 
 /// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
 /// in combination with other *nix tools.
 pub struct StdoutActor {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
 }
 
 #[async_trait]
 impl Actor for StdoutActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
-        let MessageEnvelope {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
+        let Envelope {
             message,
             respond_to,
             ..
@@ -42,7 +42,7 @@ impl Actor for StdoutActor {
 
 /// actor private constructor
 impl StdoutActor {
-    const fn new(receiver: mpsc::Receiver<MessageEnvelope>) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope>) -> Self {
         Self { receiver }
     }
 }

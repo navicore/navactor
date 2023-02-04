@@ -2,7 +2,7 @@ use crate::actor::Actor;
 use crate::actor::ActorHandle;
 use crate::message::ActorError;
 use crate::message::Message;
-use crate::message::MessageEnvelope;
+use crate::message::Envelope;
 use crate::state_actor;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ use tokio::sync::mpsc;
 /// it is forwarding commands to.  director also accepts metadata to create
 /// and store graph edges to support arbitrary paths
 pub struct Director {
-    pub receiver: mpsc::Receiver<MessageEnvelope>,
+    pub receiver: mpsc::Receiver<Envelope>,
     pub store_actor: Option<ActorHandle>,
     pub output: Option<ActorHandle>,
     pub actors: HashMap<String, ActorHandle>,
@@ -29,12 +29,12 @@ impl Actor for Director {
 
     // TODO: I've spent a lot of time trying to refactor this into 3 functions
     // but I'm stuck on them all dragging mut self along... Learning....
-    async fn handle_envelope(&mut self, envelope: MessageEnvelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope) {
         log::trace!(
             "director namespace {} handling_envelope {envelope:?}",
             self.namespace
         );
-        let MessageEnvelope {
+        let Envelope {
             message,
             respond_to,
             ..
@@ -114,7 +114,7 @@ impl Actor for Director {
                         // forward response if output is configured
                         if let Some(o) = &self.output {
                             if let Ok(message) = r {
-                                let senv = MessageEnvelope {
+                                let senv = Envelope {
                                     message,
                                     respond_to: None,
                                     ..Default::default()
@@ -152,7 +152,7 @@ impl Actor for Director {
                 log::debug!("complete");
 
                 if let Some(a) = &self.output {
-                    let senv = MessageEnvelope {
+                    let senv = Envelope {
                         message,
                         respond_to,
                         ..Default::default()
@@ -172,7 +172,7 @@ impl Actor for Director {
 impl Director {
     fn new(
         namespace: String,
-        receiver: mpsc::Receiver<MessageEnvelope>,
+        receiver: mpsc::Receiver<Envelope>,
         output: Option<ActorHandle>,
         store_actor: Option<ActorHandle>,
     ) -> Self {
