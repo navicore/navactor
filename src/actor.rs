@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-pub type ActorState<T> = std::collections::HashMap<i32, T>;
+pub type State<T> = std::collections::HashMap<i32, T>;
 
 /// all actors must implement this trait
 #[async_trait]
@@ -18,13 +18,13 @@ pub trait Actor {
 }
 
 /// `ActorHandle` is the API for all actors
-pub struct ActorHandle {
+pub struct Handle {
     #[doc(hidden)]
     pub sender: mpsc::Sender<Envelope>,
 }
 
 /// `ActorHandle` is the API for all actors via `ask` and `tell`
-impl<'a> ActorHandle {
+impl<'a> Handle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
     #[doc(hidden)]

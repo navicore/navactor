@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::Envelope;
@@ -17,9 +17,9 @@ use tokio::sync::mpsc;
 /// and store graph edges to support arbitrary paths
 pub struct Director {
     pub receiver: mpsc::Receiver<Envelope>,
-    pub store_actor: Option<ActorHandle>,
-    pub output: Option<ActorHandle>,
-    pub actors: HashMap<String, ActorHandle>,
+    pub store_actor: Option<Handle>,
+    pub output: Option<Handle>,
+    pub actors: HashMap<String, Handle>,
     namespace: String,
 }
 
@@ -173,8 +173,8 @@ impl Director {
     fn new(
         namespace: String,
         receiver: mpsc::Receiver<Envelope>,
-        output: Option<ActorHandle>,
-        store_actor: Option<ActorHandle>,
+        output: Option<Handle>,
+        store_actor: Option<Handle>,
     ) -> Self {
         Self {
             namespace,
@@ -191,9 +191,9 @@ impl Director {
 pub fn new(
     namespace: String,
     bufsz: usize,
-    output: Option<ActorHandle>,
-    store_actor: Option<ActorHandle>,
-) -> ActorHandle {
+    output: Option<Handle>,
+    store_actor: Option<Handle>,
+) -> Handle {
     async fn start(mut actor: Director) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -204,7 +204,7 @@ pub fn new(
 
     let actor = Director::new(namespace.clone(), receiver, output, store_actor);
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor));
 

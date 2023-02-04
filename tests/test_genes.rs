@@ -1,5 +1,5 @@
 use approx::assert_ulps_eq;
-use navactor::actor::ActorState;
+use navactor::actor::State;
 use navactor::genes::DefaultGene;
 use navactor::genes::Gene;
 use navactor::message::Message;
@@ -9,13 +9,13 @@ use time::OffsetDateTime;
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_default_gene() {
-    let mut state: ActorState<f64> = ActorState::new();
+    let mut state: State<f64> = State::new();
     state.insert(0, 1.9);
     state.insert(1, 2.7);
     state.insert(100, 2.91);
     state.insert(199, 3.2);
 
-    let mut values: ActorState<f64> = ActorState::new();
+    let mut values: State<f64> = State::new();
     values.insert(0, 2.9);
     values.insert(199, 4.11);
 

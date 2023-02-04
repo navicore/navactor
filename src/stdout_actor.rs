@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::message::Message;
 use crate::message::Envelope;
 use async_trait::async_trait;
@@ -49,7 +49,7 @@ impl StdoutActor {
 
 /// actor handle public constructor
 #[must_use]
-pub fn new(bufsz: usize) -> ActorHandle {
+pub fn new(bufsz: usize) -> Handle {
     async fn start(mut actor: StdoutActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -60,7 +60,7 @@ pub fn new(bufsz: usize) -> ActorHandle {
 
     let actor = StdoutActor::new(receiver);
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor));
 

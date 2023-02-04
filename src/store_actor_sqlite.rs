@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::Envelope;
@@ -210,7 +210,7 @@ pub fn new(
     namespace: String,
     write_ahead_logging: bool,
     disable_duplicate_detection: bool,
-) -> ActorHandle {
+) -> Handle {
     async fn init_db(namespace: String, write_ahead_logging: bool) -> sqlx::SqlitePool {
         let db_url_string: String = format!("{namespace}.db");
 
@@ -280,7 +280,7 @@ pub fn new(
         disable_duplicate_detection,
     );
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor, namespace, write_ahead_logging));
 
