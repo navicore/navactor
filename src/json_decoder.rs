@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::message::ActorError;
 use crate::message::Message;
 use crate::message::Envelope;
@@ -14,7 +14,7 @@ extern crate serde_json;
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<Envelope>,
-    pub output: ActorHandle,
+    pub output: Handle,
 }
 
 fn extract_values_from_json(text: &str) -> Result<Observations, String> {
@@ -95,13 +95,13 @@ impl Actor for JsonDecoder {
 
 /// actor private constructor
 impl JsonDecoder {
-    fn new(receiver: mpsc::Receiver<Envelope>, output: ActorHandle) -> Self {
+    fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
         Self { receiver, output }
     }
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+#[must_use] pub fn new(bufsz: usize, output: Handle) -> Handle {
     async fn start(mut actor: JsonDecoder) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -112,7 +112,7 @@ impl JsonDecoder {
 
     let actor = JsonDecoder::new(receiver, output);
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor));
 

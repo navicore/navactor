@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::actor::ActorState;
 use crate::genes::DefaultGene;
 use crate::genes::Gene;
@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 /// observations.
 pub struct StateActor {
     pub receiver: mpsc::Receiver<Envelope>,
-    pub output: Option<ActorHandle>,
+    pub output: Option<Handle>,
     pub state: ActorState<f64>,
     pub path: String,
     pub gene: Box<dyn Gene + Send + Sync>,
@@ -129,7 +129,7 @@ impl StateActor {
     fn new(
         path: String,
         receiver: mpsc::Receiver<Envelope>,
-        output: Option<ActorHandle>,
+        output: Option<Handle>,
         //gene: &Gene,
     ) -> Self {
         let gene = Box::new(DefaultGene::new());
@@ -146,7 +146,7 @@ impl StateActor {
 
 /// actor handle public constructor
 #[must_use]
-pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHandle {
+pub fn new(path: String, bufsz: usize, output: Option<Handle>) -> Handle {
     async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -157,7 +157,7 @@ pub fn new(path: String, bufsz: usize, output: Option<ActorHandle>) -> ActorHand
 
     let actor = StateActor::new(path, receiver, output);
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor));
 

@@ -1,5 +1,5 @@
 use crate::actor::Actor;
-use crate::actor::ActorHandle;
+use crate::actor::Handle;
 use crate::message::Message;
 use crate::message::Envelope;
 use async_trait::async_trait;
@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 /// a `EndOfStream` msg to the next hop to trigger any cleanup and shutdown.
 pub struct StdinActor {
     pub receiver: mpsc::Receiver<Envelope>,
-    pub output: ActorHandle,
+    pub output: Handle,
 }
 
 #[async_trait]
@@ -65,14 +65,14 @@ impl Actor for StdinActor {
 
 /// actor private constructor
 impl StdinActor {
-    const fn new(receiver: mpsc::Receiver<Envelope>, output: ActorHandle) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
         Self { receiver, output }
     }
 }
 
 /// actor handle public constructor
 #[must_use]
-pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
+pub fn new(bufsz: usize, output: Handle) -> Handle {
     async fn start(mut actor: StdinActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -83,7 +83,7 @@ pub fn new(bufsz: usize, output: ActorHandle) -> ActorHandle {
 
     let actor = StdinActor::new(receiver, output);
 
-    let actor_handle = ActorHandle::new(sender);
+    let actor_handle = Handle::new(sender);
 
     tokio::spawn(start(actor));
 
