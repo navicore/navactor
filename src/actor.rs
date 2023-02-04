@@ -35,6 +35,11 @@ impl<'a> Handle {
     }
 
     /// fire and forget
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ActorError`](messages::ActorError) if the
+    /// message is not received by the target actor
     pub async fn tell(&self, message: Message) -> ActorResult<()> {
         let envelope = Envelope {
             message,
@@ -47,6 +52,11 @@ impl<'a> Handle {
     }
 
     /// request <-> response
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ActorError`](messages::ActorError) if the
+    /// message is not received and replied to by the target actor
     pub async fn ask(&self, message: Message) -> ActorResult<Message> {
         let (send, recv) = oneshot::channel();
 

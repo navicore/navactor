@@ -34,12 +34,7 @@ impl Operator for GuageOperator {
 
 pub struct AccumOperator {}
 impl Operator for AccumOperator {
-    fn apply(
-        state: &State<f64>,
-        idx: i32,
-        value: f64,
-        _: OffsetDateTime,
-    ) -> OperatorResult<f64> {
+    fn apply(state: &State<f64>, idx: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
         state.get(&idx).map_or_else(
             || {
                 Err(OperatorError {
@@ -58,6 +53,11 @@ impl Operator for AccumOperator {
 }
 
 pub trait Gene {
+    /// # Errors
+    ///
+    /// Returns [`OperatorError`](genes::OperatorError) if the
+    /// input is not valid for the operation - usually an invalid
+    /// index
     fn apply_operators(
         &self,
         state: State<f64>,
