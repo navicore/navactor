@@ -29,13 +29,9 @@ impl<'a> ActorHandle {
     // actors that forward respond_to in workflows.
     #[doc(hidden)]
     pub async fn send(&self, envelope: MessageEnvelope) -> ActorResult<()> {
-        self.sender
-            .send(envelope)
-            .await
-            //.expect("actor cannot receive");
-            .map_err(|e| ActorError {
-                reason: e.to_string(),
-            })
+        self.sender.send(envelope).await.map_err(|e| ActorError {
+            reason: e.to_string(),
+        })
     }
 
     /// fire and forget

@@ -104,7 +104,12 @@ impl Actor for Director {
                         //send message to the actor and support ask results
                         let r = actor.ask(message.clone()).await;
                         if let Some(respond_to) = respond_to {
-                            respond_to.send(r.clone()).expect("can not reply to ask");
+                            match respond_to.send(r.clone()) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    log::error!("can not respond: {e:?}");
+                                }
+                            }
                         }
                         // forward response if output is configured
                         if let Some(o) = &self.output {
@@ -114,7 +119,12 @@ impl Actor for Director {
                                     respond_to: None,
                                     ..Default::default()
                                 };
-                                o.send(senv).await.expect("receiver not ready");
+                                match o.send(senv).await {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        log::error!("can not forward: {e:?}")
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -177,7 +187,8 @@ impl Director {
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(
+#[must_use]
+pub fn new(
     namespace: String,
     bufsz: usize,
     output: Option<ActorHandle>,
