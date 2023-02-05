@@ -9,7 +9,7 @@ fn test_graph() {
     assert_eq!(graph.node_count(), 2);
     assert_eq!(graph.edge_count(), 1);
 }
-
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_graph_labels() {
     let mut graph = Graph::new();
