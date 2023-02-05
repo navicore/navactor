@@ -1,6 +1,7 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
+use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::nvtime::OffsetDateTimeWrapper;
@@ -84,20 +85,30 @@ impl Actor for StoreActor {
                 if let Some(stream_to) = stream_to {
                     log::trace!("Handling LoadCmd for {}", path);
                     if let Some(dbconn) = &self.dbconn {
-                        let rows: Vec<Message> = self.get_jrnl(dbconn, &path).await;
-                        log::trace!(
-                            "Handling LoadCmd jrnl for {} items count: {}",
-                            path,
-                            rows.len()
-                        );
-                        for message in rows {
-                            match stream_to.send(message).await {
-                                Ok(_) => (),
-                                Err(err) => {
-                                    log::error!("Can not send jrnl event from helper: {}", err);
+                        let r = self.get_jrnl(dbconn, &path).await;
+                        match r {
+                            Ok(rows) => {
+                                log::trace!(
+                                    "Handling LoadCmd jrnl for {} items count: {}",
+                                    path,
+                                    rows.len()
+                                );
+                                for message in rows {
+                                    match stream_to.send(message).await {
+                                        Ok(_) => (),
+                                        Err(err) => {
+                                            log::error!(
+                                                "Can not send jrnl event from helper: {}",
+                                                err
+                                            );
+                                        }
+                                    }
                                 }
                             }
-                        }
+                            Err(e) => {
+                                log::error!("cannot load jrnl: {path} {e:?}");
+                            }
+                        };
                     }
                     match stream_to.send(Message::EndOfStream {}).await {
                         Ok(_) => (),
@@ -130,20 +141,27 @@ impl StoreActor {
     }
 
     /// retrieve the time series of events (observations) for the actor that is being resurrected
-    async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> Vec<Message> {
+
+    async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> {
         let v = sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
             .bind(path)
             .try_map(|row: sqlx::sqlite::SqliteRow| {
-                //let date_parsed: OffsetDateTimeWrapper = from_str(row.get(0)).unwrap();
-                let date_parsed_i64: i64 = from_str(row.get(0)).unwrap();
-                let date_parsed: OffsetDateTimeWrapper = OffsetDateTimeWrapper {
+                let date_parsed_i64 = match from_str(row.get(0)) {
+                    Ok(val) => val,
+                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+                };
+
+                let date_parsed = OffsetDateTimeWrapper {
                     datetime_i64: date_parsed_i64,
                 };
 
-                let values: HashMap<i32, f64> =
-                    serde_json::from_str(row.try_get(1).expect("cannot extract values"))
-                        .map_err(|e| sqlx::Error::Decode(Box::new(e)))
-                        .expect("cannot return values");
+                let values = match row.try_get(1) {
+                    Ok(val_str) => match serde_json::from_str(val_str) {
+                        Ok(val) => val,
+                        Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+                    },
+                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+                };
 
                 Ok(Message::Update {
                     path: String::from(path),
@@ -152,16 +170,25 @@ impl StoreActor {
                 })
             })
             .fetch_all(dbconn)
-            .await
-            .expect("cannot load from db");
-        log::trace!(
-            "fetched jrnl size {} for {}. last rec: {:?}",
-            v.len(),
-            path,
-            v.last()
-        );
+            .await;
 
-        v
+        match v {
+            Ok(v) => {
+                log::trace!(
+                    "fetched jrnl size {} for {}. last rec: {:?}",
+                    v.len(),
+                    path,
+                    v.last()
+                );
+                Ok(v)
+            }
+            Err(e) => {
+                log::error!("cannot load from db: {:?}", e);
+                Err(ActorError {
+                    reason: format!("cannot load from db: {:?}", e),
+                })
+            }
+        }
     }
 
     /// record the latest event in the actors state
@@ -211,7 +238,10 @@ pub fn new(
     write_ahead_logging: bool,
     disable_duplicate_detection: bool,
 ) -> Handle {
-    async fn init_db(namespace: String, write_ahead_logging: bool) -> sqlx::SqlitePool {
+    async fn init_db(
+        namespace: String,
+        write_ahead_logging: bool,
+    ) -> ActorResult<sqlx::SqlitePool> {
         let db_url_string: String = format!("{namespace}.db");
 
         let db_url: &str = &db_url_string;
@@ -221,17 +251,28 @@ pub fn new(
         if !db_path.exists() {
             match File::create(db_url) {
                 Ok(_) => log::debug!("File {} has been created", db_url),
-                Err(e) => log::warn!("Failed to create file {}: {}", db_url, e),
+                Err(e) => {
+                    return Err(ActorError {
+                        reason: format!("Failed to create file {}: {}", db_url, e),
+                    });
+                }
             }
         }
 
         let dbconn = SqlitePool::connect(db_url).await.expect("");
 
         if write_ahead_logging {
-            sqlx::query("PRAGMA journal_mode = WAL;")
+            match sqlx::query("PRAGMA journal_mode = WAL;")
                 .execute(&dbconn)
                 .await
-                .expect("");
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    return Err(ActorError {
+                        reason: format!("Failed to create file {db_url}: {e}"),
+                    });
+                }
+            }
         }
 
         // report on journal mode
@@ -256,13 +297,18 @@ pub fn new(
         .await
         .expect("cannot create table");
 
-        dbconn
+        Ok(dbconn)
     }
 
     async fn start(mut actor: StoreActor, namespace: String, write_ahead_logging: bool) {
-        let dbconn = init_db(namespace, write_ahead_logging).await;
+        let dbconn = init_db(namespace, write_ahead_logging)
+            .await
+            .map_err(|e| {
+                log::error!("cannot get dbconn: {e:?}");
+            })
+            .ok();
 
-        actor.dbconn = Some(dbconn);
+        actor.dbconn = dbconn;
 
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
