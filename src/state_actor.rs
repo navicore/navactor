@@ -85,7 +85,7 @@ impl Actor for StateActor {
                     log::error!("Error applying operators in ask");
                     if let Some(respond_to) = respond_to {
                         if let Err(err) = respond_to.send(Err(ActorError {
-                            reason: format!("cannot apply operators"),
+                            reason: String::from("cannot apply operators"),
                         })) {
                             log::error!("Error sending error to ask: {:?}", err);
                         }
