@@ -46,12 +46,22 @@ impl Actor for StateActor {
                     let mut count = 0;
 
                     while let Some(message) = stream_from.recv().await {
-                        if self.update_state(message.clone()) {
-                            count += 1;
-                        } else {
-                            stream_from.close();
+                        match &message {
+                            Message::EndOfStream {} => {
+                                break;
+                            }
+                            _ => {
+                                if self.update_state(message.clone()) {
+                                    count += 1;
+                                } else {
+                                    log::trace!("{} init closing stream.", self.path);
+                                    break;
+                                }
+                            }
                         }
                     }
+                    log::trace!("{} init closing stream.", self.path);
+                    stream_from.close();
 
                     log::debug!("{} finished init from {} events", self.path, count);
 
@@ -65,27 +75,22 @@ impl Actor for StateActor {
             Message::Update { .. } => {
                 log::trace!("{} handling update", self.path);
 
-                // TODO: lifecycle instead of clone!!
-                match self.gene.apply_operators(self.state.clone(), message) {
-                    Ok(new_state) => {
-                        self.state = new_state;
-                        if let Some(respond_to) = respond_to {
-                            if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
-                                log::error!("Error sending reply to ask: {:?}", err);
-                            }
-                        };
-                    }
-                    Err(e) => {
-                        log::error!("Error applying operators in ask: {:?}", e);
-                        if let Some(respond_to) = respond_to {
-                            if let Err(err) = respond_to.send(Err(ActorError {
-                                reason: format!("{e:?}"),
-                            })) {
-                                log::error!("Error sending error to ask: {:?}", err);
-                            }
+                if self.update_state(message.clone()) {
+                    if let Some(respond_to) = respond_to {
+                        if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
+                            log::error!("Error sending reply to ask: {:?}", err);
+                        }
+                    };
+                } else {
+                    log::error!("Error applying operators in ask");
+                    if let Some(respond_to) = respond_to {
+                        if let Err(err) = respond_to.send(Err(ActorError {
+                            reason: format!("cannot apply operators"),
+                        })) {
+                            log::error!("Error sending error to ask: {:?}", err);
                         }
                     }
-                };
+                }
             }
             Message::Query { .. } => {
                 // respond with a copy of our new state if this is an 'ask'
@@ -112,24 +117,16 @@ impl Actor for StateActor {
 /// actor private constructor
 impl StateActor {
     fn update_state(&mut self, message: Message) -> bool {
-        let mut updated = false;
-        match message {
-            Message::Update { values, .. } => {
-                updated = true;
-
-                self.state.extend(&values); //update state
+        match self.gene.apply_operators(self.state.clone(), message) {
+            Ok(new_state) => {
+                self.state = new_state;
+                true
             }
-            Message::Query { path: _ } => {
-                // no impl because all "respond_to" requests get a state_rpt
-            }
-            Message::EndOfStream {} => {
-                log::trace!("{} end of update stream", self.path);
-            }
-            m => {
-                log::warn!("unexpected message in update stream: {:?}", m);
+            Err(e) => {
+                log::error!("Error applying operators in ask: {:?}", e);
+                false
             }
         }
-        updated
     }
 
     fn get_state_rpt(&self) -> Message {
