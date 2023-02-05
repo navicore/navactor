@@ -1,8 +1,8 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
-use crate::message::Message;
 use crate::message::Envelope;
+use crate::message::Message;
 use crate::state_actor;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -122,7 +122,7 @@ impl Actor for Director {
                                 match o.send(senv).await {
                                     Ok(_) => {}
                                     Err(e) => {
-                                        log::error!("can not forward: {e:?}")
+                                        log::error!("can not forward: {e:?}");
                                     }
                                 }
                             }
@@ -189,7 +189,7 @@ impl Director {
 /// actor handle public constructor
 #[must_use]
 pub fn new(
-    namespace: String,
+    namespace: &String,
     bufsz: usize,
     output: Option<Handle>,
     store_actor: Option<Handle>,

@@ -1,8 +1,8 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
-use crate::message::Message;
 use crate::message::Envelope;
+use crate::message::Message;
 use crate::message::Observations;
 use async_trait::async_trait;
 use time::format_description::well_known::Iso8601;
@@ -95,13 +95,14 @@ impl Actor for JsonDecoder {
 
 /// actor private constructor
 impl JsonDecoder {
-    fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
         Self { receiver, output }
     }
 }
 
 /// actor handle public constructor
-#[must_use] pub fn new(bufsz: usize, output: Handle) -> Handle {
+#[must_use]
+pub fn new(bufsz: usize, output: Handle) -> Handle {
     async fn start(mut actor: JsonDecoder) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;

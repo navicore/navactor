@@ -119,7 +119,7 @@ async fn run_async_update(
         OptionVariant::On => None,
     };
 
-    let director_w_persist = director::new(namespace.namespace, bufsz, output, store_actor);
+    let director_w_persist = director::new(&namespace.namespace, bufsz, output, store_actor);
 
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist);
 
@@ -160,7 +160,7 @@ async fn run_async_inspect(path: NvPath, bufsz: usize) -> Result<(), String> {
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
 
-    let director = director::new(path.path.clone(), bufsz, None, Some(store_actor));
+    let director = director::new(&path.path.clone(), bufsz, None, Some(store_actor));
 
     match director.ask(Message::Query { path: path.path }).await {
         Ok(m) => match output.tell(m).await {

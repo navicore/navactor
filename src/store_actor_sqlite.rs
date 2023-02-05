@@ -1,8 +1,8 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
-use crate::message::Message;
 use crate::message::Envelope;
+use crate::message::Message;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;
@@ -115,7 +115,7 @@ impl Actor for StoreActor {
 
 impl StoreActor {
     /// actor private constructor
-    fn new(
+    const fn new(
         receiver: mpsc::Receiver<Envelope>,
         dbconn: Option<sqlx::SqlitePool>,
         namespace: String,
