@@ -6,8 +6,6 @@ use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::expect_used))]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_actor_tell() {
     let rt = Runtime::new().unwrap();
