@@ -43,10 +43,8 @@ jobs:
 
       - name: Run rust-clippy
         run:
-          cargo clippy
-          --all-features
-          -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used
-          --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+          cargo clippy --all-features --message-format=json -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used -W clippy::expect_used | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+
         continue-on-error: true
 
       - name: Upload analysis results to GitHub
