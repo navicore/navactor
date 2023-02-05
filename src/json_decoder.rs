@@ -78,15 +78,12 @@ impl Actor for JsonDecoder {
                     log::warn!("json parse error: {}", error);
                     if let Some(respond_to) = respond_to {
                         let etxt = format!("json parse error: {error}");
-                        // TODO: THIS IS A TEST OF ACTIONS CLIPPY
-                        respond_to.send(Err(ActorError { reason: etxt })).unwrap();
-
-                        // respond_to
-                        //     .send(Err(ActorError { reason: etxt }))
-                        //     .map_err(|e| {
-                        //         log::error!("cannot send: {e:?}");
-                        //     })
-                        //     .ok();
+                        respond_to
+                            .send(Err(ActorError { reason: etxt }))
+                            .map_err(|e| {
+                                log::error!("cannot send: {e:?}");
+                            })
+                            .ok();
                     }
                 }
             },
