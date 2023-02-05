@@ -17,6 +17,11 @@ impl fmt::Display for OperatorError {
 }
 
 pub trait Operator {
+    /// # Errors
+    ///
+    /// Returns [`OperatorError`](genes::OperatorError) if the
+    /// input is not valid for the operation - usually an invalid
+    /// index
     fn apply(
         state: &State<f64>,
         idx: i32,
@@ -118,7 +123,7 @@ impl Gene for DefaultGene {
 
 impl DefaultGene {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {}
     }
 }

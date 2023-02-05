@@ -70,7 +70,7 @@ fn test_decoder_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
 
-        let director = director::new(String::from("/"), 8, None, None);
+        let director = director::new(&String::from("/"), 8, None, None);
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // init state

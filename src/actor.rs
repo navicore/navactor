@@ -1,8 +1,8 @@
 use crate::message::create_init_lifecycle;
 use crate::message::ActorError;
 use crate::message::ActorResult;
-use crate::message::Message;
 use crate::message::Envelope;
+use crate::message::Message;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -78,6 +78,11 @@ impl<'a> Handle {
 
     /// call to coordinate the instantiation of a new acotr with the help
     /// of another actor - usually a datastore journal service
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ActorError`](messages::ActorError) if the
+    /// two actors don't exchange lifecycle info
     pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message> {
         let (send, recv): (
             oneshot::Sender<ActorResult<Message>>,

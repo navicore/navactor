@@ -1,7 +1,7 @@
 use navactor::director;
 use navactor::json_decoder;
-use navactor::message::Message;
 use navactor::message::Envelope;
+use navactor::message::Message;
 use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -12,7 +12,7 @@ use tokio::sync::oneshot;
 fn test_actor_tell() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let director = director::new(String::from("/"), 8, None, None);
+        let director = director::new(&String::from("/"), 8, None, None);
 
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
