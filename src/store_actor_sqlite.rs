@@ -185,7 +185,7 @@ impl StoreActor {
             Err(e) => {
                 log::error!("cannot load from db: {:?}", e);
                 Err(ActorError {
-                    reason: format!("cannot load from db: {:?}", e),
+                    reason: format!("cannot load from db: {e:?}"),
                 })
             }
         }
@@ -210,7 +210,13 @@ impl StoreActor {
             .bind(path.clone())
             .bind(dt_wrapper.datetime_i64)
             .bind(sequence_wrapper.datetime_i64)
-            .bind(serde_json::to_string(&values).expect("cannot serialize values"))
+            .bind(
+                serde_json::to_string(&values)
+                    .map_err(|e| {
+                        log::error!("cannot serialize values: {e:?}");
+                    })
+                    .ok(),
+            )
             .execute(dbconn)
             .await
             {
@@ -253,51 +259,69 @@ pub fn new(
                 Ok(_) => log::debug!("File {} has been created", db_url),
                 Err(e) => {
                     return Err(ActorError {
-                        reason: format!("Failed to create file {}: {}", db_url, e),
-                    });
-                }
-            }
-        }
-
-        let dbconn = SqlitePool::connect(db_url).await.expect("");
-
-        if write_ahead_logging {
-            match sqlx::query("PRAGMA journal_mode = WAL;")
-                .execute(&dbconn)
-                .await
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    return Err(ActorError {
                         reason: format!("Failed to create file {db_url}: {e}"),
                     });
                 }
             }
         }
 
-        // report on journal mode
-        let rows = sqlx::query("PRAGMA journal_mode;")
-            .fetch_all(&dbconn)
-            .await
-            .expect("can not check journal mode");
-        let journal_mode: String = rows[0].get("journal_mode");
-        log::info!("connected to db in journal_mode: {:?}", journal_mode);
+        match SqlitePool::connect(db_url).await {
+            Ok(dbconn) => {
+                if write_ahead_logging {
+                    match sqlx::query("PRAGMA journal_mode = WAL;")
+                        .execute(&dbconn)
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(e) => {
+                            return Err(ActorError {
+                                reason: format!("Failed to create file {db_url}: {e}"),
+                            });
+                        }
+                    }
+                }
 
-        // Create table if it doesn't exist
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS updates (
-              path TEXT NOT NULL,
-              timestamp TEXT NOT NULL,
-              sequence TEXT NOT NULL,
-              values_str TEXT NOT NULL,
-              PRIMARY KEY (path, timestamp)
-        )",
-        )
-        .execute(&dbconn)
-        .await
-        .expect("cannot create table");
+                // report on journal mode
+                match sqlx::query("PRAGMA journal_mode;").fetch_all(&dbconn).await {
+                    Ok(rows) => {
+                        let journal_mode: String = rows[0].get("journal_mode");
+                        log::info!("connected to db in journal_mode: {:?}", journal_mode);
 
-        Ok(dbconn)
+                        // Create table if it doesn't exist
+                        match sqlx::query(
+                            "CREATE TABLE IF NOT EXISTS updates (
+                      path TEXT NOT NULL,
+                      timestamp TEXT NOT NULL,
+                      sequence TEXT NOT NULL,
+                      values_str TEXT NOT NULL,
+                      PRIMARY KEY (path, timestamp)
+                )",
+                        )
+                        .execute(&dbconn)
+                        .await
+                        {
+                            Ok(_) => Ok(dbconn),
+                            Err(e) => {
+                                return Err(ActorError {
+                                    reason: format!("Failed to create file {db_url}: {e}"),
+                                });
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(ActorError {
+                            reason: format!("Failed to create file {db_url}: {e}"),
+                        });
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("cannot connect to db: {e:?}");
+                return Err(ActorError {
+                    reason: format!("{e:?}"),
+                });
+            }
+        }
     }
 
     async fn start(mut actor: StoreActor, namespace: String, write_ahead_logging: bool) {

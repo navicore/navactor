@@ -37,8 +37,7 @@ impl<'a> Handle {
     /// fire and forget
     ///
     /// # Errors
-    ///
-    /// Returns [`ActorError`](messages::ActorError) if the
+    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// message is not received by the target actor
     pub async fn tell(&self, message: Message) -> ActorResult<()> {
         let envelope = Envelope {
@@ -55,7 +54,7 @@ impl<'a> Handle {
     ///
     /// # Errors
     ///
-    /// Returns [`ActorError`](messages::ActorError) if the
+    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// message is not received and replied to by the target actor
     pub async fn ask(&self, message: Message) -> ActorResult<Message> {
         let (send, recv) = oneshot::channel();
@@ -81,7 +80,7 @@ impl<'a> Handle {
     ///
     /// # Errors
     ///
-    /// Returns [`ActorError`](messages::ActorError) if the
+    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// two actors don't exchange lifecycle info
     pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message> {
         let (send, recv): (

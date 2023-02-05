@@ -19,7 +19,7 @@ impl fmt::Display for OperatorError {
 pub trait Operator {
     /// # Errors
     ///
-    /// Returns [`OperatorError`](genes::OperatorError) if the
+    /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
     /// input is not valid for the operation - usually an invalid
     /// index
     fn apply(
@@ -60,7 +60,7 @@ impl Operator for AccumOperator {
 pub trait Gene {
     /// # Errors
     ///
-    /// Returns [`OperatorError`](genes::OperatorError) if the
+    /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
     /// input is not valid for the operation - usually an invalid
     /// index
     fn apply_operators(
