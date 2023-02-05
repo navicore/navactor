@@ -45,8 +45,8 @@ jobs:
         run:
           cargo clippy
           --all-features
-          -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used
           --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+          -- -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used
         continue-on-error: true
 
       - name: Upload analysis results to GitHub
