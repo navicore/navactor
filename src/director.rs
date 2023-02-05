@@ -134,17 +134,24 @@ impl Actor for Director {
                                 .send(Err(ActorError {
                                     reason: format!("cannot journal input to actor {path}"),
                                 }))
-                                .expect("can not reply to ask");
+                                .map_err(|e| {
+                                    log::error!("cannot reply: {e:?}");
+                                })
+                                .ok();
                         }
                     }
                 } else {
                     log::error!("cannot load actor {path} - see logs");
+
                     if let Some(respond_to) = respond_to {
                         respond_to
                             .send(Err(ActorError {
                                 reason: format!("cannot load actor {path}"),
                             }))
-                            .expect("can not reply to ask");
+                            .map_err(|e| {
+                                log::error!("cannot respond: {:?}", e);
+                            })
+                            .ok();
                     }
                 }
             }
@@ -157,10 +164,20 @@ impl Actor for Director {
                         respond_to,
                         ..Default::default()
                     };
-                    a.send(senv).await.expect("cannot send");
+                    a.send(senv)
+                        .await
+                        .map_err(|e| {
+                            log::error!("cannot send: {e:?}");
+                        })
+                        .ok();
                 } else if let Some(respond_to) = respond_to {
                     // else we're the end of the line so reply if this is an ask
-                    respond_to.send(Ok(message)).expect("can not reply to ask");
+                    respond_to
+                        .send(Ok(message))
+                        .map_err(|e| {
+                            log::error!("cannot send: {e:?}");
+                        })
+                        .ok();
                 }
             }
             m => log::warn!("unexpected message: {:?}", m),

@@ -66,7 +66,13 @@ impl Actor for JsonDecoder {
                         ..Default::default()
                     };
 
-                    self.output.send(senv).await.expect("cannot send");
+                    self.output
+                        .send(senv)
+                        .await
+                        .map_err(|e| {
+                            log::error!("cannot send: {e:?}");
+                        })
+                        .ok();
                 }
                 Err(error) => {
                     log::warn!("json parse error: {}", error);
@@ -75,7 +81,10 @@ impl Actor for JsonDecoder {
 
                         respond_to
                             .send(Err(ActorError { reason: etxt }))
-                            .expect("can not return error");
+                            .map_err(|e| {
+                                log::error!("cannot send: {e:?}");
+                            })
+                            .ok();
                     }
                 }
             },
@@ -87,7 +96,13 @@ impl Actor for JsonDecoder {
                     ..Default::default()
                 };
 
-                self.output.send(senv).await.expect("cannot send");
+                self.output
+                    .send(senv)
+                    .await
+                    .map_err(|e| {
+                        log::error!("cannot send: {e:?}");
+                    })
+                    .ok();
             }
         }
     }
