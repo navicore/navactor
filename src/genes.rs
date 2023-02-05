@@ -71,10 +71,10 @@ pub trait Gene {
 }
 
 pub struct GuageAndAccumGene {
-    pub accumulator_first_idx: i32,
-    pub accumulator_last_idx: i32,
     pub guage_first_idx: i32,
     pub guage_last_idx: i32,
+    pub accumulator_first_idx: i32,
+    pub accumulator_last_idx: i32,
 }
 impl Gene for GuageAndAccumGene {
     fn apply_operators(
@@ -91,7 +91,7 @@ impl Gene for GuageAndAccumGene {
             for &idx in values.keys() {
                 if let Some(in_val) = values.get(&idx) {
                     match idx {
-                        i if (0..100).contains(&i) => {
+                        i if (self.guage_first_idx..self.guage_last_idx + 1).contains(&i) => {
                             // this is a guage
                             match GuageOperator::apply(&state, i, *in_val, datetime) {
                                 Ok(new_val) => {
@@ -100,7 +100,9 @@ impl Gene for GuageAndAccumGene {
                                 Err(e) => return Err(e),
                             }
                         }
-                        i if (100..200).contains(&i) => {
+                        i if (self.accumulator_first_idx..self.accumulator_last_idx + 1)
+                            .contains(&i) =>
+                        {
                             // this is an accumulator
                             match AccumOperator::apply(&state, i, *in_val, datetime) {
                                 Ok(new_val) => {
@@ -129,10 +131,10 @@ impl Gene for GuageAndAccumGene {
 impl Default for GuageAndAccumGene {
     fn default() -> Self {
         Self {
-            accumulator_first_idx: 200,
+            guage_first_idx: 0,
+            guage_last_idx: 99,
+            accumulator_first_idx: 100,
             accumulator_last_idx: 199,
-            guage_first_idx: 100,
-            guage_last_idx: 199,
         }
     }
 }
