@@ -1,6 +1,6 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::genes::DefaultGene;
+use crate::genes::GuageAndAccumGene;
 use crate::message::ActorError;
 use crate::message::Envelope;
 use crate::message::Message;
@@ -48,7 +48,9 @@ impl Actor for Director {
                 let mut actor_is_in_init = false;
                 let actor = self.actors.entry(path.clone()).or_insert_with(|| {
                     actor_is_in_init = true;
-                    let gene = Box::new(DefaultGene::new());
+                    let gene = Box::new(GuageAndAccumGene {
+                        ..Default::default()
+                    });
                     state_actor::new(path.clone(), 8, gene, None)
                 });
 

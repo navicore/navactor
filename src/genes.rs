@@ -70,8 +70,13 @@ pub trait Gene {
     ) -> OperatorResult<State<f64>>;
 }
 
-pub struct DefaultGene {}
-impl Gene for DefaultGene {
+pub struct GuageAndAccumGene {
+    pub accumulator_first_idx: i32,
+    pub accumulator_last_idx: i32,
+    pub guage_first_idx: i32,
+    pub guage_last_idx: i32,
+}
+impl Gene for GuageAndAccumGene {
     fn apply_operators(
         &self,
         mut state: State<f64>,
@@ -121,15 +126,13 @@ impl Gene for DefaultGene {
     }
 }
 
-impl DefaultGene {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {}
-    }
-}
-
-impl Default for DefaultGene {
+impl Default for GuageAndAccumGene {
     fn default() -> Self {
-        Self::new()
+        Self {
+            accumulator_first_idx: 200,
+            accumulator_last_idx: 199,
+            guage_first_idx: 100,
+            guage_last_idx: 199,
+        }
     }
 }

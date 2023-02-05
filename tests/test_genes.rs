@@ -1,6 +1,6 @@
 use approx::assert_ulps_eq;
 use navactor::actor::State;
-use navactor::genes::DefaultGene;
+use navactor::genes::GuageAndAccumGene;
 use navactor::genes::Gene;
 use navactor::message::Message;
 use test_log::test;
@@ -19,7 +19,9 @@ fn test_default_gene() {
     values.insert(0, 2.9);
     values.insert(199, 4.11);
 
-    let g1 = DefaultGene::new();
+    let g1 = GuageAndAccumGene {
+        ..Default::default()
+    };
 
     let msg = Message::Update {
         path: String::from("/"),

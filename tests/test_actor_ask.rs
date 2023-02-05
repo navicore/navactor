@@ -1,6 +1,6 @@
 use approx::assert_ulps_eq;
 use navactor::director;
-use navactor::genes::DefaultGene;
+use navactor::genes::GuageAndAccumGene;
 use navactor::json_decoder;
 use navactor::message::Message;
 use navactor::state_actor;
@@ -14,7 +14,11 @@ use tokio::runtime::Runtime;
 fn test_actor_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let gene = Box::new(DefaultGene::new());
+        let g1 = GuageAndAccumGene {
+            ..Default::default()
+        };
+
+        let gene = Box::new(g1);
         let state_actor = state_actor::new("/".to_string(), 8, gene, None); // parse input
 
         // set an initial state
