@@ -29,6 +29,7 @@ impl Actor for Director {
 
     // TODO: I've spent a lot of time trying to refactor this into 3 functions
     // but I'm stuck on them all dragging mut self along... Learning....
+    #[allow(clippy::too_many_lines)]
     async fn handle_envelope(&mut self, envelope: Envelope) {
         log::trace!(
             "director namespace {} handling_envelope {envelope:?}",

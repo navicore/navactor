@@ -108,16 +108,19 @@ impl LifeCycleBuilder {
         }
     }
 
+    #[allow(clippy::missing_const_for_fn)]
     fn with_respond_to(mut self, respond_to: oneshot::Sender<ActorResult<Message>>) -> Self {
         self.respond_to = Some(respond_to);
         self
     }
 
+    #[allow(clippy::missing_const_for_fn)]
     fn with_load_from(mut self, load_from: mpsc::Receiver<Message>) -> Self {
         self.load_from = Some(load_from);
         self
     }
 
+    #[allow(clippy::missing_const_for_fn)]
     fn with_send_to(mut self, send_to: mpsc::Sender<Message>, send_to_path: String) -> Self {
         self.send_to = Some(send_to);
         self.send_to_path = Some(send_to_path);
