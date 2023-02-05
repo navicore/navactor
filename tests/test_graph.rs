@@ -9,7 +9,6 @@ fn test_graph() {
     assert_eq!(graph.node_count(), 2);
     assert_eq!(graph.edge_count(), 1);
 }
-
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_graph_labels() {
@@ -26,6 +25,7 @@ fn test_graph_labels() {
     assert_eq!(graph.edge_weight(cost_2).unwrap(), &1099);
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_unstable_indexing() {
     let mut graph = Graph::<(), ()>::new();
