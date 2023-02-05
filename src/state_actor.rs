@@ -1,10 +1,10 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::actor::State;
-use crate::genes::DefaultGene;
 use crate::genes::Gene;
-use crate::message::Message;
+use crate::message::ActorError;
 use crate::message::Envelope;
+use crate::message::Message;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
@@ -64,12 +64,28 @@ impl Actor for StateActor {
             }
             Message::Update { .. } => {
                 log::trace!("{} handling update", self.path);
-                self.update_state(message.clone());
-                if let Some(respond_to) = respond_to {
-                    if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
-                        log::error!("Error sending reply to ask: {:?}", err);
+
+                // TODO: lifecycle instead of clone!!
+                match self.gene.apply_operators(self.state.clone(), message) {
+                    Ok(new_state) => {
+                        self.state = new_state;
+                        if let Some(respond_to) = respond_to {
+                            if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
+                                log::error!("Error sending reply to ask: {:?}", err);
+                            }
+                        };
                     }
-                }
+                    Err(e) => {
+                        log::error!("Error applying operators in ask: {:?}", e);
+                        if let Some(respond_to) = respond_to {
+                            if let Err(err) = respond_to.send(Err(ActorError {
+                                reason: format!("{e:?}"),
+                            })) {
+                                log::error!("Error sending error to ask: {:?}", err);
+                            }
+                        }
+                    }
+                };
             }
             Message::Query { .. } => {
                 // respond with a copy of our new state if this is an 'ask'
@@ -130,9 +146,8 @@ impl StateActor {
         path: String,
         receiver: mpsc::Receiver<Envelope>,
         output: Option<Handle>,
-        //gene: &Gene,
+        gene: Box<dyn Gene + Send + Sync>,
     ) -> Self {
-        let gene = Box::new(DefaultGene::new());
         let state = State::new();
         Self {
             receiver,
@@ -146,7 +161,12 @@ impl StateActor {
 
 /// actor handle public constructor
 #[must_use]
-pub fn new(path: String, bufsz: usize, output: Option<Handle>) -> Handle {
+pub fn new(
+    path: String,
+    bufsz: usize,
+    gene: Box<dyn Gene + Send + Sync>,
+    output: Option<Handle>,
+) -> Handle {
     async fn start<'a>(mut actor: StateActor) {
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
@@ -155,7 +175,7 @@ pub fn new(path: String, bufsz: usize, output: Option<Handle>) -> Handle {
 
     let (sender, receiver) = mpsc::channel(bufsz);
 
-    let actor = StateActor::new(path, receiver, output);
+    let actor = StateActor::new(path, receiver, output, gene);
 
     let actor_handle = Handle::new(sender);
 
