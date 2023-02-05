@@ -79,7 +79,7 @@ impl Actor for JsonDecoder {
                     if let Some(respond_to) = respond_to {
                         let etxt = format!("json parse error: {error}");
                         // TODO: THIS IS A TEST OF ACTIONS CLIPPY
-                        respond_to.send(Err(ActorError { reason: etxt })).unwrap()
+                        respond_to.send(Err(ActorError { reason: etxt })).unwrap();
 
                         // respond_to
                         //     .send(Err(ActorError { reason: etxt }))
