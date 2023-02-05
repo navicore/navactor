@@ -8,7 +8,7 @@ use test_log::test;
 use time::OffsetDateTime;
 use tokio::runtime::Runtime;
 
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
+//#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_actor_ask() {
     let rt = Runtime::new().unwrap();
