@@ -25,6 +25,7 @@ fn test_graph_labels() {
     assert_eq!(graph.edge_weight(cost_2).unwrap(), &1099);
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_unstable_indexing() {
     let mut graph = Graph::<(), ()>::new();
