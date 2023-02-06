@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 
 type OperatorResult<T> = std::result::Result<T, OperatorError>;
 
+/// Returned when an operator can not return a result.
 #[derive(Debug, Clone)]
 pub struct OperatorError {
     reason: String,
@@ -16,7 +17,20 @@ impl fmt::Display for OperatorError {
     }
 }
 
+//TODO: generics
+/// The Operator encapsulates logic that operates on all new incoming data to
+/// advance the state of the actor or DT
 pub trait Operator {
+    /// Returns a result with a value of type i64
+    ///
+    /// # Arguments
+    ///
+    /// * `state`       - the current state of the actor
+    /// * `idx`         - the index of the state being operated on
+    /// * `value`       - the value from outside the actor to be
+    ///                 considered and applied to the current state
+    /// * `datetime`    - the datetime of the incoming observation
+    ///
     /// # Errors
     ///
     /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
@@ -30,6 +44,8 @@ pub trait Operator {
     ) -> OperatorResult<f64>;
 }
 
+/// The simplest Operator is a gauge.  Every new observation replaces the
+/// previously reported one for an index as the new current state for that index
 pub struct GuageOperator {}
 impl Operator for GuageOperator {
     fn apply(_: &State<f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
@@ -37,6 +53,10 @@ impl Operator for GuageOperator {
     }
 }
 
+/// AccumOperator sums all reports.  The current state for an accum index is the
+/// sum of all previously reported values.  This works best when the actor state
+/// and identity is time-based, like a daily or hourly or monthly scope.  Variations
+/// of the accum operator can be the sum of fixed time ranges or last n reports.
 pub struct AccumOperator {}
 impl Operator for AccumOperator {
     fn apply(state: &State<f64>, idx: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
@@ -57,7 +77,17 @@ impl Operator for AccumOperator {
     }
 }
 
+/// A Gene is a collection of config information - mostly operators - that
+/// are applied to a path of actors.  A gene may apply to
+/// `/org/location/floor` where all reports for a floor have the some gene
+/// or could be `/make/model` or for an individual machine like
+/// `/devices/12345`.
 pub trait Gene {
+    /// Applying all operators for a update message - many new observations
+    /// arrive bundled together in single packages of update messages.  This
+    /// function is a convenience function for the Operator apply function
+    /// for individual indexes.
+    ///
     /// # Errors
     ///
     /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
@@ -70,6 +100,8 @@ pub trait Gene {
     ) -> OperatorResult<State<f64>>;
 }
 
+/// the most basic common state are either guages or accumulators.  This
+/// gene allows both of those operators to be applied to ranges of indexes.
 pub struct GuageAndAccumGene {
     pub guage_first_idx: i32,
     pub guage_last_idx: i32,
