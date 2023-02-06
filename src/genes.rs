@@ -53,7 +53,7 @@ impl Operator for GuageOperator {
     }
 }
 
-/// AccumOperator sums all reports.  The current state for an accum index is the
+/// `AccumOperator` sums all reports.  The current state for an accum index is the
 /// sum of all previously reported values.  This works best when the actor state
 /// and identity is time-based, like a daily or hourly or monthly scope.  Variations
 /// of the accum operator can be the sum of fixed time ranges or last n reports.
@@ -104,9 +104,9 @@ pub trait Gene {
 /// gene allows both of those operators to be applied to ranges of indexes.
 pub struct GuageAndAccumGene {
     pub guage_first_idx: i32,
-    pub guage_last_idx: i32,
+    pub guage_slots: i32,
     pub accumulator_first_idx: i32,
-    pub accumulator_last_idx: i32,
+    pub accumulator_slots: i32,
 }
 impl Gene for GuageAndAccumGene {
     fn apply_operators(
@@ -123,7 +123,9 @@ impl Gene for GuageAndAccumGene {
             for &idx in values.keys() {
                 if let Some(in_val) = values.get(&idx) {
                     match idx {
-                        i if (self.guage_first_idx..self.guage_last_idx + 1).contains(&i) => {
+                        i if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
+                            .contains(&i) =>
+                        {
                             // this is a guage
                             match GuageOperator::apply(&state, i, *in_val, datetime) {
                                 Ok(new_val) => {
@@ -132,7 +134,8 @@ impl Gene for GuageAndAccumGene {
                                 Err(e) => return Err(e),
                             }
                         }
-                        i if (self.accumulator_first_idx..self.accumulator_last_idx + 1)
+                        i if (self.accumulator_first_idx
+                            ..self.accumulator_first_idx + self.accumulator_slots)
                             .contains(&i) =>
                         {
                             // this is an accumulator
@@ -164,9 +167,9 @@ impl Default for GuageAndAccumGene {
     fn default() -> Self {
         Self {
             guage_first_idx: 0,
-            guage_last_idx: 99,
+            guage_slots: 100,
             accumulator_first_idx: 100,
-            accumulator_last_idx: 199,
+            accumulator_slots: 100,
         }
     }
 }
