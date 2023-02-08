@@ -153,12 +153,8 @@ struct Cli {
     buffer: Option<usize>,
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
-    #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
-    silent: Option<bool>,
     #[arg(long, action = clap::ArgAction::SetTrue, help = "No on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
     memory_only: Option<bool>,
-    #[arg(long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
-    wal: Option<bool>,
     #[command(subcommand)]
     command: Commands,
 }
@@ -166,8 +162,12 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Update {
-        #[arg(short, long, action = clap::ArgAction::Set)]
-        namespace: String,
+        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
+        silent: Option<bool>,
+        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
+        wal: Option<bool>,
+        #[arg(short, long, action = clap::ArgAction::Set, long_help = "the director and db file to default to")]
+        namespace: Option<String>,
         #[arg(short,long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
         allow_duplicates: Option<bool>,
     },
@@ -194,22 +194,8 @@ fn main() {
 
     let cli = Cli::parse();
     let bufsz: usize = cli.buffer.unwrap_or(8);
-    let silent = cli.silent.map(|s| {
-        if s {
-            OptionVariant::On
-        } else {
-            OptionVariant::Off
-        }
-    });
     let memory_only = cli.memory_only.map(|m| {
         if m {
-            OptionVariant::On
-        } else {
-            OptionVariant::Off
-        }
-    });
-    let write_ahead_logging = cli.wal.map(|w| {
-        if w {
             OptionVariant::On
         } else {
             OptionVariant::Off
@@ -221,14 +207,22 @@ fn main() {
     match cli.command {
         Commands::Update {
             namespace,
+            silent,
+            wal,
             allow_duplicates,
         } => update(
-            namespace,
+            namespace.map_or_else(|| String::from("actors"), |n| n),
             bufsz,
             &runtime,
-            silent.unwrap_or(OptionVariant::Off),
+            match silent {
+                Some(true) => OptionVariant::On,
+                _ => OptionVariant::Off,
+            },
             memory_only.unwrap_or(OptionVariant::Off),
-            write_ahead_logging.unwrap_or(OptionVariant::Off),
+            match wal {
+                Some(true) => OptionVariant::On,
+                _ => OptionVariant::Off,
+            },
             match allow_duplicates {
                 Some(true) => OptionVariant::On,
                 _ => OptionVariant::Off,
