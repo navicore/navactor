@@ -85,7 +85,7 @@ fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
     }
 }
 
-fn configure(path: String, gene: String, _: &Runtime) {
+fn configure(path: &String, gene: &String, _: &Runtime) {
     log::error!("not implemented. path: {path} gene: {gene}");
 }
 
@@ -231,12 +231,11 @@ fn main() {
             write_ahead_logging.unwrap_or(OptionVariant::Off),
             match allow_duplicates {
                 Some(true) => OptionVariant::On,
-                Some(false) => OptionVariant::Off,
                 _ => OptionVariant::Off,
             },
         ),
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
-        Commands::Configure { path, gene } => configure(path, gene, &runtime),
+        Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
     }
 
     log::info!("nv stopped.");
