@@ -98,6 +98,7 @@ pub trait Gene {
         state: State<f64>,
         update: crate::genes::Message,
     ) -> OperatorResult<State<f64>>;
+    fn get_time_scope(&self) -> &TimeScope;
 }
 
 /// the most basic common state are either guages or accumulators.  This
@@ -107,8 +108,12 @@ pub struct GuageAndAccumGene {
     pub guage_slots: i32,
     pub accumulator_first_idx: i32,
     pub accumulator_slots: i32,
+    pub time_scope: TimeScope,
 }
 impl Gene for GuageAndAccumGene {
+    fn get_time_scope(&self) -> &TimeScope {
+        &self.time_scope
+    }
     fn apply_operators(
         &self,
         mut state: State<f64>,
@@ -170,6 +175,21 @@ impl Default for GuageAndAccumGene {
             guage_slots: 100,
             accumulator_first_idx: 100,
             accumulator_slots: 100,
+            time_scope: TimeScope::Forever,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum TimeScope {
+    Forever,
+    Year,
+    Month,
+    Day,
+    HalfDay,
+    QuarterDay,
+    Hour,
+    QuarterHour,
+    TenMinutes,
+    Minute,
 }
