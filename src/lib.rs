@@ -1,4 +1,5 @@
 pub mod actor;
+pub mod cli;
 pub mod director;
 pub mod genes;
 pub mod json_decoder;

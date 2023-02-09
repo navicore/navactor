@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["Ed Sweeney <ed@onextent.com>"]
 description = "A cli tool for creating and updating actors from piped input"
+#build = "build.rs"
 
 [[bin]]
 name = "nv"
@@ -23,3 +24,7 @@ sqlx = { version = "0.6.2", features = ["sqlite", "runtime-tokio-native-tls"] }
 test-log = "0.2.11"
 time = { version = "0.3.17", features = ["macros", "parsing", "serde"] }
 tokio = { version = "1", features = ["full"] }
+
+[build-dependencies]
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
