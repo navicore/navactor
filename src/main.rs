@@ -1,4 +1,5 @@
-use clap::Parser;
+use clap::{Command, CommandFactory, Parser};
+use clap_complete::{generate, Generator};
 use navactor::cli;
 use navactor::cli::Commands;
 use navactor::director;
@@ -8,6 +9,7 @@ use navactor::message::Message::EndOfStream;
 use navactor::stdin_actor;
 use navactor::stdout_actor;
 use navactor::store_actor_sqlite;
+use std::io;
 use tokio::runtime::Runtime;
 
 fn update(
@@ -130,15 +132,19 @@ enum OptionVariant {
     Off,
 }
 
+fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
+    generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
+}
+
 /// control logging of nv and various libs via `RUST_LOG` env var like so:
 ///`std::env::set_var("RUST_LOG`", "debug,sqlx=warn");
 fn main() {
     env_logger::init();
     log::info!("nv started");
 
-    let cli = cli::Cli::parse();
-    let bufsz: usize = cli.buffer.unwrap_or(8);
-    let memory_only = cli.memory_only.map(|m| {
+    let pcli = cli::Cli::parse();
+    let bufsz: usize = pcli.buffer.unwrap_or(8);
+    let memory_only = pcli.memory_only.map(|m| {
         if m {
             OptionVariant::On
         } else {
@@ -148,7 +154,7 @@ fn main() {
 
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
-    match cli.command {
+    match pcli.command {
         Commands::Update {
             namespace,
             silent,
@@ -174,6 +180,10 @@ fn main() {
         ),
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
         Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
+        Commands::Completion { shell } => {
+            let mut cmd = cli::Cli::command();
+            print_completions(shell, &mut cmd);
+        }
     }
 
     log::info!("nv stopped.");
