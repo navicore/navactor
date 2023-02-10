@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 
-#[derive(Parser, Debug, PartialEq)]
+#[derive(Parser, Debug)]
 #[command(
     name = "completion-derive",
     author,
