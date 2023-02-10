@@ -12,7 +12,7 @@ Overview
 
 A CLI *nix-style tool as lab for actor programming.
 
-Mission: Ingest piped streams of CRLF-delimited observations, send them to actors,
+`nv`'s purpose: ingest piped streams of CRLF-delimited observations, send them to actors,
 implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
 processing, and persist.
 
@@ -25,15 +25,6 @@ eighties around [tuple spaces](https://en.wikipedia.org/wiki/Tuple_space) for
 coordination languages and later the [actor](https://en.wikipedia.org/wiki/Actor_model)
 programming model. 
 
-In the meantime, IOT applications have become more interesting as industry 
-[IOT medadata](https://infoscience.epfl.ch/record/273579?ln=en) standards
-encoded in RDF evolve.  This RDF data will bootstrap Navactor's metadata, enabling
-graph capabilities.
-
-An automatic closed loop system of usage telemetry getting back
-to the layers of engineering and operations teams as a natural order of coarse
-is on the horizon - and no, you don't have that today :)
-
 ![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.jpg)
 
 Status
@@ -42,7 +33,7 @@ Status
 Just a toy implementation in the beginning stages to validate implementation
 choices (Rust, Tokio, Sqlite, and Petgraph).
 
-Current functionality is limited to the support of "gauge" observations
+Current functionality is limited to the support of "gauge" and "counter" observations
 presented in the internal observation json format via *nix piped stream.
 
 ```json
@@ -115,4 +106,4 @@ export RUST_LOG="debug,sqlx=warn"
 ![Fun Mutation of DtLab Graphic](images/diodes-2.jpeg)
 ----------
 
-`nv` was bootstrapped from Alice Ryhl's very excellent and instructive blog post https://ryhl.io/blog/actors-with-tokio
+`nv` was bootstrapped from Alice Ryhl's very instructive blog post https://ryhl.io/blog/actors-with-tokio
