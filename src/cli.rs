@@ -34,7 +34,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand, Debug, PartialEq)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     Update {
         #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
@@ -62,5 +62,5 @@ pub enum Commands {
     },
 }
 
-#[derive(Args, Debug, PartialEq)]
+#[derive(Args, Debug)]
 struct NoArgs {}
