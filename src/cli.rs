@@ -2,7 +2,7 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "completion-derive",
+    name = "nv",
     author,
     version,
     about,
@@ -56,8 +56,8 @@ pub enum Commands {
         #[arg(short, long, action = clap::ArgAction::Set)]
         gene: String,
     },
-    Completion {
-        #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc...")]
+    Completions {
+        #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc... install via 'nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv'")]
         shell: clap_complete::Shell,
     },
 }

@@ -68,6 +68,11 @@ cargo install navactor
 cargo install --path .
 ```
 
+enable zsh tab completion:
+```bash
+nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv
+```
+
 Usage
 ----------
 

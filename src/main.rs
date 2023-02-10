@@ -180,7 +180,7 @@ fn main() {
         ),
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
         Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
-        Commands::Completion { shell } => {
+        Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
             print_completions(shell, &mut cmd);
         }
