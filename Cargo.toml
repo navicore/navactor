@@ -1,6 +1,6 @@
 [package]
 name = "navactor"
-version = "0.2.8"
+version = "0.2.7"
 edition = "2021"
 license = "MIT"
 authors = ["Ed Sweeney <ed@onextent.com>"]
