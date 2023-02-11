@@ -126,41 +126,44 @@ impl Gene for GuageAndAccumGene {
         } = update
         {
             for &idx in values.keys() {
-                if let Some(in_val) = values.get(&idx) {
-                    match idx {
-                        i if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
-                            .contains(&i) =>
-                        {
-                            // this is a guage
-                            match GuageOperator::apply(&state, i, *in_val, datetime) {
-                                Ok(new_val) => {
-                                    state.insert(i, new_val);
-                                }
-                                Err(e) => return Err(e),
+                let in_val = match values.get(&idx) {
+                    Some(v) => v,
+                    _ => {
+                        return Err(OperatorError {
+                            reason: format!("unsupported idx: {idx}"),
+                        });
+                    }
+                };
+
+                match in_val {
+                    _ if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
+                        .contains(&idx) =>
+                    {
+                        // this is a guage
+                        match GuageOperator::apply(&state, idx, *in_val, datetime) {
+                            Ok(new_val) => {
+                                state.insert(idx, new_val);
                             }
-                        }
-                        i if (self.accumulator_first_idx
-                            ..self.accumulator_first_idx + self.accumulator_slots)
-                            .contains(&i) =>
-                        {
-                            // this is an accumulator
-                            match AccumOperator::apply(&state, i, *in_val, datetime) {
-                                Ok(new_val) => {
-                                    state.insert(i, new_val);
-                                }
-                                Err(e) => return Err(e),
-                            }
-                        }
-                        i => {
-                            return Err(OperatorError {
-                                reason: format!("unsupported idx: {i}"),
-                            })
+                            Err(e) => return Err(e),
                         }
                     }
-                } else {
-                    return Err(OperatorError {
-                        reason: String::from("cannot read input value"),
-                    });
+                    _ if (self.accumulator_first_idx
+                        ..self.accumulator_first_idx + self.accumulator_slots)
+                        .contains(&idx) =>
+                    {
+                        // this is an accumulator
+                        match AccumOperator::apply(&state, idx, *in_val, datetime) {
+                            Ok(new_val) => {
+                                state.insert(idx, new_val);
+                            }
+                            Err(e) => return Err(e),
+                        }
+                    }
+                    _ => {
+                        return Err(OperatorError {
+                            reason: format!("unsupported idx: {idx}"),
+                        });
+                    }
                 }
             }
         }
