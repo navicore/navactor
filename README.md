@@ -12,6 +12,10 @@ Overview
 
 A CLI *nix-style tool as lab for actor programming.
 
+NOT TRYING TO BE A FRAMEWORK - the use of actors is in support of an opinionated
+experimental approach to modeling and inference processing, not a general
+purpose solution for concurrency / parallelism.
+
 `nv`'s purpose: ingest piped streams of CRLF-delimited observations, send them to actors,
 implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
 processing, and persist.

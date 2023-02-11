@@ -38,6 +38,14 @@ impl Actor for StateActor {
         } = envelope;
 
         match message {
+            // TODO: get rid of this onetime pipe and use actor state change and route all
+            // these messages via the director transparently - no reason that once
+            // the director has created the actor, that now knows it is in init mode, to
+            // just forward all messages from store to actor.
+            //
+            // this means the many to one message path needs to be implemented... are we
+            // sure we can't have multiple actors hold the equiv of an erlang PID to send
+            // to??? SOLVE THE MANY TO ONE ISSUE
             Message::InitCmd { .. } => {
                 log::trace!("{} init started...", self.path);
                 // this is an init so read your old events to recalculate your state

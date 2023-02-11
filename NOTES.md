@@ -33,16 +33,17 @@ Concepts and Values
 1. cli-first
 2. messages can be any serializable object (unparsed msg is ok)
 3. actors can ONLY persist NUMERICAL DATA
-3. persistence can only be of event source commands (state changes) - consider shallow clones around time windows rather than the akka snapshot approach
+3. persistence can only be of event source commands (state changes) - consider shallow clones around time windows rather than snapshots
 4. all work done by actors must be done with DtLab Operators
 5. all IO must be via actor messaging
-  a. even stdin be read from an input actor
-  b. state changes optionally published to an output / publishing actor and that first impl does stdout
+  a. even stdin must be read from an input actor
+  b. state changes optionally trigger snapshot publishing
+6. actor handler calls are single threaded - a promise from the runtime, though successive handler calls may be on different threads so actor must not do any thread-local assumptions / cheats
 
 USAGE
 ---------------
 
-all state be a single db file
+all state stored to a single db file
 
 ```bash
 cat my.jsonl | nv -d ./my.db > my-new-state-log.jsonl

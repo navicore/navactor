@@ -160,24 +160,31 @@ fn main() {
             silent,
             wal,
             allow_duplicates,
-        } => update(
-            namespace.map_or_else(|| String::from("actors"), |n| n),
-            bufsz,
-            &runtime,
-            match silent {
+        } => {
+            let namespace = namespace.unwrap_or_else(|| "actors".to_owned());
+            let silent = match silent {
                 Some(true) => OptionVariant::On,
                 _ => OptionVariant::Off,
-            },
-            memory_only.unwrap_or(OptionVariant::Off),
-            match wal {
+            };
+            let memory_only = memory_only.unwrap_or(OptionVariant::Off);
+            let wal = match wal {
                 Some(true) => OptionVariant::On,
                 _ => OptionVariant::Off,
-            },
-            match allow_duplicates {
+            };
+            let allow_duplicates = match allow_duplicates {
                 Some(true) => OptionVariant::On,
                 _ => OptionVariant::Off,
-            },
-        ),
+            };
+            update(
+                namespace,
+                bufsz,
+                &runtime,
+                silent,
+                memory_only,
+                wal,
+                allow_duplicates,
+            )
+        }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
         Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
         Commands::Completions { shell } => {

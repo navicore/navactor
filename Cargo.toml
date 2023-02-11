@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["Ed Sweeney <ed@onextent.com>"]
 description = "A cli tool for creating and updating actors from piped input"
+keywords = ["iot", "commandline", "actor", "digital", "twin", "cli"]
 
 [[bin]]
 name = "nv"
