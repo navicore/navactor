@@ -67,7 +67,7 @@ impl Actor for JsonDecoder {
                 Err(error) => {
                     log::warn!("json parse error: {}", error);
                     if let Some(respond_to) = respond_to {
-                        let etxt = format!("json parse error: {}", error);
+                        let etxt = format!("json parse error: {error}");
                         respond_to
                             .send(Err(ActorError { reason: etxt }))
                             .map_err(|e| {

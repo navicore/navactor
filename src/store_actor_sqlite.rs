@@ -41,7 +41,7 @@ async fn stream_message(
             }
         }
         if stream_option == StreamOption::Close {
-            stream_to.closed().await
+            stream_to.closed().await;
         };
     }
 }
