@@ -20,7 +20,7 @@ impl fmt::Display for OperatorError {
 //TODO: generics
 /// The Operator encapsulates logic that operates on all new incoming data to
 /// advance the state of the actor or DT
-pub trait Operator {
+pub trait Operator: Sync + Send {
     /// Returns a result with a value of type i64
     ///
     /// # Arguments
@@ -110,6 +110,36 @@ pub struct GuageAndAccumGene {
     pub accumulator_slots: i32,
     pub time_scope: TimeScope,
 }
+
+impl GuageAndAccumGene {
+    fn update_state_with_val(
+        &self,
+        in_val: &f64,
+        idx: i32,
+        mut state: State<f64>,
+        datetime: OffsetDateTime,
+    ) -> OperatorResult<State<f64>> {
+        let new_val = if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
+            .contains(&idx)
+        {
+            // this is a guage
+            GuageOperator::apply(&state, idx, *in_val, datetime)?
+        } else if (self.accumulator_first_idx..self.accumulator_first_idx + self.accumulator_slots)
+            .contains(&idx)
+        {
+            // this is an accumulator
+            AccumOperator::apply(&state, idx, *in_val, datetime)?
+        } else {
+            return Err(OperatorError {
+                reason: format!("unsupported idx: {idx}"),
+            });
+        };
+
+        state.insert(idx, new_val);
+        Ok(state)
+    }
+}
+
 impl Gene for GuageAndAccumGene {
     fn get_time_scope(&self) -> &TimeScope {
         &self.time_scope
@@ -119,54 +149,25 @@ impl Gene for GuageAndAccumGene {
         mut state: State<f64>,
         update: Message,
     ) -> OperatorResult<State<f64>> {
-        if let Message::Update {
-            path: _,
-            datetime,
-            values,
-        } = update
-        {
-            for &idx in values.keys() {
-                let in_val = match values.get(&idx) {
-                    Some(v) => v,
-                    _ => {
-                        return Err(OperatorError {
-                            reason: format!("unsupported idx: {idx}"),
-                        });
-                    }
-                };
-
-                match in_val {
-                    _ if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
-                        .contains(&idx) =>
-                    {
-                        // this is a guage
-                        match GuageOperator::apply(&state, idx, *in_val, datetime) {
-                            Ok(new_val) => {
-                                state.insert(idx, new_val);
-                            }
-                            Err(e) => return Err(e),
-                        }
-                    }
-                    _ if (self.accumulator_first_idx
-                        ..self.accumulator_first_idx + self.accumulator_slots)
-                        .contains(&idx) =>
-                    {
-                        // this is an accumulator
-                        match AccumOperator::apply(&state, idx, *in_val, datetime) {
-                            Ok(new_val) => {
-                                state.insert(idx, new_val);
-                            }
-                            Err(e) => return Err(e),
-                        }
-                    }
-                    _ => {
-                        return Err(OperatorError {
-                            reason: format!("unsupported idx: {idx}"),
-                        });
-                    }
+        match update {
+            Message::Update {
+                path: _,
+                datetime,
+                values,
+            } => {
+                for &idx in values.keys() {
+                    let in_val = values.get(&idx).ok_or_else(|| OperatorError {
+                        reason: format!("unsupported idx: {idx}"),
+                    })?;
+                    state = self.update_state_with_val(in_val, idx, state, datetime)?;
                 }
             }
-        }
+            _ => {
+                return Err(OperatorError {
+                    reason: "unsupported message type".to_string(),
+                })
+            }
+        };
         Ok(state)
     }
 }

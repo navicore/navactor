@@ -15,11 +15,51 @@ use std::path::Path;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum StreamOption {
+    Close,
+    LeaveOpen,
+}
+
 pub struct StoreActor {
     pub receiver: mpsc::Receiver<Envelope>,
     pub dbconn: Option<sqlx::SqlitePool>,
     pub namespace: String,
     pub disable_duplicate_detection: bool,
+}
+
+async fn stream_message(
+    stream_to: &Option<tokio::sync::mpsc::Sender<Message>>,
+    message: Message,
+    stream_option: StreamOption,
+) {
+    if let Some(stream_to) = stream_to {
+        match stream_to.send(message).await {
+            Ok(_) => (),
+            Err(err) => {
+                log::error!("Can not integrate from helper: {}", err);
+            }
+        }
+        if stream_option == StreamOption::Close {
+            stream_to.closed().await
+        };
+    }
+}
+
+fn reply_or_log_error(
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+    result: ActorResult<Message>,
+) {
+    {
+        if let Some(respond_to) = respond_to {
+            match respond_to.send(result) {
+                Ok(_) => (),
+                Err(err) => {
+                    log::error!("Cannot respond to 'ask' with confirmation: {:?}", err);
+                }
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -50,74 +90,32 @@ impl Actor for StoreActor {
                     datetime
                 };
                 match self.insert_update(&path, dt, sequence, values).await {
-                    Ok(_) => {
-                        if let Some(respond_to) = respond_to {
-                            match respond_to.send(Ok(Message::EndOfStream {})) {
-                                Ok(_) => (),
-                                Err(err) => {
-                                    log::error!(
-                                        "Cannot respond to 'ask' with confirmation: {:?}",
-                                        err
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        if let Some(respond_to) = respond_to {
-                            match respond_to.send(Err(ActorError {
-                                reason: e.to_string(),
-                            })) {
-                                Ok(_) => (),
-                                Err(err) => {
-                                    log::error!(
-                                        "Cannot respond to 'ask' with confirmation: {:?}",
-                                        err
-                                    );
-                                }
-                            }
-                        }
-                    }
+                    Ok(_) => reply_or_log_error(respond_to, Ok(Message::EndOfStream {})),
+                    Err(e) => reply_or_log_error(
+                        respond_to,
+                        Err(ActorError {
+                            reason: e.to_string(),
+                        }),
+                    ),
                 }
             }
+
             Message::LoadCmd { path } => {
-                log::trace!("{path} load started...");
-                if let Some(stream_to) = stream_to {
-                    log::trace!("Handling LoadCmd for {}", path);
-                    if let Some(dbconn) = &self.dbconn {
-                        let r = self.get_jrnl(dbconn, &path).await;
-                        match r {
-                            Ok(rows) => {
-                                log::trace!(
-                                    "Handling LoadCmd jrnl for {} items count: {}",
-                                    path,
-                                    rows.len()
-                                );
-                                for message in rows {
-                                    match stream_to.send(message).await {
-                                        Ok(_) => (),
-                                        Err(err) => {
-                                            log::error!(
-                                                "Can not send jrnl event from helper: {}",
-                                                err
-                                            );
-                                        }
-                                    }
-                                }
+                if let Some(dbconn) = &self.dbconn {
+                    match self.get_jrnl(dbconn, &path).await {
+                        Ok(rows) => {
+                            for message in rows {
+                                stream_message(&stream_to, message, StreamOption::LeaveOpen).await;
                             }
-                            Err(e) => {
-                                log::error!("cannot load jrnl: {path} {e:?}");
-                            }
-                        };
-                    }
-                    match stream_to.send(Message::EndOfStream {}).await {
-                        Ok(_) => (),
-                        Err(err) => {
-                            log::error!("Can not integrate from helper: {}", err);
                         }
-                    }
-                    stream_to.closed().await;
+                        Err(e) => {
+                            log::error!("cannot load jrnl: {path} {e:?}");
+                        }
+                    };
+                } else {
+                    log::debug!("bypass journal for {path} - db not configured");
                 }
+                stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
             }
             m => log::warn!("Unexpected: {:?}", m),
         }
@@ -173,15 +171,7 @@ impl StoreActor {
             .await;
 
         match v {
-            Ok(v) => {
-                log::trace!(
-                    "fetched jrnl size {} for {}. last rec: {:?}",
-                    v.len(),
-                    path,
-                    v.last()
-                );
-                Ok(v)
-            }
+            Ok(v) => Ok(v),
             Err(e) => {
                 log::error!("cannot load from db: {:?}", e);
                 Err(ActorError {
@@ -220,10 +210,7 @@ impl StoreActor {
             .execute(dbconn)
             .await
             {
-                Ok(_) => {
-                    log::trace!("jrnled Update for {}", path);
-                    Ok(())
-                }
+                Ok(_) => Ok(()),
                 Err(e) => {
                     log::warn!("jrnling for {} failed: {:?}", path, e);
                     Err(e)
