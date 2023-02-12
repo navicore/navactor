@@ -31,6 +31,55 @@ pub struct StoreActor {
     pub disable_duplicate_detection: bool,
 }
 
+/// record the latest event in the actors state
+async fn insert_update(
+    dbconn: &SqlitePool,
+    path: &String,
+    datetime: OffsetDateTime,
+    sequence: OffsetDateTime,
+    values: HashMap<i32, f64>,
+) -> Result<(), sqlx::error::Error> {
+    // store this is a db with the key as 'path'
+    let dt_wrapper = OffsetDateTimeWrapper::new(datetime);
+    let sequence_wrapper = OffsetDateTimeWrapper::new(sequence);
+
+    match sqlx::query(
+        "INSERT INTO updates (path, timestamp, sequence, values_str) VALUES (?,?,?,?)",
+    )
+    .bind(path.clone())
+    .bind(dt_wrapper.datetime_i64)
+    .bind(sequence_wrapper.datetime_i64)
+    .bind(
+        serde_json::to_string(&values)
+            .map_err(|e| {
+                log::error!("cannot serialize values: {e:?}");
+            })
+            .ok(),
+    )
+    .execute(dbconn)
+    .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::warn!("jrnling for {} failed: {:?}", path, e);
+            Err(e)
+        }
+    }
+}
+
+/// retrieve the time series of events (observations) for the actor that is being resurrected
+async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> {
+    match get_values(path, dbconn).await {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            log::error!("cannot load from db: {:?}", e);
+            Err(ActorError {
+                reason: format!("cannot load from db: {e:?}"),
+            })
+        }
+    }
+}
+
 /// internal actor-to-actor communication outside of input-to-state_actor is
 /// done with temporary streams (for now) and these streams are setup by
 /// an orchestrator (usually director).
@@ -49,6 +98,8 @@ async fn stream_message(
         if stream_option == StreamOption::Close {
             stream_to.closed().await;
         };
+    } else {
+        log::trace!("no stream available for {message:?}");
     }
 }
 
@@ -70,6 +121,54 @@ fn reply_or_log_error(
     }
 }
 
+async fn handle_update(
+    path: String,
+    datetime: OffsetDateTime,
+    sequence: OffsetDateTime,
+    values: HashMap<i32, f64>,
+    disable_duplicate_detection: bool,
+    dbconn: &SqlitePool,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+) {
+    let dt = if disable_duplicate_detection {
+        sequence
+    } else {
+        datetime
+    };
+    match insert_update(&dbconn, &path, dt, sequence, values).await {
+        Ok(_) => reply_or_log_error(respond_to, Ok(Message::EndOfStream {})),
+        Err(e) => reply_or_log_error(
+            respond_to,
+            Err(ActorError {
+                reason: e.to_string(),
+            }),
+        ),
+    }
+}
+
+/// a load command is indicates a new actor is expecting its journal.  the
+/// message contains a stream_to - read each row from the DB and write
+/// a message for each row to the actor at the other end of the 'stream_to'
+/// connection.  after the last row, write an "EndOfStream" msg and close the
+/// connection
+async fn handle_load_cmd(
+    path: String,
+    dbconn: &SqlitePool,
+    stream_to: Option<mpsc::Sender<Message>>,
+) {
+    match get_jrnl(dbconn, &path).await {
+        Ok(rows) => {
+            for message in rows {
+                stream_message(&stream_to, message, StreamOption::LeaveOpen).await;
+            }
+        }
+        Err(e) => {
+            log::error!("cannot load jrnl: {path} {e:?}");
+        }
+    };
+    stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
+}
+
 #[async_trait]
 impl Actor for StoreActor {
     async fn stop(&self) {
@@ -77,7 +176,17 @@ impl Actor for StoreActor {
             c.close().await;
         }
     }
+    /// the main entry point to every actor - this is where the jrnl read and
+    /// write requests arrive
     async fn handle_envelope(&mut self, envelope: Envelope) {
+        let dbconn = match &self.dbconn {
+            Some(d) => d,
+            _ => {
+                log::error!("DB not configured");
+                return;
+            }
+        };
+
         let Envelope {
             message,
             respond_to,
@@ -92,38 +201,20 @@ impl Actor for StoreActor {
                 datetime,
                 values,
             } => {
-                let dt = if self.disable_duplicate_detection {
-                    sequence
-                } else {
-                    datetime
-                };
-                match self.insert_update(&path, dt, sequence, values).await {
-                    Ok(_) => reply_or_log_error(respond_to, Ok(Message::EndOfStream {})),
-                    Err(e) => reply_or_log_error(
-                        respond_to,
-                        Err(ActorError {
-                            reason: e.to_string(),
-                        }),
-                    ),
-                }
+                handle_update(
+                    path,
+                    datetime,
+                    sequence,
+                    values,
+                    self.disable_duplicate_detection,
+                    dbconn,
+                    respond_to,
+                )
+                .await;
             }
 
             Message::LoadCmd { path } => {
-                if let Some(dbconn) = &self.dbconn {
-                    match self.get_jrnl(dbconn, &path).await {
-                        Ok(rows) => {
-                            for message in rows {
-                                stream_message(&stream_to, message, StreamOption::LeaveOpen).await;
-                            }
-                        }
-                        Err(e) => {
-                            log::error!("cannot load jrnl: {path} {e:?}");
-                        }
-                    };
-                } else {
-                    log::debug!("bypass journal for {path} - db not configured");
-                }
-                stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
+                handle_load_cmd(path, dbconn, stream_to).await;
             }
             m => log::warn!("Unexpected: {:?}", m),
         }
@@ -174,60 +265,6 @@ impl StoreActor {
             dbconn,
             namespace,
             disable_duplicate_detection,
-        }
-    }
-
-    /// retrieve the time series of events (observations) for the actor that is being resurrected
-    async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> {
-        match get_values(path, dbconn).await {
-            Ok(v) => Ok(v),
-            Err(e) => {
-                log::error!("cannot load from db: {:?}", e);
-                Err(ActorError {
-                    reason: format!("cannot load from db: {e:?}"),
-                })
-            }
-        }
-    }
-
-    /// record the latest event in the actors state
-    async fn insert_update(
-        &self,
-        path: &String,
-        datetime: OffsetDateTime,
-        sequence: OffsetDateTime,
-        values: HashMap<i32, f64>,
-    ) -> Result<(), sqlx::error::Error> {
-        // store this is a db with the key as 'path'
-        if let Some(dbconn) = &self.dbconn {
-            let dt_wrapper = OffsetDateTimeWrapper::new(datetime);
-            let sequence_wrapper = OffsetDateTimeWrapper::new(sequence);
-
-            match sqlx::query(
-                "INSERT INTO updates (path, timestamp, sequence, values_str) VALUES (?,?,?,?)",
-            )
-            .bind(path.clone())
-            .bind(dt_wrapper.datetime_i64)
-            .bind(sequence_wrapper.datetime_i64)
-            .bind(
-                serde_json::to_string(&values)
-                    .map_err(|e| {
-                        log::error!("cannot serialize values: {e:?}");
-                    })
-                    .ok(),
-            )
-            .execute(dbconn)
-            .await
-            {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    log::warn!("jrnling for {} failed: {:?}", path, e);
-                    Err(e)
-                }
-            }
-        } else {
-            log::error!("db conn not set");
-            Ok(())
         }
     }
 }
