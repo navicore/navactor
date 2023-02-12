@@ -114,7 +114,7 @@ pub struct GuageAndAccumGene {
 impl GuageAndAccumGene {
     fn update_state_with_val(
         &self,
-        in_val: &f64,
+        in_val: f64,
         idx: i32,
         mut state: State<f64>,
         datetime: OffsetDateTime,
@@ -123,12 +123,12 @@ impl GuageAndAccumGene {
             .contains(&idx)
         {
             // this is a guage
-            GuageOperator::apply(&state, idx, *in_val, datetime)?
+            GuageOperator::apply(&state, idx, in_val, datetime)?
         } else if (self.accumulator_first_idx..self.accumulator_first_idx + self.accumulator_slots)
             .contains(&idx)
         {
             // this is an accumulator
-            AccumOperator::apply(&state, idx, *in_val, datetime)?
+            AccumOperator::apply(&state, idx, in_val, datetime)?
         } else {
             return Err(OperatorError {
                 reason: format!("unsupported idx: {idx}"),
@@ -159,7 +159,7 @@ impl Gene for GuageAndAccumGene {
                     let in_val = values.get(&idx).ok_or_else(|| OperatorError {
                         reason: format!("unsupported idx: {idx}"),
                     })?;
-                    state = self.update_state_with_val(in_val, idx, state, datetime)?;
+                    state = self.update_state_with_val(*in_val, idx, state, datetime)?;
                 }
             }
             _ => {
