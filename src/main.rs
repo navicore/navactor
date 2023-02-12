@@ -183,7 +183,7 @@ fn main() {
                 memory_only,
                 wal,
                 allow_duplicates,
-            )
+            );
         }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
         Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
