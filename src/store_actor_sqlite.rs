@@ -265,42 +265,40 @@ impl StoreActor {
     }
 }
 
-async fn report_on_jrnl_mode(db_url: &str, dbconn: SqlitePool) -> ActorResult<sqlx::SqlitePool> {
-    // report on journal mode
-    match sqlx::query("PRAGMA journal_mode;").fetch_all(&dbconn).await {
-        Ok(rows) => {
-            let journal_mode: String = rows[0].get("journal_mode");
-            log::info!("connected to db in journal_mode: {:?}", journal_mode);
+/// define table if it does not exist and log to console the journal mode
+async fn define_table_if_not_exist(
+    db_url: &str,
+    dbconn: SqlitePool,
+) -> ActorResult<sqlx::SqlitePool> {
+    let rows = sqlx::query("PRAGMA journal_mode;")
+        .fetch_all(&dbconn)
+        .await
+        .map_err(|e| ActorError {
+            reason: format!("Failed to fetch journal_mode: {}", e),
+        })?;
 
-            // Create table if it doesn't exist
-            match sqlx::query(
-                "CREATE TABLE IF NOT EXISTS updates (
-                      path TEXT NOT NULL,
-                      timestamp TEXT NOT NULL,
-                      sequence TEXT NOT NULL,
-                      values_str TEXT NOT NULL,
-                      PRIMARY KEY (path, timestamp)
-                )",
-            )
-            .execute(&dbconn)
-            .await
-            {
-                Ok(_) => Ok(dbconn),
-                Err(e) => {
-                    return Err(ActorError {
-                        reason: format!("Failed to create file {db_url}: {e}"),
-                    });
-                }
-            }
-        }
-        Err(e) => {
-            return Err(ActorError {
-                reason: format!("Failed to create file {db_url}: {e}"),
-            });
-        }
-    }
+    let journal_mode: String = rows[0].get("journal_mode");
+    log::info!("connected to db in journal_mode: {:?}", journal_mode);
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS updates (
+              path TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              sequence TEXT NOT NULL,
+              values_str TEXT NOT NULL,
+              PRIMARY KEY (path, timestamp)
+        )",
+    )
+    .execute(&dbconn)
+    .await
+    .map_err(|e| ActorError {
+        reason: format!("Failed to create file {db_url}: {}", e),
+    })?;
+
+    Ok(dbconn)
 }
 
+/// enable write-ahead-logging mode for append-only-style db
 async fn enable_wal(db_url: &str, dbconn: &SqlitePool) -> ActorResult<()> {
     match sqlx::query("PRAGMA journal_mode = WAL;")
         .execute(dbconn)
@@ -345,7 +343,7 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> ActorResult<sq
                 }
             }
 
-            report_on_jrnl_mode(db_url, dbconn).await
+            define_table_if_not_exist(db_url, dbconn).await
         }
         Err(e) => {
             log::error!("cannot connect to db: {e:?}");
