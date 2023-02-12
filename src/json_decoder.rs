@@ -38,6 +38,7 @@ fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
 #[async_trait]
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
+
     async fn handle_envelope(&mut self, envelope: Envelope) {
         let Envelope {
             message,
@@ -45,34 +46,23 @@ impl Actor for JsonDecoder {
             datetime,
             ..
         } = envelope;
-        // match the messages we know how to decode and forward them and everything else to the
-        // next hop
-        match &message {
-            Message::PrintOneCmd { text } => match extract_values_from_json(text) {
+        match message {
+            Message::PrintOneCmd { text } => match extract_values_from_json(&text) {
                 Ok(observations) => {
                     log::trace!("json parsed");
-                    //forward observations to actor
                     let msg = Message::Update {
-                        path: String::from(&observations.path),
+                        path: observations.path,
                         datetime: extract_datetime(&observations.datetime),
                         values: observations.values,
                     };
 
-                    // forward if output is configured
                     let senv = Envelope {
                         message: msg,
-                        respond_to, // delegate responding to an ask to director
+                        respond_to,
                         datetime,
                         ..Default::default()
                     };
-
-                    self.output
-                        .send(senv)
-                        .await
-                        .map_err(|e| {
-                            log::error!("cannot send: {e:?}");
-                        })
-                        .ok();
+                    self.send_or_log_error(senv).await;
                 }
                 Err(error) => {
                     log::warn!("json parse error: {}", error);
@@ -81,34 +71,35 @@ impl Actor for JsonDecoder {
                         respond_to
                             .send(Err(ActorError { reason: etxt }))
                             .map_err(|e| {
-                                log::error!("cannot send: {e:?}");
+                                log::error!("can not respond: {e:?}");
                             })
                             .ok();
                     }
                 }
             },
             m => {
-                // forward everything else
                 let senv = Envelope {
-                    message: m.clone(),
+                    message: m,
                     respond_to,
                     ..Default::default()
                 };
-
-                self.output
-                    .send(senv)
-                    .await
-                    .map_err(|e| {
-                        log::error!("cannot send: {e:?}");
-                    })
-                    .ok();
+                self.send_or_log_error(senv).await;
             }
         }
     }
 }
 
-/// actor private constructor
 impl JsonDecoder {
+    async fn send_or_log_error(&self, value: Envelope)
+    where
+        Envelope: Send + std::fmt::Debug,
+    {
+        match self.output.send(value).await {
+            Ok(_) => (),
+            Err(e) => log::error!("cannot send: {:?}", e),
+        }
+    }
+    /// actor private constructor
     const fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
         Self { receiver, output }
     }
