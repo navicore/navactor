@@ -4,9 +4,8 @@ use crate::message::ActorError;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::Observations;
+use crate::nvtime::extract_datetime;
 use async_trait::async_trait;
-use time::format_description::well_known::Iso8601;
-use time::OffsetDateTime;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -23,16 +22,6 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
         Err(e) => return Err(e.to_string()),
     };
     Ok(observations)
-}
-
-fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
-    match OffsetDateTime::parse(datetime_str, &Iso8601::DEFAULT) {
-        Ok(d) => d,
-        Err(e) => {
-            log::warn!("can not parse datetime {} due to: {}", datetime_str, e);
-            OffsetDateTime::now_utc()
-        }
-    }
 }
 
 #[async_trait]

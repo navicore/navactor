@@ -12,9 +12,10 @@ Overview
 
 A CLI *nix-style tool as lab for actor programming.
 
-NOT TRYING TO BE A FRAMEWORK - the use of actors is in support of an opinionated
-experimental approach to modeling and inference processing, not a general
-purpose solution for concurrency / parallelism.
+NOT TRYING TO BE A FRAMEWORK - the use of actors in `navactor` is in support of
+an opinionated experimental approach to modeling and inference processing, not
+a general purpose solution for concurrency, parallelism, or distributed
+computing.
 
 `nv`'s purpose: ingest piped streams of CRLF-delimited observations, send them to actors,
 implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
@@ -110,6 +111,21 @@ cat ./tests/data/single_observation_1_3.json | RUST_LOG="debug,sqlx=warn" nv upd
 
 #or set and forget via
 export RUST_LOG="debug,sqlx=warn"
+```
+
+Developing
+-----------
+
+Run all tests via:
+```bash
+cargo test
+```
+
+Run specific tests with logging enabled:
+```bash
+# EXAMPLE - runs the json decoder and assertions around datetime and json unmarshalling
+# the --nocapture lets the in app logging log according to the RUST_LOG env var (see above)
+cargo test --test test_json_decoder_actor -- --nocapture
 ```
 
 ![Fun Mutation of DtLab Graphic](images/diodes-2.jpeg)

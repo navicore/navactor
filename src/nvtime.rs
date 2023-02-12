@@ -1,5 +1,16 @@
 use serde::{Deserialize, Serialize};
+use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
+
+pub fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
+    match OffsetDateTime::parse(datetime_str, &Iso8601::DEFAULT) {
+        Ok(d) => d,
+        Err(e) => {
+            log::warn!("can not parse datetime {} due to: {}", datetime_str, e);
+            OffsetDateTime::now_utc()
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct OffsetDateTimeWrapper {
