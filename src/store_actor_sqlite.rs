@@ -274,11 +274,11 @@ async fn define_table_if_not_exist(
         .fetch_all(&dbconn)
         .await
         .map_err(|e| ActorError {
-            reason: format!("Failed to fetch journal_mode: {}", e),
+            reason: format!("Failed to fetch journal_mode: {e}"),
         })?;
 
     let journal_mode: String = rows[0].get("journal_mode");
-    log::info!("connected to db in journal_mode: {:?}", journal_mode);
+    log::info!("connected to db in journal_mode: {journal_mode:?}");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS updates (
@@ -292,7 +292,7 @@ async fn define_table_if_not_exist(
     .execute(&dbconn)
     .await
     .map_err(|e| ActorError {
-        reason: format!("Failed to create file {db_url}: {}", e),
+        reason: format!("Failed to create file {db_url}: {e}"),
     })?;
 
     Ok(dbconn)
