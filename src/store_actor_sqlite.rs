@@ -103,7 +103,7 @@ async fn stream_message(
     }
 }
 
-/// if a message has a reply_to value - this is probably an 'ask' and the
+/// if a message has a `reply_to` value - this is probably an 'ask' and the
 /// sender would like a reply
 fn reply_or_log_error(
     respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
@@ -135,7 +135,7 @@ async fn handle_update(
     } else {
         datetime
     };
-    match insert_update(&dbconn, &path, dt, sequence, values).await {
+    match insert_update(dbconn, &path, dt, sequence, values).await {
         Ok(_) => reply_or_log_error(respond_to, Ok(Message::EndOfStream {})),
         Err(e) => reply_or_log_error(
             respond_to,
@@ -147,9 +147,9 @@ async fn handle_update(
 }
 
 /// a load command is indicates a new actor is expecting its journal.  the
-/// message contains a stream_to - read each row from the DB and write
-/// a message for each row to the actor at the other end of the 'stream_to'
-/// connection.  after the last row, write an "EndOfStream" msg and close the
+/// message contains a `stream_to` - read each row from the DB and write
+/// a message for each row to the actor at the other end of the `stream_to`
+/// connection.  after the last row, write an `EndOfStream` msg and close the
 /// connection
 async fn handle_load_cmd(
     path: String,
@@ -179,44 +179,40 @@ impl Actor for StoreActor {
     /// the main entry point to every actor - this is where the jrnl read and
     /// write requests arrive
     async fn handle_envelope(&mut self, envelope: Envelope) {
-        let dbconn = match &self.dbconn {
-            Some(d) => d,
-            _ => {
-                log::error!("DB not configured");
-                return;
-            }
-        };
+        if let Some(dbconn) = &self.dbconn {
+            let Envelope {
+                message,
+                respond_to,
+                stream_to,
+                datetime: sequence,
+                ..
+            } = envelope;
 
-        let Envelope {
-            message,
-            respond_to,
-            stream_to,
-            datetime: sequence,
-            ..
-        } = envelope;
-
-        match message {
-            Message::Update {
-                path,
-                datetime,
-                values,
-            } => {
-                handle_update(
+            match message {
+                Message::Update {
                     path,
                     datetime,
-                    sequence,
                     values,
-                    self.disable_duplicate_detection,
-                    dbconn,
-                    respond_to,
-                )
-                .await;
-            }
+                } => {
+                    handle_update(
+                        path,
+                        datetime,
+                        sequence,
+                        values,
+                        self.disable_duplicate_detection,
+                        dbconn,
+                        respond_to,
+                    )
+                    .await;
+                }
 
-            Message::LoadCmd { path } => {
-                handle_load_cmd(path, dbconn, stream_to).await;
+                Message::LoadCmd { path } => {
+                    handle_load_cmd(path, dbconn, stream_to).await;
+                }
+                m => log::warn!("Unexpected: {:?}", m),
             }
-            m => log::warn!("Unexpected: {:?}", m),
+        } else {
+            log::error!("DB not configured");
         }
     }
 }
