@@ -21,6 +21,9 @@ enum StreamOption {
     LeaveOpen,
 }
 
+/// main persistence API - the navactor must have only a single file for
+/// storage so all reading and writing must be done by messaging an instance
+/// of this actor type
 pub struct StoreActor {
     pub receiver: mpsc::Receiver<Envelope>,
     pub dbconn: Option<sqlx::SqlitePool>,
@@ -28,6 +31,9 @@ pub struct StoreActor {
     pub disable_duplicate_detection: bool,
 }
 
+/// internal actor-to-actor communication outside of input-to-state_actor is
+/// done with temporary streams (for now) and these streams are setup by
+/// an orchestrator (usually director).
 async fn stream_message(
     stream_to: &Option<tokio::sync::mpsc::Sender<Message>>,
     message: Message,
@@ -46,6 +52,8 @@ async fn stream_message(
     }
 }
 
+/// if a message has a reply_to value - this is probably an 'ask' and the
+/// sender would like a reply
 fn reply_or_log_error(
     respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
     result: ActorResult<Message>,
@@ -122,6 +130,37 @@ impl Actor for StoreActor {
     }
 }
 
+async fn get_values(path: &str, dbconn: &SqlitePool) -> Result<Vec<Message>, sqlx::error::Error> {
+    sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
+        .bind(path)
+        .try_map(|row: sqlx::sqlite::SqliteRow| {
+            let date_parsed_i64 = match from_str(row.get(0)) {
+                Ok(val) => val,
+                Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+            };
+
+            let date_parsed = OffsetDateTimeWrapper {
+                datetime_i64: date_parsed_i64,
+            };
+
+            let values = match row.try_get(1) {
+                Ok(val_str) => match serde_json::from_str(val_str) {
+                    Ok(val) => val,
+                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+                },
+                Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+            };
+
+            Ok(Message::Update {
+                path: String::from(path),
+                datetime: date_parsed.to_ts(),
+                values,
+            })
+        })
+        .fetch_all(dbconn)
+        .await
+}
+
 impl StoreActor {
     /// actor private constructor
     const fn new(
@@ -139,38 +178,8 @@ impl StoreActor {
     }
 
     /// retrieve the time series of events (observations) for the actor that is being resurrected
-
     async fn get_jrnl(&self, dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> {
-        let v = sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
-            .bind(path)
-            .try_map(|row: sqlx::sqlite::SqliteRow| {
-                let date_parsed_i64 = match from_str(row.get(0)) {
-                    Ok(val) => val,
-                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
-                };
-
-                let date_parsed = OffsetDateTimeWrapper {
-                    datetime_i64: date_parsed_i64,
-                };
-
-                let values = match row.try_get(1) {
-                    Ok(val_str) => match serde_json::from_str(val_str) {
-                        Ok(val) => val,
-                        Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
-                    },
-                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
-                };
-
-                Ok(Message::Update {
-                    path: String::from(path),
-                    datetime: date_parsed.to_ts(),
-                    values,
-                })
-            })
-            .fetch_all(dbconn)
-            .await;
-
-        match v {
+        match get_values(path, dbconn).await {
             Ok(v) => Ok(v),
             Err(e) => {
                 log::error!("cannot load from db: {:?}", e);
