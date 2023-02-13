@@ -75,7 +75,7 @@ impl JsonDecoder {
         respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
         datetime: OffsetDateTime,
     ) {
-        match extract_values_from_json(&text) {
+        match extract_values_from_json(text) {
             Ok(observations) => {
                 log::trace!("json parsed");
                 let msg = Message::Update {
@@ -114,7 +114,7 @@ impl JsonDecoder {
         respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
         datetime: OffsetDateTime,
     ) {
-        match extract_path_from_json(&text) {
+        match extract_path_from_json(text) {
             Ok(path_query) => {
                 log::trace!("query json parsed");
                 let msg = Message::Query {
