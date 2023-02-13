@@ -2,7 +2,6 @@ use glob::glob;
 use navactor::actor::Handle;
 use navactor::director;
 use navactor::json_decoder;
-use navactor::message::Envelope;
 use navactor::message::Message;
 use navactor::message::MtHint;
 use navactor::stdout_actor;
@@ -10,7 +9,6 @@ use navactor::store_actor_sqlite;
 use std::fs;
 use test_log::test;
 use tokio::runtime::Runtime;
-use tokio::sync::oneshot;
 
 async fn setup_actors(db_file_prefix: String, namespace: String) -> Handle {
     let output_actor = stdout_actor::new(8);
@@ -25,25 +23,11 @@ async fn setup_actors(db_file_prefix: String, namespace: String) -> Handle {
 }
 
 async fn shutdown_actors(json_decoder_actor: Handle) {
-    let (send, recv) = oneshot::channel();
-
     let message = Message::EndOfStream {};
 
-    let envelope = Envelope {
-        message,
-        respond_to: Some(send),
-        ..Default::default()
-    };
+    let result_message = json_decoder_actor.ask(message).await;
 
-    let r = json_decoder_actor.send(envelope).await;
-    assert_eq!(r.ok(), Some(()));
-
-    let result = recv.await;
-
-    let result_message = result.expect("failed with RecvErr");
-
-    log::debug!("result_message: {:?}", result_message);
-
+    log::debug!("shutdown result_message: {:?}", result_message);
     assert!(matches!(result_message, Ok(Message::EndOfStream {}),));
 }
 
