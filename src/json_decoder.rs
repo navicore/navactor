@@ -1,6 +1,7 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
+use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::MtHint;
@@ -8,6 +9,7 @@ use crate::message::Observations;
 use crate::message::PathQuery;
 use crate::nvtime::extract_datetime;
 use async_trait::async_trait;
+use time::OffsetDateTime;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
@@ -38,7 +40,6 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
 
-    // TODO: refactor into small pieces - no nesting
     async fn handle_envelope(&mut self, envelope: Envelope) {
         let Envelope {
             message,
@@ -50,68 +51,11 @@ impl Actor for JsonDecoder {
             Message::TextMsg {
                 text,
                 hint: MtHint::Query,
-            } => match extract_path_from_json(&text) {
-                Ok(path_query) => {
-                    log::trace!("query json parsed");
-                    let msg = Message::Query {
-                        path: path_query.path,
-                    };
-
-                    let senv = Envelope {
-                        message: msg,
-                        respond_to,
-                        datetime,
-                        ..Default::default()
-                    };
-                    self.send_or_log_error(senv).await;
-                }
-                Err(error) => {
-                    log::warn!("json parse error: {}", error);
-                    if let Some(respond_to) = respond_to {
-                        let etxt = format!("json parse error: {error}");
-                        respond_to
-                            .send(Err(ActorError { reason: etxt }))
-                            .map_err(|e| {
-                                log::error!("can not respond: {e:?}");
-                            })
-                            .ok();
-                    }
-                }
-            },
-
+            } => self.handle_query_json(&text, respond_to, datetime).await,
             Message::TextMsg {
                 text,
                 hint: MtHint::Update,
-            } => match extract_values_from_json(&text) {
-                Ok(observations) => {
-                    log::trace!("json parsed");
-                    let msg = Message::Update {
-                        path: observations.path,
-                        datetime: extract_datetime(&observations.datetime),
-                        values: observations.values,
-                    };
-
-                    let senv = Envelope {
-                        message: msg,
-                        respond_to,
-                        datetime,
-                        ..Default::default()
-                    };
-                    self.send_or_log_error(senv).await;
-                }
-                Err(error) => {
-                    log::warn!("json parse error: {}", error);
-                    if let Some(respond_to) = respond_to {
-                        let etxt = format!("json parse error: {error}");
-                        respond_to
-                            .send(Err(ActorError { reason: etxt }))
-                            .map_err(|e| {
-                                log::error!("can not respond: {e:?}");
-                            })
-                            .ok();
-                    }
-                }
-            },
+            } => self.handle_update_json(&text, respond_to, datetime).await,
             m => {
                 let senv = Envelope {
                     message: m,
@@ -125,6 +69,82 @@ impl Actor for JsonDecoder {
 }
 
 impl JsonDecoder {
+    async fn handle_update_json(
+        &self,
+        text: &str,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        datetime: OffsetDateTime,
+    ) {
+        match extract_values_from_json(&text) {
+            Ok(observations) => {
+                log::trace!("json parsed");
+                let msg = Message::Update {
+                    path: observations.path,
+                    datetime: extract_datetime(&observations.datetime),
+                    values: observations.values,
+                };
+
+                let senv = Envelope {
+                    message: msg,
+                    respond_to,
+                    datetime,
+                    ..Default::default()
+                };
+                self.send_or_log_error(senv).await;
+            }
+            // TODO: refactor all parse errors to helper handler
+            Err(error) => {
+                log::warn!("json parse error: {}", error);
+                if let Some(respond_to) = respond_to {
+                    let etxt = format!("json parse error: {error}");
+                    respond_to
+                        .send(Err(ActorError { reason: etxt }))
+                        .map_err(|e| {
+                            log::error!("can not respond: {e:?}");
+                        })
+                        .ok();
+                }
+            }
+        }
+    }
+
+    async fn handle_query_json(
+        &self,
+        text: &str,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        datetime: OffsetDateTime,
+    ) {
+        match extract_path_from_json(&text) {
+            Ok(path_query) => {
+                log::trace!("query json parsed");
+                let msg = Message::Query {
+                    path: path_query.path,
+                };
+
+                let senv = Envelope {
+                    message: msg,
+                    respond_to,
+                    datetime,
+                    ..Default::default()
+                };
+                self.send_or_log_error(senv).await;
+            }
+            // TODO: refactor all parse errors to helper handler
+            Err(error) => {
+                log::warn!("json parse error: {}", error);
+                if let Some(respond_to) = respond_to {
+                    let etxt = format!("json parse error: {error}");
+                    respond_to
+                        .send(Err(ActorError { reason: etxt }))
+                        .map_err(|e| {
+                            log::error!("can not respond: {e:?}");
+                        })
+                        .ok();
+                }
+            }
+        }
+    }
+
     async fn send_or_log_error(&self, value: Envelope)
     where
         Envelope: Send + std::fmt::Debug,
