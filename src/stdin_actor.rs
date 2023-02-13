@@ -1,7 +1,8 @@
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::message::Message;
 use crate::message::Envelope;
+use crate::message::Message;
+use crate::message::MtHint;
 use async_trait::async_trait;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
@@ -33,7 +34,10 @@ impl Actor for StdinActor {
                 log::error!("failed to read stream: {:?}", e);
                 None
             }) {
-                let msg = Message::PrintOneCmd { text };
+                let msg = Message::TextMsg {
+                    text,
+                    hint: MtHint::Update,
+                };
                 match self.output.tell(msg).await {
                     Ok(()) => {}
                     Err(e) => {

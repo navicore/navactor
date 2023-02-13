@@ -3,6 +3,7 @@ use navactor::director;
 use navactor::genes::GuageAndAccumGene;
 use navactor::json_decoder;
 use navactor::message::Message;
+use navactor::message::MtHint;
 use navactor::state_actor;
 use std::collections::HashMap;
 use test_log::test;
@@ -80,14 +81,16 @@ fn test_decoder_ask() {
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // init state
-        let cmd = Message::PrintOneCmd {
+        let cmd = Message::TextMsg {
+            hint: MtHint::Update,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
         let r = json_decoder_actor.tell(cmd).await;
         assert_eq!(r.ok(), Some(()));
 
         // update state
-        let cmd = Message::PrintOneCmd {
+        let cmd = Message::TextMsg {
+            hint: MtHint::Update,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
         };
         let reply = json_decoder_actor.ask(cmd).await;

@@ -3,7 +3,9 @@ use crate::actor::Handle;
 use crate::message::ActorError;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::MtHint;
 use crate::message::Observations;
+use crate::message::PathQuery;
 use crate::nvtime::extract_datetime;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
@@ -14,6 +16,14 @@ extern crate serde_json;
 pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<Envelope>,
     pub output: Handle,
+}
+
+fn extract_path_from_json(text: &str) -> Result<PathQuery, String> {
+    let query: PathQuery = match serde_json::from_str(text) {
+        Ok(o) => o,
+        Err(e) => return Err(e.to_string()),
+    };
+    Ok(query)
 }
 
 fn extract_values_from_json(text: &str) -> Result<Observations, String> {
@@ -28,6 +38,7 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
 
+    // TODO: refactor into small pieces - no nesting
     async fn handle_envelope(&mut self, envelope: Envelope) {
         let Envelope {
             message,
@@ -36,7 +47,42 @@ impl Actor for JsonDecoder {
             ..
         } = envelope;
         match message {
-            Message::PrintOneCmd { text } => match extract_values_from_json(&text) {
+            Message::TextMsg {
+                text,
+                hint: MtHint::Query,
+            } => match extract_path_from_json(&text) {
+                Ok(path_query) => {
+                    log::trace!("query json parsed");
+                    let msg = Message::Query {
+                        path: path_query.path,
+                    };
+
+                    let senv = Envelope {
+                        message: msg,
+                        respond_to,
+                        datetime,
+                        ..Default::default()
+                    };
+                    self.send_or_log_error(senv).await;
+                }
+                Err(error) => {
+                    log::warn!("json parse error: {}", error);
+                    if let Some(respond_to) = respond_to {
+                        let etxt = format!("json parse error: {error}");
+                        respond_to
+                            .send(Err(ActorError { reason: etxt }))
+                            .map_err(|e| {
+                                log::error!("can not respond: {e:?}");
+                            })
+                            .ok();
+                    }
+                }
+            },
+
+            Message::TextMsg {
+                text,
+                hint: MtHint::Update,
+            } => match extract_values_from_json(&text) {
                 Ok(observations) => {
                     log::trace!("json parsed");
                     let msg = Message::Update {
