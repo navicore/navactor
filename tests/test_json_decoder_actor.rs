@@ -2,6 +2,7 @@ use navactor::nvtime::extract_datetime;
 use navactor::json_decoder;
 use navactor::message::Envelope;
 use navactor::message::Message;
+use navactor::message::MtHint;
 use navactor::stdout_actor;
 use test_log::test;
 use tokio::runtime::Runtime;
@@ -16,7 +17,8 @@ fn test_json_decode() {
         let output_actor = stdout_actor::new(8);
         let json_decoder_actor = json_decoder::new(8, output_actor); // parse input
 
-        let cmd = Message::PrintOneCmd {
+        let cmd = Message::TextMsg {
+            hint: MtHint::Update,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
         let r = json_decoder_actor.tell(cmd.clone()).await;

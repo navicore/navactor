@@ -40,7 +40,7 @@ impl Actor for StdoutActor {
         } = envelope;
 
         match &message {
-            Message::PrintOneCmd { text } => println!("{text}"),
+            Message::TextMsg { text, hint: _ } => println!("{text}"),
             Message::StateReport { path, values, .. } => {
                 println!("{path} current state: {values:?}");
                 reply_or_log_error(respond_to, Ok(message));

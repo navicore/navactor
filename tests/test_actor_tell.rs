@@ -2,6 +2,7 @@ use navactor::director;
 use navactor::json_decoder;
 use navactor::message::Envelope;
 use navactor::message::Message;
+use navactor::message::MtHint;
 use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
@@ -16,7 +17,8 @@ fn test_actor_tell() {
 
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
-        let cmd = Message::PrintOneCmd {
+        let cmd = Message::TextMsg {
+            hint: MtHint::Update,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1, \"2\": 2, \"3\": 3} }"),
         };
         let r = json_decoder_actor.tell(cmd).await;

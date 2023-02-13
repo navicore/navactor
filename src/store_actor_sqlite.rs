@@ -130,6 +130,7 @@ async fn handle_update(
     dbconn: &SqlitePool,
     respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
 ) {
+    // sequence should be the envelope dt and should never cause a collision
     let dt = if disable_duplicate_detection {
         sequence
     } else {

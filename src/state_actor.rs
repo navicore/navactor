@@ -141,7 +141,8 @@ impl StateActor {
         Message::StateReport {
             path: self.path.clone(),
             values: self.state.clone(),
-            datetime: OffsetDateTime::now_utc(),
+            datetime: OffsetDateTime::now_utc(), // TODO: should be from latest observations
+                                                 // (maybe)
         }
     }
 

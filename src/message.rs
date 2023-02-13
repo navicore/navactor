@@ -19,6 +19,11 @@ impl fmt::Display for ActorError {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct PathQuery {
+    pub path: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Observations {
     pub datetime: String,
     pub values: HashMap<i32, f64>,
@@ -37,6 +42,11 @@ pub struct Envelope {
     pub stream_from: Option<mpsc::Receiver<Message>>,
 }
 
+#[derive(Debug, Clone)]
+pub enum MtHint {
+    Update,
+    Query,
+}
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -74,8 +84,9 @@ pub enum Message {
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
-    PrintOneCmd {
+    TextMsg {
         text: String,
+        hint: MtHint,
     },
 }
 
