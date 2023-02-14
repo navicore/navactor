@@ -36,6 +36,23 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
     Ok(observations)
 }
 
+fn respond_or_log_error(
+    text: String,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+) {
+    log::warn!("{text}");
+    if let Some(respond_to) = respond_to {
+        respond_to
+            .send(Err(ActorError {
+                reason: String::from(text),
+            }))
+            .map_err(|e| {
+                log::error!("can not respond: {e:?}");
+            })
+            .ok();
+    }
+}
+
 #[async_trait]
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
@@ -71,11 +88,11 @@ impl Actor for JsonDecoder {
 impl JsonDecoder {
     async fn handle_update_json(
         &self,
-        text: &str,
+        json_str: &str,
         respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
         datetime: OffsetDateTime,
     ) {
-        match extract_values_from_json(text) {
+        match extract_values_from_json(json_str) {
             Ok(observations) => {
                 log::trace!("json parsed");
                 let msg = Message::Update {
@@ -92,29 +109,19 @@ impl JsonDecoder {
                 };
                 self.send_or_log_error(senv).await;
             }
-            // TODO: refactor all parse errors to helper handler
             Err(error) => {
-                log::warn!("json parse error: {}", error);
-                if let Some(respond_to) = respond_to {
-                    let etxt = format!("json parse error: {error}");
-                    respond_to
-                        .send(Err(ActorError { reason: etxt }))
-                        .map_err(|e| {
-                            log::error!("can not respond: {e:?}");
-                        })
-                        .ok();
-                }
+                respond_or_log_error(format!("json parse error: {error:?}"), respond_to);
             }
         }
     }
 
     async fn handle_query_json(
         &self,
-        text: &str,
+        json_str: &str,
         respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
         datetime: OffsetDateTime,
     ) {
-        match extract_path_from_json(text) {
+        match extract_path_from_json(json_str) {
             Ok(path_query) => {
                 log::trace!("query json parsed");
                 let msg = Message::Query {
@@ -129,18 +136,8 @@ impl JsonDecoder {
                 };
                 self.send_or_log_error(senv).await;
             }
-            // TODO: refactor all parse errors to helper handler
             Err(error) => {
-                log::warn!("json parse error: {}", error);
-                if let Some(respond_to) = respond_to {
-                    let etxt = format!("json parse error: {error}");
-                    respond_to
-                        .send(Err(ActorError { reason: etxt }))
-                        .map_err(|e| {
-                            log::error!("can not respond: {e:?}");
-                        })
-                        .ok();
-                }
+                respond_or_log_error(format!("json parse error: {error:?}"), respond_to);
             }
         }
     }
