@@ -1,3 +1,4 @@
+use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
@@ -34,23 +35,6 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
         Err(e) => return Err(e.to_string()),
     };
     Ok(observations)
-}
-
-fn respond_or_log_error(
-    text: String,
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
-) {
-    log::warn!("{text}");
-    if let Some(respond_to) = respond_to {
-        respond_to
-            .send(Err(ActorError {
-                reason: String::from(text),
-            }))
-            .map_err(|e| {
-                log::error!("can not respond: {e:?}");
-            })
-            .ok();
-    }
 }
 
 #[async_trait]
@@ -110,7 +94,12 @@ impl JsonDecoder {
                 self.send_or_log_error(senv).await;
             }
             Err(error) => {
-                respond_or_log_error(format!("json parse error: {error:?}"), respond_to);
+                respond_or_log_error(
+                    respond_to,
+                    Err(ActorError {
+                        reason: format!("json parse error: {error:?}"),
+                    }),
+                );
             }
         }
     }
@@ -137,7 +126,12 @@ impl JsonDecoder {
                 self.send_or_log_error(senv).await;
             }
             Err(error) => {
-                respond_or_log_error(format!("json parse error: {error:?}"), respond_to);
+                respond_or_log_error(
+                    respond_to,
+                    Err(ActorError {
+                        reason: format!("json parse error: {error:?}"),
+                    }),
+                );
             }
         }
     }
