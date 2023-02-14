@@ -1,3 +1,4 @@
+use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::actor::State;
@@ -38,14 +39,6 @@ impl Actor for StateActor {
         } = envelope;
 
         match message {
-            // TODO: get rid of this onetime pipe and use actor state change and route all
-            // these messages via the director transparently - no reason that once
-            // the director has created the actor, that now knows it is in init mode, to
-            // just forward all messages from store to actor.
-            //
-            // this means the many to one message path needs to be implemented... are we
-            // sure we can't have multiple actors hold the equiv of an erlang PID to send
-            // to??? SOLVE THE MANY TO ONE ISSUE
             Message::InitCmd { .. } => {
                 log::trace!("{} init started...", self.path);
                 // this is an init so read your old events to recalculate your state
@@ -73,40 +66,27 @@ impl Actor for StateActor {
 
                     log::debug!("{} finished init from {} events", self.path, count);
 
-                    if let Some(respond_to) = respond_to {
-                        if let Err(err) = respond_to.send(Ok(Message::EndOfStream {})) {
-                            log::error!("Error sending reply to init: {:?}", err);
-                        }
-                    }
+                    respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
                 }
             }
             Message::Update { .. } => {
                 log::trace!("{} handling update", self.path);
 
                 if self.update_state(message.clone()) {
-                    if let Some(respond_to) = respond_to {
-                        if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
-                            log::error!("Error sending reply to ask: {:?}", err);
-                        }
-                    };
+                    respond_or_log_error(respond_to, Ok(self.get_state_rpt()));
                 } else {
                     log::error!("Error applying operators in ask");
-                    if let Some(respond_to) = respond_to {
-                        if let Err(err) = respond_to.send(Err(ActorError {
+                    respond_or_log_error(
+                        respond_to,
+                        Err(ActorError {
                             reason: String::from("cannot apply operators"),
-                        })) {
-                            log::error!("Error sending error to ask: {:?}", err);
-                        }
-                    }
+                        }),
+                    );
                 }
             }
             Message::Query { .. } => {
                 // respond with a copy of our new state if this is an 'ask'
-                if let Some(respond_to) = respond_to {
-                    if let Err(err) = respond_to.send(Ok(self.get_state_rpt())) {
-                        log::error!("Error sending reply to ask: {:?}", err);
-                    }
-                }
+                respond_or_log_error(respond_to, Ok(self.get_state_rpt()));
             }
             m => {
                 log::warn!("unexpected message: {m:?}");

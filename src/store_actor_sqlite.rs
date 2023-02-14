@@ -1,3 +1,4 @@
+use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::ActorError;
@@ -103,24 +104,6 @@ async fn stream_message(
     }
 }
 
-/// if a message has a `reply_to` value - this is probably an 'ask' and the
-/// sender would like a reply
-fn reply_or_log_error(
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
-    result: ActorResult<Message>,
-) {
-    {
-        if let Some(respond_to) = respond_to {
-            match respond_to.send(result) {
-                Ok(_) => (),
-                Err(err) => {
-                    log::error!("Cannot respond to 'ask' with confirmation: {:?}", err);
-                }
-            }
-        }
-    }
-}
-
 async fn handle_update(
     path: String,
     datetime: OffsetDateTime,
@@ -137,8 +120,8 @@ async fn handle_update(
         datetime
     };
     match insert_update(dbconn, &path, dt, sequence, values).await {
-        Ok(_) => reply_or_log_error(respond_to, Ok(Message::EndOfStream {})),
-        Err(e) => reply_or_log_error(
+        Ok(_) => respond_or_log_error(respond_to, Ok(Message::EndOfStream {})),
+        Err(e) => respond_or_log_error(
             respond_to,
             Err(ActorError {
                 reason: e.to_string(),

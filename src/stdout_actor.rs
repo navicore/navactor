@@ -1,6 +1,6 @@
+use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
 use async_trait::async_trait;
@@ -10,23 +10,6 @@ use tokio::sync::mpsc;
 /// in combination with other *nix tools.
 pub struct StdoutActor {
     pub receiver: mpsc::Receiver<Envelope>,
-}
-
-/// useful for unit tests
-fn reply_or_log_error(
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
-    result: ActorResult<Message>,
-) {
-    {
-        if let Some(respond_to) = respond_to {
-            match respond_to.send(result) {
-                Ok(_) => (),
-                Err(err) => {
-                    log::error!("Cannot respond to 'ask' with confirmation: {:?}", err);
-                }
-            }
-        }
-    }
 }
 
 #[async_trait]
@@ -43,11 +26,11 @@ impl Actor for StdoutActor {
             Message::TextMsg { text, hint: _ } => println!("{text}"),
             Message::StateReport { path, values, .. } => {
                 println!("{path} current state: {values:?}");
-                reply_or_log_error(respond_to, Ok(message));
+                respond_or_log_error(respond_to, Ok(message));
             }
             Message::Update { path, values, .. } => {
                 println!("{path} new observations: {values:?}");
-                reply_or_log_error(respond_to, Ok(message));
+                respond_or_log_error(respond_to, Ok(message));
             }
             Message::EndOfStream {} => {
                 if let Some(respond_to) = respond_to {

@@ -111,3 +111,20 @@ impl<'a> Handle {
         Self { sender }
     }
 }
+
+/// utility function most actors need to reply if a message is an 'ask'
+pub fn respond_or_log_error(
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+    result: ActorResult<Message>,
+) {
+    {
+        if let Some(respond_to) = respond_to {
+            match respond_to.send(result) {
+                Ok(_) => (),
+                Err(err) => {
+                    log::error!("Cannot respond to 'ask' with confirmation: {:?}", err);
+                }
+            }
+        }
+    }
+}
