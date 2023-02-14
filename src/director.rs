@@ -89,7 +89,7 @@ impl Director {
                 })
                 .ok();
         } else {
-            respond_or_log_error(respond_to, Ok(message.clone()));
+            respond_or_log_error(respond_to, Ok(message));
         }
     }
 
