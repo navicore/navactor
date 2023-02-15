@@ -51,6 +51,34 @@ impl Actor for Director {
     }
 }
 
+/// returns true once the newly resurrected actor reads all its journal
+async fn journal_message(message: Message, store_actor: &Option<Handle>) -> bool {
+    if let Some(store_actor) = store_actor {
+        // jrnl the new msg
+        let jrnl_msg = store_actor.ask(message.clone()).await;
+        match jrnl_msg {
+            Ok(r) => match r {
+                Message::EndOfStream {} => {
+                    // successfully jrnled the msg, it is now safe to
+                    // send it to the actor to process
+                    true
+                }
+                m => {
+                    log::warn!("Unexpected store message: {m:?}");
+                    false
+                }
+            },
+            Err(e) => {
+                log::warn!("error {e}");
+                false
+            }
+        }
+    } else {
+        // jrnl is disabled, jsut process the message
+        true
+    }
+}
+
 async fn forward_actor_result(result: ActorResult<Message>, output: &Option<Handle>) {
     //forward to optional output
     if let Some(o) = output {
@@ -67,6 +95,31 @@ async fn forward_actor_result(result: ActorResult<Message>, output: &Option<Hand
                 }
             }
         }
+    }
+}
+
+async fn handle_post_jrnl_procesing(
+    journaled: bool,
+    message: Message,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+    actor: &Handle,
+    output: &Option<Handle>,
+) {
+    if journaled {
+        //send message to the actor and support ask results
+        let r = actor.ask(message).await;
+        respond_or_log_error(respond_to, r.clone());
+
+        //forward to optional output
+        forward_actor_result(r, output).await;
+    } else {
+        log::error!("cannot journal input to actor - see logs");
+        respond_or_log_error(
+            respond_to,
+            Err(ActorError {
+                reason: String::from("cannot journal input to actor"),
+            }),
+        );
     }
 }
 
@@ -105,7 +158,9 @@ impl Director {
     ) {
         if let Message::Update { path, .. } | Message::Query { path } = &message {
             // resurrect and forward if this is either Update or Query
+
             let mut actor_is_in_init = false;
+
             let actor = self.actors.entry(path.clone()).or_insert_with(|| {
                 actor_is_in_init = true;
                 // TODO: look up the gene by path
@@ -115,84 +170,34 @@ impl Director {
                 state_actor::new(path.clone(), 8, gene, None)
             });
 
-            let loaded: bool = match &self.store_actor {
-                Some(store_actor) if actor_is_in_init => {
+            if let Some(store_actor) = &self.store_actor {
+                if actor_is_in_init {
                     match actor.integrate(String::from(path), store_actor).await {
                         Ok(_) => {
                             // actor has read its journal
-                            true
                         }
                         Err(e) => {
-                            log::error!("can not load actor: {e}");
-                            false
+                            log::error!("can not load actor {e} from journal");
                         }
                     }
                 }
-                _ => true,
+            }
+
+            let journaled: bool = match message.clone() {
+                Message::Update { path: _, .. } => {
+                    journal_message(message.clone(), &self.store_actor).await
+                }
+                Message::Query { path: _, .. } => true,
+                m => {
+                    log::warn!("unexpected message: {:?}", m);
+                    false
+                }
             };
 
-            if loaded {
-                let journaled: bool = match message.clone() {
-                    Message::Update { path: _, .. } => {
-                        if let Some(store_actor) = &self.store_actor {
-                            // jrnl the new msg
-                            let jrnl_msg = store_actor.ask(message.clone()).await;
-                            match jrnl_msg {
-                                Ok(r) => match r {
-                                    Message::EndOfStream {} => {
-                                        // successfully jrnled the msg, it is now safe to
-                                        // send it to the actor to process
-                                        true
-                                    }
-                                    m => {
-                                        log::warn!("Unexpected store message: {m:?}");
-                                        false
-                                    }
-                                },
-                                Err(e) => {
-                                    log::warn!("error {e}");
-                                    false
-                                }
-                            }
-                        } else {
-                            // jrnl is disabled, jsut process the message
-                            true
-                        }
-                    }
-                    Message::Query { path: _, .. } => true,
-                    m => {
-                        log::warn!("unexpected message: {:?}", m);
-                        false
-                    }
-                };
-
-                if journaled {
-                    //send message to the actor and support ask results
-                    let r = actor.ask(message.clone()).await;
-                    respond_or_log_error(respond_to, r.clone());
-
-                    //forward to optional output
-                    forward_actor_result(r, &self.output).await;
-                } else {
-                    log::error!("cannot journal input to actor {path} - see logs");
-                    respond_or_log_error(
-                        respond_to,
-                        Err(ActorError {
-                            reason: format!("cannot journal input to actor {path}"),
-                        }),
-                    );
-                }
-            } else {
-                log::error!("cannot load actor {path} - see logs");
-                respond_or_log_error(
-                    respond_to,
-                    Err(ActorError {
-                        reason: format!("cannot load actor {path}"),
-                    }),
-                );
-            }
+            handle_post_jrnl_procesing(journaled, message, respond_to, actor, &self.output).await;
         }
     }
+
     fn new(
         namespace: String,
         receiver: mpsc::Receiver<Envelope>,
