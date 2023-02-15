@@ -51,6 +51,25 @@ impl Actor for Director {
     }
 }
 
+async fn forward_actor_result(result: ActorResult<Message>, output: &Option<Handle>) {
+    //forward to optional output
+    if let Some(o) = output {
+        if let Ok(message) = result {
+            let senv = Envelope {
+                message,
+                respond_to: None,
+                ..Default::default()
+            };
+            match o.send(senv).await {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("can not forward: {e:?}");
+                }
+            }
+        }
+    }
+}
+
 /// actor private constructor
 impl Director {
     async fn handle_end_of_stream(
@@ -60,6 +79,8 @@ impl Director {
     ) {
         log::debug!("complete");
 
+        // forward message to output but direct response directly back to
+        // original requester instead of here
         if let Some(a) = &self.output {
             let senv = Envelope {
                 message,
@@ -149,22 +170,9 @@ impl Director {
                     //send message to the actor and support ask results
                     let r = actor.ask(message.clone()).await;
                     respond_or_log_error(respond_to, r.clone());
-                    // TODO: extract to actor lib
-                    if let Some(o) = &self.output {
-                        if let Ok(message) = r {
-                            let senv = Envelope {
-                                message,
-                                respond_to: None,
-                                ..Default::default()
-                            };
-                            match o.send(senv).await {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    log::error!("can not forward: {e:?}");
-                                }
-                            }
-                        }
-                    }
+
+                    //forward to optional output
+                    forward_actor_result(r, &self.output).await;
                 } else {
                     log::error!("cannot journal input to actor {path} - see logs");
                     respond_or_log_error(
