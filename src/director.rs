@@ -46,7 +46,11 @@ impl Actor for Director {
             Message::Update { .. } => self.handle_update_or_query(message, respond_to).await,
             Message::Query { .. } => self.handle_update_or_query(message, respond_to).await,
             Message::EndOfStream {} => self.handle_end_of_stream(message, respond_to).await,
-            m => log::warn!("unexpected message: {:?}", m),
+            m => {
+                let emsg = format!("unexpected message: {m:?}");
+                log::error!("{emsg}");
+                respond_or_log_error(respond_to, Err(ActorError { reason: emsg }));
+            }
         }
     }
 }
