@@ -13,14 +13,14 @@ use tokio::sync::mpsc;
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
 /// a `EndOfStream` msg to the next hop to trigger any cleanup and shutdown.
 pub struct StdinActor {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub output: Handle,
 }
 
 #[async_trait]
 impl Actor for StdinActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
             respond_to,
@@ -69,7 +69,7 @@ impl Actor for StdinActor {
 
 /// actor private constructor
 impl StdinActor {
-    const fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope<f64>>, output: Handle) -> Self {
         Self { receiver, output }
     }
 }

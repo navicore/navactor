@@ -20,17 +20,17 @@ use tokio::sync::mpsc;
 /// instance of actor keeping state computed from an arriving stream of
 /// observations.
 pub struct StateActor {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub output: Option<Handle>,
     pub state: State<f64>,
     pub path: String,
-    pub gene: Box<dyn Gene + Send + Sync>,
+    pub gene: Box<dyn Gene<f64> + Send + Sync>,
 }
 
 #[async_trait]
 impl Actor for StateActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
             respond_to,
@@ -104,7 +104,7 @@ impl Actor for StateActor {
 
 /// actor private constructor
 impl StateActor {
-    fn update_state(&mut self, message: Message) -> bool {
+    fn update_state(&mut self, message: Message<f64>) -> bool {
         match self.gene.apply_operators(self.state.clone(), message) {
             Ok(new_state) => {
                 self.state = new_state;
@@ -117,7 +117,7 @@ impl StateActor {
         }
     }
 
-    fn get_state_rpt(&self) -> Message {
+    fn get_state_rpt(&self) -> Message<f64> {
         Message::StateReport {
             path: self.path.clone(),
             values: self.state.clone(),
@@ -130,9 +130,9 @@ impl StateActor {
     /// the lifecycle processing coordinated by the director
     fn new(
         path: String,
-        receiver: mpsc::Receiver<Envelope>,
+        receiver: mpsc::Receiver<Envelope<f64>>,
         output: Option<Handle>,
-        gene: Box<dyn Gene + Send + Sync>,
+        gene: Box<dyn Gene<f64> + Send + Sync>,
     ) -> Self {
         let state = State::new();
         Self {
@@ -150,7 +150,7 @@ impl StateActor {
 pub fn new(
     path: String,
     bufsz: usize,
-    gene: Box<dyn Gene + Send + Sync>,
+    gene: Box<dyn Gene<f64> + Send + Sync>,
     output: Option<Handle>,
 ) -> Handle {
     async fn start<'a>(mut actor: StateActor) {

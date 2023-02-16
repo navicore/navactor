@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 /// it is forwarding commands to.  director also accepts metadata to create
 /// and store graph edges to support arbitrary paths
 pub struct Director {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub store_actor: Option<Handle>,
     pub output: Option<Handle>,
     pub actors: HashMap<String, Handle>,
@@ -31,7 +31,7 @@ impl Actor for Director {
     async fn stop(&self) {}
 
     #[allow(clippy::too_many_lines)]
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         log::trace!(
             "director namespace {} handling_envelope {envelope}",
             self.namespace
@@ -56,7 +56,7 @@ impl Actor for Director {
 }
 
 /// returns true once the newly resurrected actor reads all its journal
-async fn journal_message(message: Message, store_actor: &Option<Handle>) -> bool {
+async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
     if let Some(store_actor) = store_actor {
         // jrnl the new msg
         let jrnl_msg = store_actor.ask(message.clone()).await;
@@ -83,7 +83,7 @@ async fn journal_message(message: Message, store_actor: &Option<Handle>) -> bool
     }
 }
 
-async fn forward_actor_result(result: ActorResult<Message>, output: &Option<Handle>) {
+async fn forward_actor_result(result: ActorResult<Message<f64>>, output: &Option<Handle>) {
     //forward to optional output
     if let Some(o) = output {
         if let Ok(message) = result {
@@ -104,8 +104,8 @@ async fn forward_actor_result(result: ActorResult<Message>, output: &Option<Hand
 
 async fn handle_post_jrnl_procesing(
     journaled: bool,
-    message: Message,
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+    message: Message<f64>,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
     actor: &Handle,
     output: &Option<Handle>,
 ) {
@@ -131,8 +131,8 @@ async fn handle_post_jrnl_procesing(
 impl Director {
     async fn handle_end_of_stream(
         &self,
-        message: Message,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        message: Message<f64>,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
     ) {
         log::debug!("complete");
 
@@ -157,8 +157,8 @@ impl Director {
 
     async fn handle_update_or_query(
         &mut self,
-        message: Message,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        message: Message<f64>,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
     ) {
         if let Message::Update { path, .. } | Message::Query { path } = &message {
             // resurrect and forward if this is either Update or Query
@@ -204,7 +204,7 @@ impl Director {
 
     fn new(
         namespace: String,
-        receiver: mpsc::Receiver<Envelope>,
+        receiver: mpsc::Receiver<Envelope<f64>>,
         output: Option<Handle>,
         store_actor: Option<Handle>,
     ) -> Self {
