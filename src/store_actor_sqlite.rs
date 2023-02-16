@@ -73,7 +73,7 @@ async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> 
     match get_values(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
-            log::error!("cannot load from db: {:?}", e);
+            log::error!("cannot load from db: {e:?}");
             Err(ActorError {
                 reason: format!("cannot load from db: {e:?}"),
             })
@@ -100,7 +100,7 @@ async fn stream_message(
             stream_to.closed().await;
         };
     } else {
-        log::trace!("no stream available for {message:?}");
+        log::trace!("no stream available for {message}");
     }
 }
 
@@ -193,7 +193,7 @@ impl Actor for StoreActor {
                 Message::LoadCmd { path } => {
                     handle_load_cmd(path, dbconn, stream_to).await;
                 }
-                m => log::warn!("Unexpected: {:?}", m),
+                m => log::warn!("Unexpected: {m}"),
             }
         } else {
             log::error!("DB not configured");
@@ -262,7 +262,7 @@ async fn define_table_if_not_exist(
         })?;
 
     let journal_mode: String = rows[0].get("journal_mode");
-    log::info!("connected to db in journal_mode: {journal_mode:?}");
+    log::info!("connected to db in journal_mode: {journal_mode}");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS updates (

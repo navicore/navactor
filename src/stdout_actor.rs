@@ -36,11 +36,11 @@ impl Actor for StdoutActor {
                 if let Some(respond_to) = respond_to {
                     respond_to
                         .send(Ok(Message::EndOfStream {}))
-                        .unwrap_or_else(|e| log::error!("cannot respond to ask: {:?}", e));
+                        .unwrap_or_else(|e| log::error!("cannot respond to ask: {e:?}"));
                 }
             }
             _ => {
-                log::warn!("unexpected: {:?}", message);
+                log::warn!("unexpected: {message}");
             }
         }
     }

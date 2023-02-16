@@ -33,7 +33,7 @@ impl Actor for Director {
     #[allow(clippy::too_many_lines)]
     async fn handle_envelope(&mut self, envelope: Envelope) {
         log::trace!(
-            "director namespace {} handling_envelope {envelope:?}",
+            "director namespace {} handling_envelope {envelope}",
             self.namespace
         );
         let Envelope {
@@ -47,7 +47,7 @@ impl Actor for Director {
             Message::Query { .. } => self.handle_update_or_query(message, respond_to).await,
             Message::EndOfStream {} => self.handle_end_of_stream(message, respond_to).await,
             m => {
-                let emsg = format!("unexpected message: {m:?}");
+                let emsg = format!("unexpected message: {m}");
                 log::error!("{emsg}");
                 respond_or_log_error(respond_to, Err(ActorError { reason: emsg }));
             }
@@ -68,7 +68,7 @@ async fn journal_message(message: Message, store_actor: &Option<Handle>) -> bool
                     true
                 }
                 m => {
-                    log::warn!("Unexpected store message: {m:?}");
+                    log::warn!("Unexpected store message: {m}");
                     false
                 }
             },
@@ -193,7 +193,7 @@ impl Director {
                 }
                 Message::Query { path: _, .. } => true,
                 m => {
-                    log::warn!("unexpected message: {:?}", m);
+                    log::warn!("unexpected message: {m}");
                     false
                 }
             };

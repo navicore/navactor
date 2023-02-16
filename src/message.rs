@@ -47,6 +47,17 @@ pub enum MtHint {
     Update,
     Query,
 }
+
+impl fmt::Display for MtHint {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display_text = match self {
+            MtHint::Query => "query-hint",
+            MtHint::Update => "update-hint",
+        };
+        write!(f, "{display_text}")
+    }
+}
+
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -88,6 +99,29 @@ pub enum Message {
         text: String,
         hint: MtHint,
     },
+}
+
+impl fmt::Display for Envelope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display_text = "env TODO";
+        write!(f, "{display_text}")
+    }
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display_text = match self {
+            Message::TextMsg { text, hint } => format!("[TextMsg {hint}:{text}]"),
+            Message::LoadCmd { path } => format!("[LoadCmd {path}]"),
+            Message::ReadAllCmd {} => format!("[ReadAllCmd]"),
+            Message::InitCmd {} => format!("[InitCmd]"),
+            Message::EndOfStream {} => format!("[EndOfStream]"),
+            Message::StateReport { .. } => format!("[StateReport]"),
+            Message::Update { .. } => format!("[Update]"),
+            Message::Query { .. } => format!("[Query]"),
+        };
+        write!(f, "{display_text}")
+    }
 }
 
 impl Default for Envelope {
