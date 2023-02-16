@@ -83,10 +83,11 @@ impl<'a> Handle {
     /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// two actors don't exchange lifecycle info
     pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message<f64>> {
-        let (send, recv): (
-            oneshot::Sender<ActorResult<Message<f64>>>,
-            oneshot::Receiver<ActorResult<Message<f64>>>,
-        ) = oneshot::channel();
+        type ResultSender = oneshot::Sender<ActorResult<Message<f64>>>;
+        type ResultReceiver = oneshot::Receiver<ActorResult<Message<f64>>>;
+        type SendReceivePair = (ResultSender, ResultReceiver);
+
+        let (send, recv): SendReceivePair = oneshot::channel();
 
         let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
