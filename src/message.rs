@@ -34,12 +34,12 @@ pub struct Observations {
 /// sender objects - these are set when a `tell` message is sent so that
 /// the reply can be delivered.  These replies are not placed in envelopes.
 #[derive(Debug)]
-pub struct Envelope {
-    pub message: Message,
-    pub respond_to: Option<oneshot::Sender<ActorResult<Message>>>,
+pub struct Envelope<T> {
+    pub message: Message<T>,
+    pub respond_to: Option<oneshot::Sender<ActorResult<Message<T>>>>,
     pub datetime: OffsetDateTime,
-    pub stream_to: Option<mpsc::Sender<Message>>,
-    pub stream_from: Option<mpsc::Receiver<Message>>,
+    pub stream_to: Option<mpsc::Sender<Message<T>>>,
+    pub stream_from: Option<mpsc::Receiver<Message<T>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,7 @@ impl fmt::Display for MtHint {
 
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
-pub enum Message {
+pub enum Message<T> {
     /// 'Query' is usually the 'ask' payload.  
     Query {
         path: String,
@@ -69,13 +69,13 @@ pub enum Message {
     Update {
         datetime: OffsetDateTime,
         path: String,
-        values: HashMap<i32, f64>,
+        values: HashMap<i32, T>,
     },
     /// the response to most Query/ask interactions
     StateReport {
         datetime: OffsetDateTime,
         path: String,
-        values: HashMap<i32, f64>,
+        values: HashMap<i32, T>,
     },
     /// the actor init process is complicated in that the actors must recalculate
     /// their state from event source replays when they are first instantiated.
@@ -101,14 +101,14 @@ pub enum Message {
     },
 }
 
-impl fmt::Display for Envelope {
+impl<T> fmt::Display for Envelope<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = "env TODO";
         write!(f, "{display_text}")
     }
 }
 
-impl fmt::Display for Message {
+impl<T> fmt::Display for Message<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
             Self::TextMsg { text, hint } => format!("[TextMsg {hint}:{text}]"),
@@ -124,7 +124,7 @@ impl fmt::Display for Message {
     }
 }
 
-impl Default for Envelope {
+impl<T> Default for Envelope<T> {
     fn default() -> Self {
         Self {
             message: Message::ReadAllCmd {},
@@ -136,14 +136,14 @@ impl Default for Envelope {
     }
 }
 
-struct LifeCycleBuilder {
-    load_from: Option<mpsc::Receiver<Message>>,
-    send_to: Option<mpsc::Sender<Message>>,
+struct LifeCycleBuilder<T> {
+    load_from: Option<mpsc::Receiver<Message<T>>>,
+    send_to: Option<mpsc::Sender<Message<T>>>,
     send_to_path: Option<String>,
-    respond_to: Option<oneshot::Sender<ActorResult<Message>>>,
+    respond_to: Option<oneshot::Sender<ActorResult<Message<T>>>>,
 }
 
-impl LifeCycleBuilder {
+impl<T> LifeCycleBuilder<T> {
     const fn new() -> Self {
         Self {
             load_from: None,
@@ -154,25 +154,25 @@ impl LifeCycleBuilder {
     }
 
     #[allow(clippy::missing_const_for_fn)]
-    fn with_respond_to(mut self, respond_to: oneshot::Sender<ActorResult<Message>>) -> Self {
+    fn with_respond_to(mut self, respond_to: oneshot::Sender<ActorResult<Message<T>>>) -> Self {
         self.respond_to = Some(respond_to);
         self
     }
 
     #[allow(clippy::missing_const_for_fn)]
-    fn with_load_from(mut self, load_from: mpsc::Receiver<Message>) -> Self {
+    fn with_load_from(mut self, load_from: mpsc::Receiver<Message<T>>) -> Self {
         self.load_from = Some(load_from);
         self
     }
 
     #[allow(clippy::missing_const_for_fn)]
-    fn with_send_to(mut self, send_to: mpsc::Sender<Message>, send_to_path: String) -> Self {
+    fn with_send_to(mut self, send_to: mpsc::Sender<Message<T>>, send_to_path: String) -> Self {
         self.send_to = Some(send_to);
         self.send_to_path = Some(send_to_path);
         self
     }
 
-    fn build(self) -> (Envelope, Envelope) {
+    fn build(self) -> (Envelope<T>, Envelope<T>) {
         (
             Envelope {
                 datetime: OffsetDateTime::now_utc(),
@@ -196,11 +196,11 @@ impl LifeCycleBuilder {
 
 // factory function
 #[must_use]
-pub fn create_init_lifecycle(
+pub fn create_init_lifecycle<T>(
     path: String,
     bufsz: usize,
-    respond_to: oneshot::Sender<ActorResult<Message>>,
-) -> (Envelope, Envelope) {
+    respond_to: oneshot::Sender<ActorResult<Message<T>>>,
+) -> (Envelope<T>, Envelope<T>) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()
         .with_load_from(rx)

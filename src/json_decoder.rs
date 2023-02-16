@@ -17,7 +17,7 @@ extern crate serde_json;
 
 /// actor accepts numerical json and converts into the internal state data msg
 pub struct JsonDecoder {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub output: Handle,
 }
 
@@ -41,7 +41,7 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
 impl Actor for JsonDecoder {
     async fn stop(&self) {}
 
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
             respond_to,
@@ -73,7 +73,7 @@ impl JsonDecoder {
     async fn handle_update_json(
         &self,
         json_str: &str,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
         datetime: OffsetDateTime,
     ) {
         match extract_values_from_json(json_str) {
@@ -107,7 +107,7 @@ impl JsonDecoder {
     async fn handle_query_json(
         &self,
         json_str: &str,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
         datetime: OffsetDateTime,
     ) {
         match extract_path_from_json(json_str) {
@@ -136,9 +136,9 @@ impl JsonDecoder {
         }
     }
 
-    async fn send_or_log_error(&self, value: Envelope)
+    async fn send_or_log_error(&self, value: Envelope<f64>)
     where
-        Envelope: Send + std::fmt::Debug,
+        Envelope<f64>: Send + std::fmt::Debug,
     {
         match self.output.send(value).await {
             Ok(_) => (),
@@ -146,7 +146,7 @@ impl JsonDecoder {
         }
     }
     /// actor private constructor
-    const fn new(receiver: mpsc::Receiver<Envelope>, output: Handle) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope<f64>>, output: Handle) -> Self {
         Self { receiver, output }
     }
 }

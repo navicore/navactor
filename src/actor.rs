@@ -13,14 +13,14 @@ pub type State<T> = std::collections::HashMap<i32, T>;
 #[async_trait]
 pub trait Actor {
     /// the function to implement per actor
-    async fn handle_envelope(&mut self, envelope: Envelope);
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>);
     async fn stop(&self);
 }
 
 /// `ActorHandle` is the API for all actors
 pub struct Handle {
     #[doc(hidden)]
-    pub sender: mpsc::Sender<Envelope>,
+    pub sender: mpsc::Sender<Envelope<f64>>,
 }
 
 /// `ActorHandle` is the API for all actors via `ask` and `tell`
@@ -28,7 +28,7 @@ impl<'a> Handle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
     #[doc(hidden)]
-    pub async fn send(&self, envelope: Envelope) -> ActorResult<()> {
+    pub async fn send(&self, envelope: Envelope<f64>) -> ActorResult<()> {
         self.sender.send(envelope).await.map_err(|e| ActorError {
             reason: e.to_string(),
         })
@@ -39,7 +39,7 @@ impl<'a> Handle {
     /// # Errors
     /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// message is not received by the target actor
-    pub async fn tell(&self, message: Message) -> ActorResult<()> {
+    pub async fn tell(&self, message: Message<f64>) -> ActorResult<()> {
         let envelope = Envelope {
             message,
             respond_to: None,
@@ -56,7 +56,7 @@ impl<'a> Handle {
     ///
     /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// message is not received and replied to by the target actor
-    pub async fn ask(&self, message: Message) -> ActorResult<Message> {
+    pub async fn ask(&self, message: Message<f64>) -> ActorResult<Message<f64>> {
         let (send, recv) = oneshot::channel();
 
         let envelope = Envelope {
@@ -82,11 +82,12 @@ impl<'a> Handle {
     ///
     /// Returns [`ActorError`](../message/struct.ActorError.html) if the
     /// two actors don't exchange lifecycle info
-    pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message> {
-        let (send, recv): (
-            oneshot::Sender<ActorResult<Message>>,
-            oneshot::Receiver<ActorResult<Message>>,
-        ) = oneshot::channel();
+    pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message<f64>> {
+        type ResultSender = oneshot::Sender<ActorResult<Message<f64>>>;
+        type ResultReceiver = oneshot::Receiver<ActorResult<Message<f64>>>;
+        type SendReceivePair = (ResultSender, ResultReceiver);
+
+        let (send, recv): SendReceivePair = oneshot::channel();
 
         let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
@@ -107,15 +108,15 @@ impl<'a> Handle {
     // of the various per-actor ActorHandle impls
     #[doc(hidden)]
     #[must_use]
-    pub const fn new(sender: mpsc::Sender<Envelope>) -> Self {
+    pub const fn new(sender: mpsc::Sender<Envelope<f64>>) -> Self {
         Self { sender }
     }
 }
 
 /// utility function most actors need to reply if a message is an 'ask'
 pub fn respond_or_log_error(
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
-    result: ActorResult<Message>,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+    result: ActorResult<Message<f64>>,
 ) {
     {
         if let Some(respond_to) = respond_to {

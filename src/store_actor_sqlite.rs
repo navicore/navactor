@@ -26,7 +26,7 @@ enum StreamOption {
 /// storage so all reading and writing must be done by messaging an instance
 /// of this actor type
 pub struct StoreActor {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub dbconn: Option<sqlx::SqlitePool>,
     pub namespace: String,
     pub disable_duplicate_detection: bool,
@@ -69,7 +69,7 @@ async fn insert_update(
 }
 
 /// retrieve the time series of events (observations) for the actor that is being resurrected
-async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> {
+async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message<f64>>> {
     match get_values(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
@@ -85,8 +85,8 @@ async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message>> 
 /// done with temporary streams (for now) and these streams are setup by
 /// an orchestrator (usually director).
 async fn stream_message(
-    stream_to: &Option<tokio::sync::mpsc::Sender<Message>>,
-    message: Message,
+    stream_to: &Option<tokio::sync::mpsc::Sender<Message<f64>>>,
+    message: Message<f64>,
     stream_option: StreamOption,
 ) {
     if let Some(stream_to) = stream_to {
@@ -111,7 +111,7 @@ async fn handle_update(
     values: HashMap<i32, f64>,
     disable_duplicate_detection: bool,
     dbconn: &SqlitePool,
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message>>>,
+    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
 ) {
     // sequence should be the envelope dt and should never cause a collision
     let dt = if disable_duplicate_detection {
@@ -138,7 +138,7 @@ async fn handle_update(
 async fn handle_load_cmd(
     path: String,
     dbconn: &SqlitePool,
-    stream_to: Option<mpsc::Sender<Message>>,
+    stream_to: Option<mpsc::Sender<Message<f64>>>,
 ) {
     match get_jrnl(dbconn, &path).await {
         Ok(rows) => {
@@ -162,7 +162,7 @@ impl Actor for StoreActor {
     }
     /// the main entry point to every actor - this is where the jrnl read and
     /// write requests arrive
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         if let Some(dbconn) = &self.dbconn {
             let Envelope {
                 message,
@@ -201,7 +201,10 @@ impl Actor for StoreActor {
     }
 }
 
-async fn get_values(path: &str, dbconn: &SqlitePool) -> Result<Vec<Message>, sqlx::error::Error> {
+async fn get_values(
+    path: &str,
+    dbconn: &SqlitePool,
+) -> Result<Vec<Message<f64>>, sqlx::error::Error> {
     sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
         .bind(path)
         .try_map(|row: sqlx::sqlite::SqliteRow| {
@@ -235,7 +238,7 @@ async fn get_values(path: &str, dbconn: &SqlitePool) -> Result<Vec<Message>, sql
 impl StoreActor {
     /// actor private constructor
     const fn new(
-        receiver: mpsc::Receiver<Envelope>,
+        receiver: mpsc::Receiver<Envelope<f64>>,
         dbconn: Option<sqlx::SqlitePool>,
         namespace: String,
         disable_duplicate_detection: bool,

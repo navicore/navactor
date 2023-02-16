@@ -9,13 +9,13 @@ use tokio::sync::mpsc;
 /// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
 /// in combination with other *nix tools.
 pub struct StdoutActor {
-    pub receiver: mpsc::Receiver<Envelope>,
+    pub receiver: mpsc::Receiver<Envelope<f64>>,
 }
 
 #[async_trait]
 impl Actor for StdoutActor {
     async fn stop(&self) {}
-    async fn handle_envelope(&mut self, envelope: Envelope) {
+    async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
             respond_to,
@@ -48,7 +48,7 @@ impl Actor for StdoutActor {
 
 /// actor private constructor
 impl StdoutActor {
-    const fn new(receiver: mpsc::Receiver<Envelope>) -> Self {
+    const fn new(receiver: mpsc::Receiver<Envelope<f64>>) -> Self {
         Self { receiver }
     }
 }

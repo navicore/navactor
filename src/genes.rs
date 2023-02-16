@@ -1,6 +1,7 @@
 use crate::actor::State;
 use crate::message::Message;
 use std::fmt;
+use std::ops::Add;
 use time::OffsetDateTime;
 
 type OperatorResult<T> = std::result::Result<T, OperatorError>;
@@ -20,7 +21,7 @@ impl fmt::Display for OperatorError {
 //TODO: generics
 /// The Operator encapsulates logic that operates on all new incoming data to
 /// advance the state of the actor or DT
-pub trait Operator: Sync + Send {
+pub trait Operator<T: Add<Output = T>>: Sync + Send {
     /// Returns a result with a value of type i64
     ///
     /// # Arguments
@@ -36,19 +37,14 @@ pub trait Operator: Sync + Send {
     /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
     /// input is not valid for the operation - usually an invalid
     /// index
-    fn apply(
-        state: &State<f64>,
-        idx: i32,
-        value: f64,
-        datetime: OffsetDateTime,
-    ) -> OperatorResult<f64>;
+    fn apply(state: &State<T>, idx: i32, value: T, datetime: OffsetDateTime) -> OperatorResult<T>;
 }
 
 /// The simplest Operator is a gauge.  Every new observation replaces the
 /// previously reported one for an index as the new current state for that index
 pub struct GuageOperator {}
-impl Operator for GuageOperator {
-    fn apply(_: &State<f64>, _: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
+impl<T: Add<Output = T>> Operator<T> for GuageOperator {
+    fn apply(_: &State<T>, _: i32, value: T, _: OffsetDateTime) -> OperatorResult<T> {
         Ok(value)
     }
 }
@@ -58,8 +54,8 @@ impl Operator for GuageOperator {
 /// and identity is time-based, like a daily or hourly or monthly scope.  Variations
 /// of the accum operator can be the sum of fixed time ranges or last n reports.
 pub struct AccumOperator {}
-impl Operator for AccumOperator {
-    fn apply(state: &State<f64>, idx: i32, value: f64, _: OffsetDateTime) -> OperatorResult<f64> {
+impl<T: Add<Output = T> + Copy> Operator<T> for AccumOperator {
+    fn apply(state: &State<T>, idx: i32, value: T, _: OffsetDateTime) -> OperatorResult<T> {
         state.get(&idx).map_or_else(
             || {
                 Err(OperatorError {
@@ -67,10 +63,7 @@ impl Operator for AccumOperator {
                 })
             },
             |old_val| {
-                let new_val = old_val + value;
-                println!("oldval: {old_val}");
-                println!("observation: {value}");
-                println!("newval: {new_val}");
+                let new_val = *old_val + value;
                 Ok(new_val)
             },
         )
@@ -82,7 +75,7 @@ impl Operator for AccumOperator {
 /// `/org/location/floor` where all reports for a floor have the some gene
 /// or could be `/make/model` or for an individual machine like
 /// `/devices/12345`.
-pub trait Gene {
+pub trait Gene<T: Add<Output = T>> {
     /// Applying all operators for a update message - many new observations
     /// arrive bundled together in single packages of update messages.  This
     /// function is a convenience function for the Operator apply function
@@ -95,9 +88,9 @@ pub trait Gene {
     /// index
     fn apply_operators(
         &self,
-        state: State<f64>,
-        update: crate::genes::Message,
-    ) -> OperatorResult<State<f64>>;
+        state: State<T>,
+        update: crate::genes::Message<T>,
+    ) -> OperatorResult<State<T>>;
     fn get_time_scope(&self) -> &TimeScope;
 }
 
@@ -112,13 +105,13 @@ pub struct GuageAndAccumGene {
 }
 
 impl GuageAndAccumGene {
-    fn update_state_with_val(
+    fn update_state_with_val<T: Add<Output = T> + Copy>(
         &self,
-        in_val: f64,
+        in_val: T,
         idx: i32,
-        mut state: State<f64>,
+        mut state: State<T>,
         datetime: OffsetDateTime,
-    ) -> OperatorResult<State<f64>> {
+    ) -> OperatorResult<State<T>> {
         let new_val = if (self.guage_first_idx..self.guage_first_idx + self.guage_slots)
             .contains(&idx)
         {
@@ -140,15 +133,11 @@ impl GuageAndAccumGene {
     }
 }
 
-impl Gene for GuageAndAccumGene {
+impl<T: Add<Output = T> + Copy> Gene<T> for GuageAndAccumGene {
     fn get_time_scope(&self) -> &TimeScope {
         &self.time_scope
     }
-    fn apply_operators(
-        &self,
-        mut state: State<f64>,
-        update: Message,
-    ) -> OperatorResult<State<f64>> {
+    fn apply_operators(&self, mut state: State<T>, update: Message<T>) -> OperatorResult<State<T>> {
         match update {
             Message::Update {
                 path: _,

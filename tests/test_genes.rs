@@ -1,7 +1,7 @@
 use approx::assert_ulps_eq;
 use navactor::actor::State;
-use navactor::genes::GuageAndAccumGene;
 use navactor::genes::Gene;
+use navactor::genes::GuageAndAccumGene;
 use navactor::message::Message;
 use test_log::test;
 use time::OffsetDateTime;
