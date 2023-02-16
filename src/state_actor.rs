@@ -89,14 +89,14 @@ impl Actor for StateActor {
                 respond_or_log_error(respond_to, Ok(self.get_state_rpt()));
             }
             m => {
-                log::warn!("unexpected message: {m:?}");
+                log::warn!("unexpected message: {m}");
             }
         }
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
             if let Err(err) = output_handle.tell(self.get_state_rpt()).await {
-                log::error!("Error telling output actor: {:?}", err);
+                log::error!("Error telling output actor: {err:?}");
             }
         }
     }
@@ -111,7 +111,7 @@ impl StateActor {
                 true
             }
             Err(e) => {
-                log::error!("Error applying operators in ask: {:?}", e);
+                log::error!("Error applying operators in ask: {e:?}");
                 false
             }
         }

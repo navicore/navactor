@@ -31,7 +31,7 @@ impl Actor for StdinActor {
             let mut lines = BufReader::new(stdin()).lines();
 
             while let Some(text) = lines.next_line().await.unwrap_or_else(|e| {
-                log::error!("failed to read stream: {:?}", e);
+                log::error!("failed to read stream: {e:?}");
                 None
             }) {
                 let msg = Message::TextMsg {
@@ -41,7 +41,7 @@ impl Actor for StdinActor {
                 match self.output.tell(msg).await {
                     Ok(()) => {}
                     Err(e) => {
-                        log::error!("cannot send message: {:?}", e);
+                        log::error!("cannot send message: {e:?}");
                         return;
                     }
                 }
@@ -58,11 +58,11 @@ impl Actor for StdinActor {
             match self.output.send(senv).await {
                 Ok(()) => {}
                 Err(e) => {
-                    log::error!("cannot send end-of-stream message: {:?}", e);
+                    log::error!("cannot send end-of-stream message: {e:?}");
                 }
             }
         } else {
-            log::warn!("unexpected: {:?}", message);
+            log::warn!("unexpected: {message}");
         }
     }
 }
