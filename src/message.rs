@@ -51,8 +51,8 @@ pub enum MtHint {
 impl fmt::Display for MtHint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
-            MtHint::Query => "{self}-hint",
-            MtHint::Update => "{self}-hint",
+            Self::Query => "query",
+            Self::Update => "update",
         };
         write!(f, "{display_text}")
     }
@@ -111,9 +111,14 @@ impl fmt::Display for Envelope {
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
-            Message::TextMsg { text, hint } => format!("[{self} {hint}:{text}]"),
-            Message::LoadCmd { path } => format!("[{self} {path}]"),
-            _ => format!("[{self}]"),
+            Self::TextMsg { text, hint } => format!("[TextMsg {hint}:{text}]"),
+            Self::LoadCmd { path } => format!("[LoadCmd {path}]"),
+            Self::ReadAllCmd {} => "[ReadAllCmd]".to_string(),
+            Self::InitCmd {} => "[InitCmd]".to_string(),
+            Self::EndOfStream {} => "[EndOfStream]".to_string(),
+            Self::StateReport { .. } => "[StateReport]".to_string(),
+            Self::Update { .. } => "[Update]".to_string(),
+            Self::Query { .. } => "[Query]".to_string(),
         };
         write!(f, "{display_text}")
     }
