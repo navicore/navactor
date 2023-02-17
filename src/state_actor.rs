@@ -3,9 +3,9 @@ use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::actor::State;
 use crate::genes::Gene;
-use crate::message::ActorError;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::NvError;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
@@ -29,7 +29,6 @@ pub struct StateActor {
 
 #[async_trait]
 impl Actor for StateActor {
-    async fn stop(&self) {}
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
@@ -78,7 +77,7 @@ impl Actor for StateActor {
                     log::error!("Error applying operators in ask");
                     respond_or_log_error(
                         respond_to,
-                        Err(ActorError {
+                        Err(NvError {
                             reason: String::from("cannot apply operators"),
                         }),
                     );
@@ -100,6 +99,7 @@ impl Actor for StateActor {
             }
         }
     }
+    async fn stop(&self) {}
 }
 
 /// actor private constructor

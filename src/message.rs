@@ -5,16 +5,16 @@ use time::OffsetDateTime;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-pub type ActorResult<T> = std::result::Result<T, ActorError>;
+pub type NvResult<T> = Result<T, NvError>;
 
 #[derive(Debug, Clone)]
-pub struct ActorError {
+pub struct NvError {
     pub reason: String,
 }
 
-impl fmt::Display for ActorError {
+impl fmt::Display for NvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "bad actor state: {}", self.reason)
+        write!(f, "{}", self.reason)
     }
 }
 
@@ -36,7 +36,7 @@ pub struct Observations {
 #[derive(Debug)]
 pub struct Envelope<T> {
     pub message: Message<T>,
-    pub respond_to: Option<oneshot::Sender<ActorResult<Message<T>>>>,
+    pub respond_to: Option<oneshot::Sender<NvResult<Message<T>>>>,
     pub datetime: OffsetDateTime,
     pub stream_to: Option<mpsc::Sender<Message<T>>>,
     pub stream_from: Option<mpsc::Receiver<Message<T>>>,
@@ -140,7 +140,7 @@ struct LifeCycleBuilder<T> {
     load_from: Option<mpsc::Receiver<Message<T>>>,
     send_to: Option<mpsc::Sender<Message<T>>>,
     send_to_path: Option<String>,
-    respond_to: Option<oneshot::Sender<ActorResult<Message<T>>>>,
+    respond_to: Option<oneshot::Sender<NvResult<Message<T>>>>,
 }
 
 impl<T> LifeCycleBuilder<T> {
@@ -154,7 +154,7 @@ impl<T> LifeCycleBuilder<T> {
     }
 
     #[allow(clippy::missing_const_for_fn)]
-    fn with_respond_to(mut self, respond_to: oneshot::Sender<ActorResult<Message<T>>>) -> Self {
+    fn with_respond_to(mut self, respond_to: oneshot::Sender<NvResult<Message<T>>>) -> Self {
         self.respond_to = Some(respond_to);
         self
     }
@@ -199,7 +199,7 @@ impl<T> LifeCycleBuilder<T> {
 pub fn create_init_lifecycle<T>(
     path: String,
     bufsz: usize,
-    respond_to: oneshot::Sender<ActorResult<Message<T>>>,
+    respond_to: oneshot::Sender<NvResult<Message<T>>>,
 ) -> (Envelope<T>, Envelope<T>) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()

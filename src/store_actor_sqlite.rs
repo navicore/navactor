@@ -1,20 +1,36 @@
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::message::ActorError;
-use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::NvError;
+use crate::message::NvResult;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;
 use sqlx::Row;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::File;
 use std::path::Path;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot::Sender;
+
+// used by instances of the actor trait - TODO should this be here if no actor ifc uses it?
+pub type StoreResult<T> = Result<T, StoreError>;
+
+#[derive(Debug, Clone)]
+pub struct StoreError {
+    pub reason: String,
+}
+
+impl fmt::Display for StoreError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "bad actor state: {}", self.reason)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum StreamOption {
@@ -27,7 +43,7 @@ enum StreamOption {
 /// of this actor type
 pub struct StoreActor {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
-    pub dbconn: Option<sqlx::SqlitePool>,
+    pub dbconn: Option<SqlitePool>,
     pub namespace: String,
     pub disable_duplicate_detection: bool,
 }
@@ -69,12 +85,12 @@ async fn insert_update(
 }
 
 /// retrieve the time series of events (observations) for the actor that is being resurrected
-async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message<f64>>> {
+async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> StoreResult<Vec<Message<f64>>> {
     match get_values(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
             log::error!("cannot load from db: {e:?}");
-            Err(ActorError {
+            Err(StoreError {
                 reason: format!("cannot load from db: {e:?}"),
             })
         }
@@ -85,7 +101,7 @@ async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> ActorResult<Vec<Message<f6
 /// done with temporary streams (for now) and these streams are setup by
 /// an orchestrator (usually director).
 async fn stream_message(
-    stream_to: &Option<tokio::sync::mpsc::Sender<Message<f64>>>,
+    stream_to: &Option<mpsc::Sender<Message<f64>>>,
     message: Message<f64>,
     stream_option: StreamOption,
 ) {
@@ -111,7 +127,7 @@ async fn handle_update(
     values: HashMap<i32, f64>,
     disable_duplicate_detection: bool,
     dbconn: &SqlitePool,
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
 ) {
     // sequence should be the envelope dt and should never cause a collision
     let dt = if disable_duplicate_detection {
@@ -123,7 +139,7 @@ async fn handle_update(
         Ok(_) => respond_or_log_error(respond_to, Ok(Message::EndOfStream {})),
         Err(e) => respond_or_log_error(
             respond_to,
-            Err(ActorError {
+            Err(NvError {
                 reason: e.to_string(),
             }),
         ),
@@ -155,11 +171,6 @@ async fn handle_load_cmd(
 
 #[async_trait]
 impl Actor for StoreActor {
-    async fn stop(&self) {
-        if let Some(c) = &self.dbconn {
-            c.close().await;
-        }
-    }
     /// the main entry point to every actor - this is where the jrnl read and
     /// write requests arrive
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
@@ -199,6 +210,11 @@ impl Actor for StoreActor {
             log::error!("DB not configured");
         }
     }
+    async fn stop(&self) {
+        if let Some(c) = &self.dbconn {
+            c.close().await;
+        }
+    }
 }
 
 async fn get_values(
@@ -218,7 +234,7 @@ async fn get_values(
             };
 
             let values = match row.try_get(1) {
-                Ok(val_str) => match serde_json::from_str(val_str) {
+                Ok(val_str) => match from_str(val_str) {
                     Ok(val) => val,
                     Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
                 },
@@ -239,7 +255,7 @@ impl StoreActor {
     /// actor private constructor
     const fn new(
         receiver: mpsc::Receiver<Envelope<f64>>,
-        dbconn: Option<sqlx::SqlitePool>,
+        dbconn: Option<SqlitePool>,
         namespace: String,
         disable_duplicate_detection: bool,
     ) -> Self {
@@ -253,14 +269,11 @@ impl StoreActor {
 }
 
 /// define table if it does not exist and log to console the journal mode
-async fn define_table_if_not_exist(
-    db_url: &str,
-    dbconn: SqlitePool,
-) -> ActorResult<sqlx::SqlitePool> {
+async fn define_table_if_not_exist(db_url: &str, dbconn: SqlitePool) -> StoreResult<SqlitePool> {
     let rows = sqlx::query("PRAGMA journal_mode;")
         .fetch_all(&dbconn)
         .await
-        .map_err(|e| ActorError {
+        .map_err(|e| StoreError {
             reason: format!("Failed to fetch journal_mode: {e}"),
         })?;
 
@@ -278,7 +291,7 @@ async fn define_table_if_not_exist(
     )
     .execute(&dbconn)
     .await
-    .map_err(|e| ActorError {
+    .map_err(|e| StoreError {
         reason: format!("Failed to create file {db_url}: {e}"),
     })?;
 
@@ -286,13 +299,13 @@ async fn define_table_if_not_exist(
 }
 
 /// enable write-ahead-logging mode for append-only-style db
-async fn enable_wal(db_url: &str, dbconn: &SqlitePool) -> ActorResult<()> {
+async fn enable_wal(db_url: &str, dbconn: &SqlitePool) -> StoreResult<()> {
     match sqlx::query("PRAGMA journal_mode = WAL;")
         .execute(dbconn)
         .await
     {
         Ok(_) => Ok(()),
-        Err(e) => Err(ActorError {
+        Err(e) => Err(StoreError {
             reason: format!("Failed to create file {db_url}: {e}"),
         }),
     }
@@ -304,7 +317,7 @@ async fn enable_wal(db_url: &str, dbconn: &SqlitePool) -> ActorResult<()> {
 /// 3. configure wal
 /// 4  report to console
 /// 5. return a db connection object.
-async fn init_db(namespace: String, write_ahead_logging: bool) -> ActorResult<sqlx::SqlitePool> {
+async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<SqlitePool> {
     let db_url_string: String = format!("{namespace}.db");
     let db_url: &str = &db_url_string;
     let db_path = Path::new(db_url);
@@ -312,7 +325,7 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> ActorResult<sq
         match File::create(db_url) {
             Ok(_) => log::debug!("File {} has been created", db_url),
             Err(e) => {
-                return Err(ActorError {
+                return Err(StoreError {
                     reason: format!("Failed to create file {db_url}: {e}"),
                 });
             }
@@ -334,7 +347,7 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> ActorResult<sq
         }
         Err(e) => {
             log::error!("cannot connect to db: {e:?}");
-            return Err(ActorError {
+            return Err(StoreError {
                 reason: format!("{e:?}"),
             });
         }

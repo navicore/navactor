@@ -2,14 +2,15 @@ use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::genes::GuageAndAccumGene;
-use crate::message::ActorError;
-use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::NvError;
+use crate::message::NvResult;
 use crate::state_actor;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot::Sender;
 
 // TODO:
 // use rust std Path to update and persist petgraph graph Edges and
@@ -28,8 +29,6 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
-    async fn stop(&self) {}
-
     #[allow(clippy::too_many_lines)]
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         log::trace!(
@@ -49,10 +48,12 @@ impl Actor for Director {
             m => {
                 let emsg = format!("unexpected message: {m}");
                 log::error!("{emsg}");
-                respond_or_log_error(respond_to, Err(ActorError { reason: emsg }));
+                respond_or_log_error(respond_to, Err(NvError { reason: emsg }));
             }
         }
     }
+
+    async fn stop(&self) {}
 }
 
 /// returns true once the newly resurrected actor reads all its journal
@@ -83,7 +84,7 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
     }
 }
 
-async fn forward_actor_result(result: ActorResult<Message<f64>>, output: &Option<Handle>) {
+async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Handle>) {
     //forward to optional output
     if let Some(o) = output {
         if let Ok(message) = result {
@@ -105,7 +106,7 @@ async fn forward_actor_result(result: ActorResult<Message<f64>>, output: &Option
 async fn handle_post_jrnl_procesing(
     journaled: bool,
     message: Message<f64>,
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
     actor: &Handle,
     output: &Option<Handle>,
 ) {
@@ -120,7 +121,7 @@ async fn handle_post_jrnl_procesing(
         log::error!("cannot journal input to actor - see logs");
         respond_or_log_error(
             respond_to,
-            Err(ActorError {
+            Err(NvError {
                 reason: String::from("cannot journal input to actor"),
             }),
         );
@@ -132,7 +133,7 @@ impl Director {
     async fn handle_end_of_stream(
         &self,
         message: Message<f64>,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+        respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
         log::debug!("complete");
 
@@ -158,7 +159,7 @@ impl Director {
     async fn handle_update_or_query(
         &mut self,
         message: Message<f64>,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+        respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
         if let Message::Update { path, .. } | Message::Query { path } = &message {
             // resurrect and forward if this is either Update or Query

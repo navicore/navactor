@@ -19,7 +19,6 @@ pub struct StdinActor {
 
 #[async_trait]
 impl Actor for StdinActor {
-    async fn stop(&self) {}
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
@@ -65,6 +64,7 @@ impl Actor for StdinActor {
             log::warn!("unexpected: {message}");
         }
     }
+    async fn stop(&self) {}
 }
 
 /// actor private constructor

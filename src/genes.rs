@@ -4,7 +4,7 @@ use std::fmt;
 use std::ops::Add;
 use time::OffsetDateTime;
 
-type OperatorResult<T> = std::result::Result<T, OperatorError>;
+type OperatorResult<T> = Result<T, OperatorError>;
 
 /// Returned when an operator can not return a result.
 #[derive(Debug, Clone)]
@@ -89,7 +89,7 @@ pub trait Gene<T: Add<Output = T>> {
     fn apply_operators(
         &self,
         state: State<T>,
-        update: crate::genes::Message<T>,
+        update: Message<T>,
     ) -> OperatorResult<State<T>>;
     fn get_time_scope(&self) -> &TimeScope;
 }
@@ -134,9 +134,6 @@ impl GuageAndAccumGene {
 }
 
 impl<T: Add<Output = T> + Copy> Gene<T> for GuageAndAccumGene {
-    fn get_time_scope(&self) -> &TimeScope {
-        &self.time_scope
-    }
     fn apply_operators(&self, mut state: State<T>, update: Message<T>) -> OperatorResult<State<T>> {
         match update {
             Message::Update {
@@ -158,6 +155,9 @@ impl<T: Add<Output = T> + Copy> Gene<T> for GuageAndAccumGene {
             }
         };
         Ok(state)
+    }
+    fn get_time_scope(&self) -> &TimeScope {
+        &self.time_scope
     }
 }
 

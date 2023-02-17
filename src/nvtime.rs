@@ -8,6 +8,7 @@ pub fn extract_datetime(datetime_str: &str) -> OffsetDateTime {
         Ok(d) => d,
         Err(e) => {
             log::warn!("can not parse datetime {} due to: {}", datetime_str, e);
+            // TODO: TimeError
             OffsetDateTime::now_utc()
         }
     }
@@ -25,6 +26,7 @@ impl OffsetDateTimeWrapper {
             Ok(ts) => ts,
             Err(e) => {
                 log::error!("can not get ts: {e}");
+                // TODO: TimeError
                 OffsetDateTime::now_utc()
             }
         }
