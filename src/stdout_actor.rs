@@ -14,7 +14,6 @@ pub struct StdoutActor {
 
 #[async_trait]
 impl Actor for StdoutActor {
-    async fn stop(&self) {}
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
@@ -44,6 +43,7 @@ impl Actor for StdoutActor {
             }
         }
     }
+    async fn stop(&self) {}
 }
 
 /// actor private constructor

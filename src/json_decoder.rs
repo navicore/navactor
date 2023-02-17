@@ -1,11 +1,11 @@
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::message::ActorError;
-use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::MtHint;
+use crate::message::NvError;
+use crate::message::NvResult;
 use crate::message::Observations;
 use crate::message::PathQuery;
 use crate::nvtime::extract_datetime;
@@ -39,8 +39,6 @@ fn extract_values_from_json(text: &str) -> Result<Observations, String> {
 
 #[async_trait]
 impl Actor for JsonDecoder {
-    async fn stop(&self) {}
-
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         let Envelope {
             message,
@@ -67,13 +65,15 @@ impl Actor for JsonDecoder {
             }
         }
     }
+
+    async fn stop(&self) {}
 }
 
 impl JsonDecoder {
     async fn handle_update_json(
         &self,
         json_str: &str,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+        respond_to: Option<tokio::sync::oneshot::Sender<NvResult<Message<f64>>>>,
         datetime: OffsetDateTime,
     ) {
         match extract_values_from_json(json_str) {
@@ -96,7 +96,7 @@ impl JsonDecoder {
             Err(error) => {
                 respond_or_log_error(
                     respond_to,
-                    Err(ActorError {
+                    Err(NvError {
                         reason: format!("json parse error: {error:?}"),
                     }),
                 );
@@ -107,7 +107,7 @@ impl JsonDecoder {
     async fn handle_query_json(
         &self,
         json_str: &str,
-        respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
+        respond_to: Option<tokio::sync::oneshot::Sender<NvResult<Message<f64>>>>,
         datetime: OffsetDateTime,
     ) {
         match extract_path_from_json(json_str) {
@@ -128,7 +128,7 @@ impl JsonDecoder {
             Err(error) => {
                 respond_or_log_error(
                     respond_to,
-                    Err(ActorError {
+                    Err(NvError {
                         reason: format!("json parse error: {error:?}"),
                     }),
                 );

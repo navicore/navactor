@@ -120,7 +120,7 @@ async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
     }
 
     // send complete to keep the job running long enough to print the above
-    match output.ask(Message::EndOfStream {}).await {
+    match output.ask(EndOfStream {}).await {
         Ok(EndOfStream {}) => Ok(()),
         _ => Err("END and response: sucks.".to_string()),
     }

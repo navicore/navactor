@@ -1,11 +1,12 @@
 use crate::message::create_init_lifecycle;
-use crate::message::ActorError;
-use crate::message::ActorResult;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::NvError;
+use crate::message::NvResult;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::Sender;
 
 pub type State<T> = std::collections::HashMap<i32, T>;
 
@@ -28,8 +29,8 @@ impl<'a> Handle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
     #[doc(hidden)]
-    pub async fn send(&self, envelope: Envelope<f64>) -> ActorResult<()> {
-        self.sender.send(envelope).await.map_err(|e| ActorError {
+    pub async fn send(&self, envelope: Envelope<f64>) -> NvResult<()> {
+        self.sender.send(envelope).await.map_err(|e| NvError {
             reason: e.to_string(),
         })
     }
@@ -37,9 +38,9 @@ impl<'a> Handle {
     /// fire and forget
     ///
     /// # Errors
-    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
+    /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// message is not received by the target actor
-    pub async fn tell(&self, message: Message<f64>) -> ActorResult<()> {
+    pub async fn tell(&self, message: Message<f64>) -> NvResult<()> {
         let envelope = Envelope {
             message,
             respond_to: None,
@@ -54,9 +55,9 @@ impl<'a> Handle {
     ///
     /// # Errors
     ///
-    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
+    /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// message is not received and replied to by the target actor
-    pub async fn ask(&self, message: Message<f64>) -> ActorResult<Message<f64>> {
+    pub async fn ask(&self, message: Message<f64>) -> NvResult<Message<f64>> {
         let (send, recv) = oneshot::channel();
 
         let envelope = Envelope {
@@ -67,7 +68,7 @@ impl<'a> Handle {
 
         log::trace!("ask sending envelope: {envelope:?}");
         match self.send(envelope).await {
-            Ok(_) => recv.await.map_err(|e| ActorError {
+            Ok(_) => recv.await.map_err(|e| NvError {
                 reason: e.to_string(),
             })?,
 
@@ -80,26 +81,26 @@ impl<'a> Handle {
     ///
     /// # Errors
     ///
-    /// Returns [`ActorError`](../message/struct.ActorError.html) if the
+    /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// two actors don't exchange lifecycle info
-    pub async fn integrate(&self, path: String, helper: &Self) -> ActorResult<Message<f64>> {
-        type ResultSender = oneshot::Sender<ActorResult<Message<f64>>>;
-        type ResultReceiver = oneshot::Receiver<ActorResult<Message<f64>>>;
+    pub async fn integrate(&self, path: String, helper: &Self) -> NvResult<Message<f64>> {
+        type ResultSender = Sender<NvResult<Message<f64>>>;
+        type ResultReceiver = oneshot::Receiver<NvResult<Message<f64>>>;
         type SendReceivePair = (ResultSender, ResultReceiver);
 
         let (send, recv): SendReceivePair = oneshot::channel();
 
         let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
 
-        helper.send(load_cmd).await.map_err(|e| ActorError {
+        helper.send(load_cmd).await.map_err(|e| NvError {
             reason: e.to_string(),
         })?;
 
-        self.send(init_cmd).await.map_err(|e| ActorError {
+        self.send(init_cmd).await.map_err(|e| NvError {
             reason: e.to_string(),
         })?;
 
-        recv.await.map_err(|e| ActorError {
+        recv.await.map_err(|e| NvError {
             reason: e.to_string(),
         })?
     }
@@ -115,8 +116,8 @@ impl<'a> Handle {
 
 /// utility function most actors need to reply if a message is an 'ask'
 pub fn respond_or_log_error(
-    respond_to: Option<tokio::sync::oneshot::Sender<ActorResult<Message<f64>>>>,
-    result: ActorResult<Message<f64>>,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
+    result: NvResult<Message<f64>>,
 ) {
     {
         if let Some(respond_to) = respond_to {
