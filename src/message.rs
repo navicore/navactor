@@ -103,7 +103,7 @@ pub enum Message<T> {
 
 impl<T> fmt::Display for Envelope<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let display_text = "env TODO";
+        let display_text = format!("env: {} - {}", self.datetime, self.message);
         write!(f, "{display_text}")
     }
 }
