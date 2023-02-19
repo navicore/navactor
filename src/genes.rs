@@ -1,3 +1,20 @@
+//! This module provides a set of abstractions for defining and manipulating genes that are used in
+//! a larger system for processing incoming data from `IoT` devices. Specifically, a gene represents
+//! a set of configuration information (primarily in the form of operators) that are applied to a
+//! path of actors. The gene defines how incoming data is processed and used to update the state of
+//! the actors.
+//!
+//! The module includes several structs and traits that define operators and genes, and provides
+//! functionality for applying operators to update messages containing new observations. Two of the
+//! most important operators defined in the module are the `GaugeOperator` and `AccumOperator`,
+//! which respectively update the current state of an actor with the most recent value of a given
+//! index or accumulate the sum of all previously reported values for that index.
+//!
+//! Additionally, the module defines a custom error type (`OperatorError`) that is returned by
+//! operators when an input is not valid, along with a `TimeScope` enum that specifies the time
+//! granularity of the gene. The `GuageAndAccumGene` struct is also defined as an example of a gene
+//! that allows both the `GaugeOperator` and `AccumOperator` to be applied to ranges of indexes.
+
 use crate::actor::State;
 use crate::message::Message;
 use std::fmt;

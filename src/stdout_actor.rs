@@ -1,3 +1,21 @@
+//!This module is responsible for handling messages to be printed to the standard output stream.
+//!
+//!In `CLI` mode, `nv` can be used with other *nix tools and in such cases, printing to `stdout`
+//!can be beneficial. The module implements the `Actor` trait and defines its own `handle_envelope`
+//!and stop methods.
+//!
+//!It receives a channel of type `mpsc::Receiver<Envelope<f64>>` to receive messages to print, and
+//!it pattern matches on the type of the incoming message.
+//!
+//!If the message is a `TextMsg`, it prints the message to the standard output. If the message is a
+//!`StateReport` or an `Update`, it prints the appropriate message with the path and values.
+//!
+//!When a message of type `EndOfStream` is received, it sends the message to the stream creator via
+//!`respond_to` if there is any.
+//!
+//!The module has a public constructor function `new` that returns a `Handle` to interact with the
+//!actor.
+
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;

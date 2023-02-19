@@ -1,3 +1,12 @@
+//! The state actor is the core component of the system. Each digital twin has
+//! an instance of the actor keeping state computed from an arriving stream of
+//! observations. It processes three types of messages: `InitCmd`, `Update`, and
+//! `Query`. The `InitCmd` message initializes the state of the actor from
+//! previous events. The `Update` message updates the state of the actor and
+//! responds with the current state report. The `Query` message simply responds
+//! with a copy of the current state report. The state actor also reports the
+//! update to the state to the output actor if it is specified.
+
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;

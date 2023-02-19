@@ -1,3 +1,6 @@
+//!A module that provides functions to work with time in the `OffsetDateTime` format. It contains a
+//!struct `TimeError` that represents errors that can occur when working with time.
+
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
