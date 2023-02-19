@@ -1,3 +1,23 @@
+//!This module contains the implementation of the `StoreActor`, which is responsible for storing
+//!all the state changes of an actor into a `SQLite` database.
+//!
+//!The module provides an API that is called by instances of the Actor trait when read and write
+//!requests arrive. `StoreActor` is designed to store only a single file for storage so all reading
+//!and writing must be done by messaging an instance of this actor type.
+//!
+//!The module also defines `StoreError`, a custom error type used for error handling, and
+//!`StreamOption`, an enumeration type to define the behavior of temporary message streams.
+//!
+//!The `StoreActor` works with the `SqlitePool` object and the `sqlx` crate for interacting with
+//!the database.
+//!
+//!This module also provides methods to retrieve the time series of events for the actor being
+//!resurrected, define tables, enable write-ahead-logging mode for append-only-style db and
+//!initialize the DB if it does not exist.
+//!
+//!The module is constructed as an actor handle that is expected to be used with the director
+//!module in creating a new actor system.
+
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;

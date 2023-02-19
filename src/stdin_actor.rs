@@ -1,3 +1,11 @@
+//!This module implements the `StdinActor`, which is responsible for reading commands from the
+//!standard input stream in command-line interface (`CLI`) mode. When a `ReadAllCmd` message is
+//!received, the actor reads all incoming lines from the standard input stream until the stream is
+//!closed, sending a `TextMsg` message with the received text to the output handle for each line.
+//!Once the end of the stream is reached, a `EndOfStream` message is sent to the next hop to
+//!trigger any necessary cleanup and shutdown. This actor is only used in `CLI` mode and is used to
+//!interact with the command-line interface by reading input commands from the user.
+
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::Envelope;

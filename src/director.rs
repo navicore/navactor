@@ -1,3 +1,24 @@
+//!The `Director` struct is a graph director that creates a graph and instantiates all the actors
+//!that it is forwarding commands to. The director also accepts metadata to create and store graph
+//!edges to support arbitrary paths.
+//!
+//!The ``Director`` is responsible for handling `Envelope<f64>` messages received from its
+//!associated `mpsc::Receiver`. The `Director` instantiates and forwards the received message to
+//!the appropriate actor specified in the message's path field. If the actor doesn't exist, the
+//!`Director` creates a new one by looking up the corresponding gene.
+//!
+//!The `Director` has several private functions that support its main functionality. These
+//!functions are responsible for handling messages of different types (`Update`, `Query`,
+//!`EndOfStream`), integrating newly created actors, journaling messages, and forwarding actor
+//!results to an optional output. The `Director` also has a public constructor function that
+//!creates a new handle for the `Director` actor, which is used to send messages to the `Director`.
+//!
+//!The `Director` is also responsible for creating and storing graph edges to support arbitrary
+//!paths.
+//!
+//!The `Director` uses other Rust crates and libraries, such as `tokio`, `async_trait`,
+//!`std::collections::HashMap`, and others.
+
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
@@ -16,9 +37,9 @@ use tokio::sync::oneshot::Sender;
 // use rust std Path to update and persist petgraph graph Edges and
 // lookup/upsert actor for each input record msg send
 
-/// actor graph director creates a graph and instantiates all the actors that
-/// it is forwarding commands to.  director also accepts metadata to create
-/// and store graph edges to support arbitrary paths
+/// This struct represents a graph director that creates a graph and instantiates all the actors
+/// that it is forwarding commands to. The director also accepts metadata to create and store graph
+/// edges to support arbitrary paths.
 pub struct Director {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub store_actor: Option<Handle>,
@@ -29,6 +50,7 @@ pub struct Director {
 
 #[async_trait]
 impl Actor for Director {
+    // This function is called when an envelope is received by the Director actor
     #[allow(clippy::too_many_lines)]
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
         log::trace!(
@@ -42,9 +64,13 @@ impl Actor for Director {
         } = envelope;
 
         match &message {
+            // If the message is an update or a query, handle it by calling the corresponding function
             Message::Update { .. } => self.handle_update_or_query(message, respond_to).await,
             Message::Query { .. } => self.handle_update_or_query(message, respond_to).await,
+            // If the message is an EndOfStream message, handle it by forwarding it to the output actor
+            // or by sending the response directly back to the original requester
             Message::EndOfStream {} => self.handle_end_of_stream(message, respond_to).await,
+            // If the message is unexpected, log an error and respond with an NvError
             m => {
                 let emsg = format!("unexpected message: {m}");
                 log::error!("{emsg}");
@@ -56,18 +82,20 @@ impl Actor for Director {
     async fn stop(&self) {}
 }
 
-/// returns true once the newly resurrected actor reads all its journal
+/// This function returns true once the newly resurrected actor reads all its journal.
 async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
     if let Some(store_actor) = store_actor {
         // jrnl the new msg
         let jrnl_msg = store_actor.ask(message.clone()).await;
         match jrnl_msg {
             Ok(r) => match r {
+                // If the message was successfully journalled, it is safe to send it to the actor to process
                 Message::EndOfStream {} => {
                     // successfully jrnled the msg, it is now safe to
                     // send it to the actor to process
                     true
                 }
+                // If the store message is unexpected, log a warning and return false
                 m => {
                     log::warn!("Unexpected store message: {m}");
                     false
@@ -79,7 +107,7 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
             }
         }
     } else {
-        // jrnl is disabled, jsut process the message
+        // If journaling is disabled, just process the message and return true
         true
     }
 }
@@ -168,6 +196,10 @@ impl Director {
 
             let actor = self.actors.entry(path.clone()).or_insert_with(|| {
                 actor_is_in_init = true;
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
                 // TODO: look up the gene by path
                 let gene = Box::new(GuageAndAccumGene {
                     ..Default::default()

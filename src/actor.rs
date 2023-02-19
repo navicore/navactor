@@ -1,3 +1,26 @@
+//!This here be a Rust code for actors. It defines the interface for actors in `Navactor`, as well
+//!as an API called `ActorHandle` that allows you to communicate with actors by sending and
+//!receiving messages.
+//!
+//!This Rust code includes a few helper methods, such as `respond_or_log_error`, which is used by
+//!most actors to respond to messages if they are of the `ask` type, and to log an error if the
+//!response cannot be sent.
+//!
+//!The `Handle` struct is used to create the API for actors, and it includes methods such as
+//!`send`, `tell`, `ask`, and `integrate`. These methods allow you to send messages to actors and
+//!receive responses, as well as to coordinate the instantiation of a new actor with the help of
+//!another actor.
+//!
+//!The `Actor` trait defines the functions that each actor must implement, namely `handle_envelope`
+//!and `stop`. The former is used to handle incoming messages, while the latter is used to stop the
+//!actor.
+//!
+//!The Rust code also includes some type aliases, such as `State<T>`, which is a hash map that maps
+//!an `i32` to a type `T`.
+//!
+//!This Rust code uses Rust's `async_trait` library, which allows you to write asynchronous code
+//!using traits.
+
 use crate::message::create_init_lifecycle;
 use crate::message::Envelope;
 use crate::message::Message;
@@ -8,6 +31,7 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
+/// in-mem state for an actor
 pub type State<T> = std::collections::HashMap<i32, T>;
 
 /// all actors must implement this trait
@@ -24,7 +48,10 @@ pub struct Handle {
     pub sender: mpsc::Sender<Envelope<f64>>,
 }
 
-/// `ActorHandle` is the API for all actors via `ask` and `tell`
+///The `Handle` struct is used to create the API for actors, and it includes methods such as
+///`send`, `tell`, `ask`, and `integrate`. These methods allow you to send messages to actors and
+///receive responses, as well as to coordinate the instantiation of a new actor with the help of
+///another actor.
 impl<'a> Handle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.

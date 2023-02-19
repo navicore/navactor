@@ -1,3 +1,25 @@
+//! The `message` module provides types and functions that define the communication
+//! protocol for actors in the system. The core of the communication protocol is a set of
+//! message types (`Message<T>`) that are sent to actors and define the operations to be
+//! performed on the state of an actor or to request information from the state of an actor.
+//!
+//! The `Envelope<T>` struct wraps `Message<T>` types, along with metadata about the sender,
+//! receiver, and timing of the message. `Envelope<T>` is used to communicate with actors
+//! in the system.
+//!
+//! The `PathQuery` and `Observations` structs are examples of data structures that
+//! are carried by messages.
+//!
+//! The `create_init_lifecycle` function creates a pair of envelopes that are used
+//! to bootstrap the lifecycle of an actor. One envelope instructs the actor to enter
+//! initialization mode and replay its event history to recalculate its state. The
+//! other envelope instructs the persistence system to look up and deliver the previous
+//! events to the new instance of the actor.
+//!
+//! The module also provides types for handling errors that may arise during the
+//! communication process (`NvError` and `NvResult<T>`), as well as a type used to
+//! hint at the intent of a `Message<T>` (`MtHint`).
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;

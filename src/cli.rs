@@ -1,3 +1,30 @@
+//! Navactor makes use of the `Clap` library to define and parse command-line arguments. The `CLI`
+//! is used to manage and interact with actors in a distributed system.
+//!
+//! The main struct defined in this code is `Cli`, which is derived from the `Parser` and `Debug`
+//! traits provided by Clap. The `Cli` struct defines the command-line arguments that the program
+//! expects to receive, such as the name of the event store file, the size of the actor mailbox,
+//! and the verbosity level of the program's logging.
+//!
+//! The `Cli` struct also defines a command field that holds a variant of the `Commands` enum,
+//! which is also derived from the `Subcommand` and Debug traits provided by Clap. The `Commands`
+//! enum represents the different `subcommands` that the program can accept, such as Update,
+//! Inspect, `Configure`, and `Completions`.
+//!
+//! Each variant of the `Commands` enum defines its own set of command-line arguments that are
+//! specific to that `subcommand`. For example, the Update variant has several arguments such as
+//! `silent`, `wal`, `namespace`, and `allow_duplicates`, while the `Configure` variant has path
+//! and gene arguments.
+//!
+//! Finally, the `NoArgs` struct is defined, which is used to represent a command that takes no
+//! arguments.
+//!
+//! Overall, this Rust code defines the command-line interface for a distributed system management
+//! tool, allowing users to interact with actors in the system by issuing commands and passing
+//! arguments. The code makes use of the `Clap` library to define and parse the command-line
+//! arguments, making it easy for users to get up and running with the tool quickly and
+//! efficiently.
+
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]

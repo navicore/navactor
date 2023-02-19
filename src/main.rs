@@ -136,8 +136,33 @@ fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
     generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
 }
 
+/// This is the `main` entry point for the application. It imports various Rust crates and a set of
+/// local modules that constitute the program.
+///
+/// The `main` function of this module is to provide the command-line interface for the application.
+/// It uses the clap crate to generate commands and `subcommands`.
+///
+/// The `update` command is the core functionality of the application, which updates the state of the
+/// actors by processing input messages from `stdin`. The `stdin_actor` module reads input messages
+/// from `stdin`, which are then passed through a chain of processing actors, such as
+/// `json_decoder_actor` and ``director``. The director uses a `store_actor_sqlite` module to persist the
+/// updated state of the actors in a `SQLite` database. The updated state is then sent to the
+/// `stdout_actor` module, which writes output to 'stdout'.
+///
+/// The `inspect` command inspects the state of a particular path in the database. It uses the
+/// `director` and `store_actor_sqlite` modules to query the state of the actors and writes the output
+/// to `stdout`.
+///
+/// The `configure` command is not yet implemented and will allow for configuring actor properties.
+///
+/// The `completions` command is used by shell completion functionality to generate command-line
+/// completion suggestions.
+///
+/// The entry point for the application is the main function which reads the command-line arguments
+/// and invokes the appropriate `subcommand` functions.
+///
 /// control logging of nv and various libs via `RUST_LOG` env var like so:
-///`std::env::set_var("RUST_LOG`", "debug,sqlx=warn");
+/// `std::env::set_var("RUST_LOG`", "debug,sqlx=warn");
 fn main() {
     env_logger::init();
     log::info!("nv started");
