@@ -13,22 +13,23 @@ Overview
 A CLI *nix-style tool as lab for actor programming.
 
 NOT TRYING TO BE A FRAMEWORK - the use of actors in `navactor` is in support of
-an opinionated experimental approach to modeling and inference processing, not
-a general purpose solution for concurrency, parallelism, or distributed
-computing.
+an opinionated experimental approach to modeling and inference processing, not a
+general purpose solution for concurrency, parallelism, or distributed computing.
 
-`nv`'s purpose: ingest piped streams of CRLF-delimited observations, send them to actors,
-implement the [OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api) 
+`nv`'s purpose: ingest piped streams of CRLF-delimited observations, send them
+to actors, implement the
+[OPERATOR](https://github.com/DTLaboratory/dtlab-scala-alligator#operator-api)
 processing, and persist.
 
 The `nv` command will eventually also work as a networked API server but the
 initial model for workflow and performance is data-wrangling via the classic
-powerful and undefeated [awk](https://www.gnu.org/software/gawk/manual/gawk.html).
+powerful and undefeated
+[awk](https://www.gnu.org/software/gawk/manual/gawk.html).
 
 The ideas that inspire Navactor and DtLab come from CS insights from the early
 eighties around [tuple spaces](https://en.wikipedia.org/wiki/Tuple_space) for
-coordination languages and later the [actor](https://en.wikipedia.org/wiki/Actor_model)
-programming model. 
+coordination languages and later the
+[actor](https://en.wikipedia.org/wiki/Actor_model) programming model. 
 
 ![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.jpg)
 
@@ -51,15 +52,18 @@ presented in the internal observation json format via *nix piped stream.
 Event sourcing via an embedded sqlite store works.  Query state and resuming
 ingestion across multiple runs works.
 
-Using the [observation generator](tests/data/gen_1000.py) in the [tests/data](tests/data/gen_1000.py) dir, the current impl when run in
-sqlite "write ahead logging" mode (WAL), processes
-and persists 2000+ observations a second in a tiny disk and memory and cpu footprint.
+Using the [observation generator](tests/data/gen_1000.py) in the
+[tests/data](tests/data/gen_1000.py) dir, the current impl when run in sqlite
+"write ahead logging" mode (WAL), processes and persists 2000+ observations a
+second in a tiny disk and memory and cpu footprint.
 
-Messy but working code - I am learning Rust as I recreate the ideas from
-the [DtLab Project](https://home.dtlaboratory.com).  However, [Clippy](https://github.com/navicore/navactor/security/code-scanning) is happy with the code.
+Messy but working code - I am learning Rust as I recreate the ideas from the
+[DtLab Project](https://home.dtlaboratory.com).  However,
+[Clippy](https://github.com/navicore/navactor/security/code-scanning) is happy
+with the code.
 
-My intention is to support all the features of
-[DtLab Project](https://home.dtlaboratory.com) - ie: networked REST-like API and
+My intention is to support all the features of [DtLab
+Project](https://home.dtlaboratory.com) - ie: networked REST-like API and
 outward webhooks for useful stateful IOT-ish applications.
 
 Install
@@ -131,4 +135,5 @@ cargo test --test test_json_decoder_actor -- --nocapture
 ![Fun Mutation of DtLab Graphic](images/diodes-2.jpeg)
 ----------
 
-`nv` was bootstrapped from Alice Ryhl's very instructive blog post https://ryhl.io/blog/actors-with-tokio
+`nv` was bootstrapped from Alice Ryhl's very instructive blog post
+https://ryhl.io/blog/actors-with-tokio

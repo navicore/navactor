@@ -15,7 +15,22 @@ use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
 
-/// actor accepts numerical json and converts into the internal state data msg
+/// This be a Rust code that defines an actor called `JsonDecoder`. The `JsonDecoder` be accepting
+/// numerical json and converts into the internal state data message. The actor is defined with the
+/// use of Rust's `async_trait` library.
+///
+/// The `JsonDecoder` actor takes in a message channel receiver and a handle. The actor has two main
+/// methods that handle queries and updates that are sent in as text messages.
+///
+/// The actor's implementation includes a few helper methods that parse and extract information from
+/// the JSON messages.
+///
+/// The actor's methods parse the JSON messages and convert them into the internal state data
+/// messages, which are then sent through the output handle. If the parsing of the JSON message
+/// fails, then the error message is logged.
+///
+/// The public constructor function creates a new `JsonDecoder` actor handle that is returned to the
+/// caller. The function takes in the buffer size and the output handle as input parameters.
 pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub output: Handle,

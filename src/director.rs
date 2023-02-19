@@ -169,6 +169,10 @@ impl Director {
             let actor = self.actors.entry(path.clone()).or_insert_with(|| {
                 actor_is_in_init = true;
                 // TODO: look up the gene by path
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
+                // TODO: look up the gene by path
                 let gene = Box::new(GuageAndAccumGene {
                     ..Default::default()
                 });

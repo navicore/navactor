@@ -15,7 +15,12 @@ impl std::fmt::Display for TimeError {
     }
 }
 
-#[must_use]
+/// extract a datetime from an ISO8601 string
+///
+/// # Errors
+///
+/// Returns [`TimeError`](../struct.TimeError.html) if the
+/// string can not be parsed into datetime
 pub fn extract_datetime(datetime_str: &str) -> TimeResult {
     match OffsetDateTime::parse(datetime_str, &Iso8601::DEFAULT) {
         Ok(d) => Ok(d),
@@ -34,7 +39,12 @@ pub struct OffsetDateTimeWrapper {
 }
 
 impl OffsetDateTimeWrapper {
-    #[must_use]
+    /// extract a datetime from a persistable unix timestamp
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TimeError`](../struct.TimeError.html) if the
+    /// string can not be unmarshalled into a datetime
     pub fn to_ts(&self) -> TimeResult {
         match OffsetDateTime::from_unix_timestamp(self.datetime_num) {
             Ok(ts) => Ok(ts),
