@@ -79,19 +79,26 @@ impl JsonDecoder {
         match extract_values_from_json(json_str) {
             Ok(observations) => {
                 log::trace!("json parsed");
-                let msg = Message::Update {
-                    path: observations.path,
-                    datetime: extract_datetime(&observations.datetime),
-                    values: observations.values,
-                };
+                match extract_datetime(&observations.datetime) {
+                    Ok(dt) => {
+                        let msg = Message::Update {
+                            path: observations.path,
+                            datetime: dt,
+                            values: observations.values,
+                        };
 
-                let senv = Envelope {
-                    message: msg,
-                    respond_to,
-                    datetime,
-                    ..Default::default()
-                };
-                self.send_or_log_error(senv).await;
+                        let senv = Envelope {
+                            message: msg,
+                            respond_to,
+                            datetime,
+                            ..Default::default()
+                        };
+                        self.send_or_log_error(senv).await;
+                    }
+                    Err(e) => {
+                        log::error!("cannot parse datetime: {e}");
+                    }
+                }
             }
             Err(error) => {
                 respond_or_log_error(

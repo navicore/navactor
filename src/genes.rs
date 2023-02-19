@@ -18,11 +18,10 @@ impl fmt::Display for OperatorError {
     }
 }
 
-//TODO: generics
 /// The Operator encapsulates logic that operates on all new incoming data to
 /// advance the state of the actor or DT
 pub trait Operator<T: Add<Output = T>>: Sync + Send {
-    /// Returns a result with a value of type i64
+    /// Returns a result with a value of type T
     ///
     /// # Arguments
     ///
@@ -86,11 +85,7 @@ pub trait Gene<T: Add<Output = T>> {
     /// Returns [`OperatorError`](../genes/struct.OperatorError.html) if the
     /// input is not valid for the operation - usually an invalid
     /// index
-    fn apply_operators(
-        &self,
-        state: State<T>,
-        update: Message<T>,
-    ) -> OperatorResult<State<T>>;
+    fn apply_operators(&self, state: State<T>, update: Message<T>) -> OperatorResult<State<T>>;
     fn get_time_scope(&self) -> &TimeScope;
 }
 

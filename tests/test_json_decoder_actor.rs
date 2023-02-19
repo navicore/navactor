@@ -32,9 +32,9 @@ fn test_json_decode() {
                     assert_eq!(keys.len(), 2);
                     assert_eq!(values.get(&1).unwrap(), &1.9);
                     assert_eq!(values.get(&2).unwrap(), &2.9);
-                    let dt = extract_datetime("2023-01-11T23:17:57+0000");
+                    let dt = extract_datetime("2023-01-11T23:17:57+0000").unwrap();
                     assert_eq!(dt, datetime);
-                    let baddt = extract_datetime("2022-01-11T23:17:57+0000");
+                    let baddt = extract_datetime("2022-01-11T23:17:57+0000").unwrap();
                     assert_ne!(baddt, datetime);
                 } else {
                     assert!(false, "bad response from output actor: {r:?}");
@@ -44,8 +44,6 @@ fn test_json_decode() {
                 assert!(false, "{e}");
             }
         }
-        //assert_eq!(r.ok(), Some(()));
-
         //
         // shutdown
         //

@@ -64,8 +64,8 @@ async fn insert_update(
         "INSERT INTO updates (path, timestamp, sequence, values_str) VALUES (?,?,?,?)",
     )
     .bind(path.clone())
-    .bind(dt_wrapper.datetime_i64)
-    .bind(sequence_wrapper.datetime_i64)
+    .bind(dt_wrapper.datetime_num)
+    .bind(sequence_wrapper.datetime_num)
     .bind(
         serde_json::to_string(&values)
             .map_err(|e| {
@@ -224,13 +224,13 @@ async fn get_values(
     sqlx::query("SELECT timestamp, values_str FROM updates WHERE path = ?")
         .bind(path)
         .try_map(|row: sqlx::sqlite::SqliteRow| {
-            let date_parsed_i64 = match from_str(row.get(0)) {
+            let date_parsed_num = match from_str(row.get(0)) {
                 Ok(val) => val,
                 Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
             };
 
             let date_parsed = OffsetDateTimeWrapper {
-                datetime_i64: date_parsed_i64,
+                datetime_num: date_parsed_num,
             };
 
             let values = match row.try_get(1) {
@@ -241,9 +241,16 @@ async fn get_values(
                 Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
             };
 
+            let dt = match date_parsed.to_ts() {
+                Ok(dt) => dt,
+                Err(e) => {
+                    log::error!("can not parse date - using 'now': {e}");
+                    OffsetDateTime::now_utc()
+                }
+            };
             Ok(Message::Update {
                 path: String::from(path),
-                datetime: date_parsed.to_ts(),
+                datetime: dt,
                 values,
             })
         })
