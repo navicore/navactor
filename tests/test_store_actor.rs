@@ -79,6 +79,7 @@ fn test_write_and_read_jrnl() {
         // insert 1 update to the new db
         let cmd = Message::TextMsg {
             text: ob_1_3_json,
+            path: None,
             hint: MtHint::Update,
         };
         let r = json_decoder_actor.tell(cmd).await;
@@ -93,6 +94,7 @@ fn test_write_and_read_jrnl() {
         // query state of actor one from above updates
         let cmd = Message::TextMsg {
             text: get_actor_one_json.clone(),
+            path: None,
             hint: MtHint::Query,
         };
 
@@ -120,6 +122,7 @@ fn test_write_and_read_jrnl() {
         // insert 2nd update to the db
         let cmd = Message::TextMsg {
             text: ob_2_3_json,
+            path: None,
             hint: MtHint::Update,
         };
         let r = json_decoder_actor.tell(cmd).await;
@@ -128,6 +131,7 @@ fn test_write_and_read_jrnl() {
         // query state of actor one from above updates
         let cmd = Message::TextMsg {
             text: get_actor_one_json,
+            path: None,
             hint: MtHint::Query,
         };
 

@@ -11,7 +11,7 @@ use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::actor::State;
-use crate::genes::Gene;
+use crate::gene::Gene;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::NvError;

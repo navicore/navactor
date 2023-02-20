@@ -66,10 +66,12 @@ impl Actor for JsonDecoder {
             Message::TextMsg {
                 text,
                 hint: MtHint::Query,
+                path: _,
             } => self.handle_query_json(&text, respond_to, datetime).await,
             Message::TextMsg {
                 text,
                 hint: MtHint::Update,
+                path: _,
             } => self.handle_update_json(&text, respond_to, datetime).await,
             m => {
                 let senv = Envelope {

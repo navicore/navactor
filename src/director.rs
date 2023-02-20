@@ -22,13 +22,16 @@
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::genes::GuageAndAccumGene;
+use crate::gauge_and_accum_gene::GaugeAndAccumGene;
+use crate::gene::Gene;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::NvError;
 use crate::message::NvResult;
+use crate::nv_ids::GeneType;
 use crate::state_actor;
 use async_trait::async_trait;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot::Sender;
@@ -45,6 +48,7 @@ pub struct Director {
     pub store_actor: Option<Handle>,
     pub output: Option<Handle>,
     pub actors: HashMap<String, Handle>,
+    pub gene_path_map: HashMap<String, GeneType>,
     namespace: String,
 }
 
@@ -156,6 +160,18 @@ async fn handle_post_jrnl_procesing(
     }
 }
 
+async fn get_gene_type(path: &str) -> GeneType {
+    GeneType::Gauge
+}
+
+fn get_gene(_gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
+    let gene = Box::new(GaugeAndAccumGene {
+        //get_gene(path).await
+        ..Default::default()
+    });
+    gene
+}
+
 /// actor private constructor
 impl Director {
     async fn handle_end_of_stream(
@@ -194,21 +210,28 @@ impl Director {
 
             let mut actor_is_in_init = false;
 
+            // need to make sure this is on hand until I learn how to do an async closure below :)
+            //let gene_type = get_gene_type(path).await;
+
+            let gene_type = get_gene_type(path).await;
             let actor = self.actors.entry(path.clone()).or_insert_with(|| {
                 actor_is_in_init = true;
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                let gene = Box::new(GuageAndAccumGene {
-                    ..Default::default()
-                });
-                state_actor::new(path.clone(), 8, gene, None)
+                let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
+                actor
             });
 
-            if let Some(store_actor) = &self.store_actor {
-                if actor_is_in_init {
+            // let actor = match self.actors.entry(path.clone()) {
+            //     Entry::Vacant(entry) => {
+            //         let gene_type = get_gene_type(path).await;
+            //         let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
+            //         entry.insert(actor);
+            //         actor
+            //     }
+            //     Entry::Occupied(entry) => *entry.get(),
+            // };
+
+            if actor_is_in_init {
+                if let Some(store_actor) = &self.store_actor {
                     match actor.integrate(String::from(path), store_actor).await {
                         Ok(_) => {
                             // actor has read its journal
@@ -231,7 +254,7 @@ impl Director {
                 }
             };
 
-            handle_post_jrnl_procesing(journaled, message, respond_to, actor, &self.output).await;
+            handle_post_jrnl_procesing(journaled, message, respond_to, &actor, &self.output).await;
         }
     }
 
@@ -247,6 +270,7 @@ impl Director {
             receiver,
             output,
             store_actor,
+            gene_path_map: HashMap::new(),
         }
     }
 }

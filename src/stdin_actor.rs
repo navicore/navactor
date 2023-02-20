@@ -44,6 +44,7 @@ impl Actor for StdinActor {
                 let msg = Message::TextMsg {
                     text,
                     hint: MtHint::Update,
+                    path: None,
                 };
                 match self.output.tell(msg).await {
                     Ok(()) => {}

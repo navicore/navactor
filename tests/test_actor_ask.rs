@@ -1,6 +1,6 @@
 use approx::assert_ulps_eq;
 use navactor::director;
-use navactor::genes::GuageAndAccumGene;
+use navactor::gauge_and_accum_gene::GaugeAndAccumGene;
 use navactor::json_decoder;
 use navactor::message::Message;
 use navactor::message::MtHint;
@@ -15,7 +15,7 @@ use tokio::runtime::Runtime;
 fn test_actor_ask() {
     let rt = Runtime::new().unwrap();
     rt.block_on(async {
-        let g1 = GuageAndAccumGene {
+        let g1 = GaugeAndAccumGene {
             ..Default::default()
         };
 
@@ -83,6 +83,7 @@ fn test_decoder_ask() {
         // init state
         let cmd = Message::TextMsg {
             hint: MtHint::Update,
+            path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
         let r = json_decoder_actor.tell(cmd).await;
@@ -91,6 +92,7 @@ fn test_decoder_ask() {
         // update state
         let cmd = Message::TextMsg {
             hint: MtHint::Update,
+            path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
         };
         let reply = json_decoder_actor.ask(cmd).await;

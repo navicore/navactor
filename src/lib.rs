@@ -1,10 +1,13 @@
 pub mod actor;
 pub mod cli;
 pub mod director;
-pub mod genes;
+pub mod gauge_and_accum_gene;
+pub mod gene;
 pub mod json_decoder;
 pub mod message;
+pub mod nv_ids;
 pub mod nvtime;
+pub mod operator;
 pub mod state_actor;
 pub mod stdin_actor;
 pub mod stdout_actor;
