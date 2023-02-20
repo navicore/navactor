@@ -16,8 +16,9 @@
 
 use crate::actor::State;
 use crate::message::Message;
-use crate::nv_ids::TimeScope;
 use crate::operator::OperatorResult;
+use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::Add;
 
 /// A Gene is a collection of config information - mostly operators - that
@@ -38,4 +39,49 @@ pub trait Gene<T: Add<Output = T>> {
     /// index
     fn apply_operators(&self, state: State<T>, update: Message<T>) -> OperatorResult<State<T>>;
     fn get_time_scope(&self) -> &TimeScope;
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum GeneType {
+    GaugeAndAccum,
+    Default,
+}
+impl fmt::Display for GeneType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display_text = match self {
+            Self::GaugeAndAccum => "[Accum Gene]",
+            _ => "[Gauge Gene]",
+        };
+        write!(f, "{display_text}")
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum TimeScope {
+    Forever,
+    Year,
+    Month,
+    Day,
+    HalfDay,
+    QuarterDay,
+    Hour,
+    QuarterHour,
+    TenMinutes,
+    Minute,
+}
+impl fmt::Display for TimeScope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let display_text = match self {
+            Self::Forever => "[Forever Time Scope]",
+            Self::Year => "[Year Time Scope]",
+            Self::Month => "[Month Time Scope]",
+            Self::Day => "[Day Time Scope]",
+            Self::HalfDay => "[Half Day Time Scope]",
+            Self::QuarterDay => "[Quarter Day Time Scope]",
+            Self::Hour => "[Hour Time Scope]",
+            Self::TenMinutes => "[Ten Minute Time Scope]",
+            _ => "[Minute Time Scope]",
+        };
+        write!(f, "{display_text}")
+    }
 }

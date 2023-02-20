@@ -1,7 +1,7 @@
 use crate::actor::State;
 use crate::gene::Gene;
+use crate::gene::TimeScope;
 use crate::message::Message;
-use crate::nv_ids::TimeScope;
 use crate::operator::{Accumulator, Gauge, OpError, Operator, OperatorResult};
 use std::ops::Add;
 use time::OffsetDateTime;
