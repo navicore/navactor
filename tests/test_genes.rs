@@ -1,7 +1,7 @@
 use approx::assert_ulps_eq;
 use navactor::actor::State;
-use navactor::genes::Gene;
-use navactor::genes::GuageAndAccumGene;
+use navactor::gene::Gene;
+use navactor::gauge_and_accum_gene::GaugeAndAccumGene;
 use navactor::message::Message;
 use test_log::test;
 use time::OffsetDateTime;
@@ -19,7 +19,7 @@ fn test_default_gene() {
     values.insert(0, 2.9);
     values.insert(199, 4.11);
 
-    let g1 = GuageAndAccumGene {
+    let g1 = GaugeAndAccumGene {
         ..Default::default()
     };
 

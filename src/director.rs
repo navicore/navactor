@@ -22,13 +22,16 @@
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
-use crate::genes::GuageAndAccumGene;
+use crate::gauge_and_accum_gene::GaugeAndAccumGene;
+use crate::gene::Gene;
+use crate::gene::GeneType;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::NvError;
 use crate::message::NvResult;
 use crate::state_actor;
 use async_trait::async_trait;
+use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot::Sender;
@@ -45,6 +48,7 @@ pub struct Director {
     pub store_actor: Option<Handle>,
     pub output: Option<Handle>,
     pub actors: HashMap<String, Handle>,
+    pub gene_path_map: HashMap<String, GeneType>,
     namespace: String,
 }
 
@@ -85,6 +89,7 @@ impl Actor for Director {
 /// This function returns true once the newly resurrected actor reads all its journal.
 async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
     if let Some(store_actor) = store_actor {
+        log::trace!("journal_message {message}");
         // jrnl the new msg
         let jrnl_msg = store_actor.ask(message.clone()).await;
         match jrnl_msg {
@@ -114,6 +119,7 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
 
 async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Handle>) {
     //forward to optional output
+    log::trace!("forward_actor_result");
     if let Some(o) = output {
         if let Ok(message) = result {
             let senv = Envelope {
@@ -131,7 +137,21 @@ async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Ha
     }
 }
 
-async fn handle_post_jrnl_procesing(
+async fn write_jrnl(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
+    match message.clone() {
+        Message::Update { path: _, .. } => {
+            log::trace!("write_jrnl");
+            journal_message(message.clone(), store_actor).await
+        }
+        Message::Query { path: _, .. } => true,
+        m => {
+            log::warn!("unexpected message: {m}");
+            false
+        }
+    }
+}
+
+async fn post_jrnl(
     journaled: bool,
     message: Message<f64>,
     respond_to: Option<Sender<NvResult<Message<f64>>>>,
@@ -139,6 +159,7 @@ async fn handle_post_jrnl_procesing(
     output: &Option<Handle>,
 ) {
     if journaled {
+        log::trace!("post_jrnl sending to actor");
         //send message to the actor and support ask results
         let r = actor.ask(message).await;
         respond_or_log_error(respond_to, r.clone());
@@ -154,6 +175,18 @@ async fn handle_post_jrnl_procesing(
             }),
         );
     }
+}
+
+#[allow(clippy::unused_async)]
+async fn get_gene_type(_path: &str) -> GeneType {
+    // TODO: get from store
+    GeneType::GaugeAndAccum
+}
+
+fn get_gene(_gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
+    Box::new(GaugeAndAccumGene {
+        ..Default::default()
+    })
 }
 
 /// actor private constructor
@@ -184,6 +217,8 @@ impl Director {
         }
     }
 
+    // TODO: fix the DRY - fighting with how to put the actors in a map and also
+    // create-lookup in one throw w/o var scope being too short
     async fn handle_update_or_query(
         &mut self,
         message: Message<f64>,
@@ -191,47 +226,44 @@ impl Director {
     ) {
         if let Message::Update { path, .. } | Message::Query { path } = &message {
             // resurrect and forward if this is either Update or Query
-
-            let mut actor_is_in_init = false;
-
-            let actor = self.actors.entry(path.clone()).or_insert_with(|| {
-                actor_is_in_init = true;
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                // TODO: look up the gene by path
-                let gene = Box::new(GuageAndAccumGene {
-                    ..Default::default()
-                });
-                state_actor::new(path.clone(), 8, gene, None)
-            });
-
-            if let Some(store_actor) = &self.store_actor {
-                if actor_is_in_init {
-                    match actor.integrate(String::from(path), store_actor).await {
-                        Ok(_) => {
-                            // actor has read its journal
-                        }
-                        Err(e) => {
-                            log::error!("can not load actor {e} from journal");
+            match self.actors.entry(path.clone()) {
+                Entry::Vacant(entry) => {
+                    log::trace!("handle_update_or_query creating new or resurrected instance");
+                    let gene_type = get_gene_type(path).await;
+                    let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
+                    if let Some(store_actor) = &self.store_actor {
+                        match actor.integrate(String::from(path), store_actor).await {
+                            Ok(_) => {
+                                // actor has read its journal
+                            }
+                            Err(e) => {
+                                log::error!("can not load actor {e} from journal");
+                            }
                         }
                     }
+                    post_jrnl(
+                        write_jrnl(message.clone(), &self.store_actor).await,
+                        message,
+                        respond_to,
+                        &actor,
+                        &self.output,
+                    )
+                    .await;
+                    entry.insert(actor); // put it where you can find it again
                 }
-            }
-
-            let journaled: bool = match message.clone() {
-                Message::Update { path: _, .. } => {
-                    journal_message(message.clone(), &self.store_actor).await
-                }
-                Message::Query { path: _, .. } => true,
-                m => {
-                    log::warn!("unexpected message: {m}");
-                    false
+                Entry::Occupied(entry) => {
+                    log::trace!("handle_update_or_query found live instance");
+                    let actor = entry.get();
+                    post_jrnl(
+                        write_jrnl(message.clone(), &self.store_actor).await,
+                        message,
+                        respond_to,
+                        actor,
+                        &self.output,
+                    )
+                    .await;
                 }
             };
-
-            handle_post_jrnl_procesing(journaled, message, respond_to, actor, &self.output).await;
         }
     }
 
@@ -247,6 +279,7 @@ impl Director {
             receiver,
             output,
             store_actor,
+            gene_path_map: HashMap::new(),
         }
     }
 }

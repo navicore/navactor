@@ -18,6 +18,7 @@ fn test_actor_tell() {
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         let cmd = Message::TextMsg {
+            path: None,
             hint: MtHint::Update,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1, \"2\": 2, \"3\": 3} }"),
         };

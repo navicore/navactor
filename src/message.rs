@@ -68,6 +68,7 @@ pub struct Envelope<T> {
 pub enum MtHint {
     Update,
     Query,
+    Gene,
 }
 
 impl fmt::Display for MtHint {
@@ -75,6 +76,7 @@ impl fmt::Display for MtHint {
         let display_text = match self {
             Self::Query => "query",
             Self::Update => "update",
+            Self::Gene => "gene",
         };
         write!(f, "{display_text}")
     }
@@ -83,10 +85,15 @@ impl fmt::Display for MtHint {
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message<T> {
-    /// 'Query' is usually the 'ask' payload.  
-    Query {
-        path: String,
+    /// Simple Message is a wrapper around an enum
+    /// TODO: replace TextMsg with this and possibly others
+    SimpleMsg {
+        content: T,
+        path: Option<String>,
+        hint: Option<MtHint>,
     },
+    /// 'Query' is usually the 'ask' payload.  
+    Query { path: String },
     /// 'Update' is usually the 'tell' payload
     Update {
         datetime: OffsetDateTime,
@@ -111,15 +118,14 @@ pub enum Message<T> {
     /// read and send all the actor's previous events to the new instantiation of
     /// that actor.  the tokio "sender" is presented to the actor looking up the
     /// events in the envelope delivering the LoadCmd.
-    LoadCmd {
-        path: String,
-    },
+    LoadCmd { path: String },
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
     TextMsg {
         text: String,
         hint: MtHint,
+        path: Option<String>,
     },
 }
 
@@ -133,7 +139,10 @@ impl<T> fmt::Display for Envelope<T> {
 impl<T> fmt::Display for Message<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
-            Self::TextMsg { text, hint } => format!("[TextMsg {hint}:{text}]"),
+            Self::TextMsg { text, hint, path } => path.clone().map_or_else(
+                || format!("[TextMsg {hint}:{text}]"),
+                |path| format!("[TextMsg {path} {hint}:{text}]"),
+            ),
             Self::LoadCmd { path } => format!("[LoadCmd {path}]"),
             Self::ReadAllCmd {} => "[ReadAllCmd]".to_string(),
             Self::InitCmd {} => "[InitCmd]".to_string(),
@@ -141,6 +150,7 @@ impl<T> fmt::Display for Message<T> {
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
+            Self::SimpleMsg { .. } => "[SimpleMsg]".to_string(),
         };
         write!(f, "{display_text}")
     }

@@ -19,6 +19,7 @@ fn test_json_decode() {
 
         let cmd = Message::TextMsg {
             hint: MtHint::Update,
+            path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
         };
         let r = json_decoder_actor.tell(cmd.clone()).await;
