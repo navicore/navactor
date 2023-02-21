@@ -150,7 +150,7 @@ impl<T> fmt::Display for Message<T> {
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
-            Self::SimpleMsg { .. } => "[Query]".to_string(),
+            Self::SimpleMsg { .. } => "[SimpleMsg]".to_string(),
         };
         write!(f, "{display_text}")
     }

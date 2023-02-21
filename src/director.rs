@@ -177,17 +177,16 @@ async fn post_jrnl(
     }
 }
 
+#[allow(clippy::unused_async)]
 async fn get_gene_type(_path: &str) -> GeneType {
     // TODO: get from store
     GeneType::GaugeAndAccum
 }
 
 fn get_gene(_gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
-    let gene = Box::new(GaugeAndAccumGene {
-        //get_gene(path).await
+    Box::new(GaugeAndAccumGene {
         ..Default::default()
-    });
-    gene
+    })
 }
 
 /// actor private constructor
@@ -259,7 +258,7 @@ impl Director {
                         write_jrnl(message.clone(), &self.store_actor).await,
                         message,
                         respond_to,
-                        &actor,
+                        actor,
                         &self.output,
                     )
                     .await;
