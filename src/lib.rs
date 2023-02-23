@@ -1,7 +1,9 @@
+pub mod accum_gene;
 pub mod actor;
 pub mod cli;
 pub mod director;
 pub mod gauge_and_accum_gene;
+pub mod gauge_gene;
 pub mod gene;
 pub mod json_decoder;
 pub mod message;

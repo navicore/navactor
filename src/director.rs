@@ -232,14 +232,13 @@ impl Director {
                     let gene_type = get_gene_type(path).await;
                     let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
                     if let Some(store_actor) = &self.store_actor {
-                        match actor.integrate(String::from(path), store_actor).await {
-                            Ok(_) => {
-                                // actor has read its journal
-                            }
-                            Err(e) => {
+                        actor
+                            .integrate(String::from(path), store_actor)
+                            .await
+                            .map_err(|e| {
                                 log::error!("can not load actor {e} from journal");
-                            }
-                        }
+                            })
+                            .ok();
                     }
                     post_jrnl(
                         write_jrnl(message.clone(), &self.store_actor).await,

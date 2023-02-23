@@ -14,6 +14,7 @@ pub struct GaugeAndAccumGene {
     pub accumulator_first_idx: i32,
     pub accumulator_slots: i32,
     pub time_scope: TimeScope,
+    pub base_time: OffsetDateTime,
 }
 
 impl GaugeAndAccumGene {
@@ -81,6 +82,7 @@ impl Default for GaugeAndAccumGene {
             accumulator_first_idx: 100,
             accumulator_slots: 100,
             time_scope: TimeScope::Forever,
+            base_time: OffsetDateTime::now_utc(),
         }
     }
 }
