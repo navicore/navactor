@@ -44,6 +44,8 @@ pub trait Gene<T: Add<Output = T>> {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum GeneType {
+    Accum,
+    Gauge,
     GaugeAndAccum,
     Default,
 }
@@ -51,8 +53,10 @@ pub enum GeneType {
 impl fmt::Display for GeneType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
+            Self::Accum => "[Accum Gene]",
+            Self::Gauge => "[GaugeGene]",
             Self::GaugeAndAccum => "[GaugeAndAccum Gene]",
-            Self::Default => "[Default GaugeAndAccum Gene]",
+            Self::Default => "[Default GaugeGene]",
         };
         write!(f, "{display_text}")
     }
