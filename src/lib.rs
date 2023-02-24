@@ -7,7 +7,6 @@ pub mod gauge_gene;
 pub mod gene;
 pub mod json_decoder;
 pub mod message;
-pub mod nv_ids;
 pub mod nvtime;
 pub mod operator;
 pub mod state_actor;
