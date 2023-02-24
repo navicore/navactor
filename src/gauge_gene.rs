@@ -1,3 +1,14 @@
+//! This module provides the implementation for the `GaugeGene` struct, which represents a gene that
+//! primarily uses the `Gauge` operator to update the state of actors based on incoming data from
+//! `IoT` devices. The module implements the `Gene` trait to define how to apply the gene's operators
+//! to update an actor's state and to provide the gene's time scope. The module also defines a
+//! custom error type (`OpError`) that is returned by the `Gauge` operator when an input is not
+//! valid, and uses the `time` crate to work with dates and times. Additionally, the `GaugeGene`
+//! struct includes a default implementation that sets the gene's time scope to `Forever` and its
+//! base time to the current UTC time.
+//!
+//! The module exports the `GaugeGene` struct, which can be used in the larger system for processing
+//! incoming data from `IoT` devices.
 use crate::actor::State;
 use crate::gene::Gene;
 use crate::gene::TimeScope;
