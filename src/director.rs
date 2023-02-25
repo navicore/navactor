@@ -19,10 +19,12 @@
 //!The `Director` uses other Rust crates and libraries, such as `tokio`, `async_trait`,
 //!`std::collections::HashMap`, and others.
 
+use crate::accum_gene::AccumGene;
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::gauge_and_accum_gene::GaugeAndAccumGene;
+use crate::gauge_gene::GaugeGene;
 use crate::gene::Gene;
 use crate::gene::GeneType;
 use crate::message::Envelope;
@@ -177,16 +179,29 @@ async fn post_jrnl(
     }
 }
 
-#[allow(clippy::unused_async)]
-async fn get_gene_type(_path: &str) -> GeneType {
-    // TODO: get from store
-    GeneType::GaugeAndAccum
-}
-
-fn get_gene(_gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
-    Box::new(GaugeAndAccumGene {
-        ..Default::default()
-    })
+// //#[allow(clippy::unused_async)]
+// async fn get_gene_type(path: &str, gene_path_map: &mut HashMap<String, GeneType>) -> GeneType {
+//     match gene_path_map.entry(String::from(path)) {
+//         Entry::Vacant(entry) => {}
+//         Entry::Occupied(entry) => {}
+//     }
+//
+//     // TODO: get from store
+//     GeneType::GaugeAndAccum
+// }
+//
+fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
+    match gene_type {
+        GeneType::Accum => Box::new(AccumGene {
+            ..Default::default()
+        }),
+        GeneType::Gauge => Box::new(GaugeGene {
+            ..Default::default()
+        }),
+        _ => Box::new(GaugeAndAccumGene {
+            ..Default::default()
+        }),
+    }
 }
 
 /// actor private constructor
@@ -229,7 +244,28 @@ impl Director {
             match self.actors.entry(path.clone()) {
                 Entry::Vacant(entry) => {
                     log::trace!("handle_update_or_query creating new or resurrected instance");
-                    let gene_type = get_gene_type(path).await;
+                    //let gene_type = get_gene_type(path, &mut self.gene_path_map).await;
+                    // BEGIN INLINE
+                    // BEGIN INLINE
+                    // BEGIN INLINE
+
+                    let gene_type = match self.gene_path_map.entry(String::from(path)) {
+                        Entry::Vacant(entry) => {
+                            // TODO: jrnl it before returning
+                            // TODO: recursive look for each path until "/"
+                            let gt = GeneType::GaugeAndAccum;
+                            entry.insert(gt); // put it where you can find it again
+                            gt
+                        }
+                        Entry::Occupied(entry) => {
+                            // TODO: return gene_type from entry
+                            *entry.get()
+                        }
+                    };
+
+                    // END INLINE
+                    // END INLINE
+                    // END INLINE
                     let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
                     if let Some(store_actor) = &self.store_actor {
                         actor
