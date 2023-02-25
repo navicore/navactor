@@ -153,43 +153,21 @@ async fn write_jrnl(message: Message<f64>, store_actor: &Option<Handle>) -> bool
     }
 }
 
-async fn post_jrnl(
-    journaled: bool,
+async fn send_to_actor(
     message: Message<f64>,
     respond_to: Option<Sender<NvResult<Message<f64>>>>,
     actor: &Handle,
     output: &Option<Handle>,
 ) {
-    if journaled {
-        log::trace!("post_jrnl sending to actor");
-        //send message to the actor and support ask results
-        let r = actor.ask(message).await;
-        respond_or_log_error(respond_to, r.clone());
+    log::trace!("send_to_actor sending to actor");
+    //send message to the actor and support ask results
+    let r = actor.ask(message).await;
+    respond_or_log_error(respond_to, r.clone());
 
-        //forward to optional output
-        forward_actor_result(r, output).await;
-    } else {
-        log::error!("cannot journal input to actor - see logs");
-        respond_or_log_error(
-            respond_to,
-            Err(NvError {
-                reason: String::from("cannot journal input to actor"),
-            }),
-        );
-    }
+    //forward to optional output
+    forward_actor_result(r, output).await;
 }
 
-// //#[allow(clippy::unused_async)]
-// async fn get_gene_type(path: &str, gene_path_map: &mut HashMap<String, GeneType>) -> GeneType {
-//     match gene_path_map.entry(String::from(path)) {
-//         Entry::Vacant(entry) => {}
-//         Entry::Occupied(entry) => {}
-//     }
-//
-//     // TODO: get from store
-//     GeneType::GaugeAndAccum
-// }
-//
 fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
     match gene_type {
         GeneType::Accum => Box::new(AccumGene {
@@ -232,8 +210,6 @@ impl Director {
         }
     }
 
-    // TODO: fix the DRY - fighting with how to put the actors in a map and also
-    // create-lookup in one throw w/o var scope being too short
     async fn handle_update_or_query(
         &mut self,
         message: Message<f64>,
@@ -241,31 +217,34 @@ impl Director {
     ) {
         if let Message::Update { path, .. } | Message::Query { path } = &message {
             // resurrect and forward if this is either Update or Query
+
             match self.actors.entry(path.clone()) {
                 Entry::Vacant(entry) => {
                     log::trace!("handle_update_or_query creating new or resurrected instance");
-                    //let gene_type = get_gene_type(path, &mut self.gene_path_map).await;
-                    // BEGIN INLINE
-                    // BEGIN INLINE
-                    // BEGIN INLINE
 
-                    let gene_type = match self.gene_path_map.entry(String::from(path)) {
-                        Entry::Vacant(entry) => {
-                            // TODO: jrnl it before returning
-                            // TODO: recursive look for each path until "/"
-                            let gt = GeneType::GaugeAndAccum;
-                            entry.insert(gt); // put it where you can find it again
-                            gt
-                        }
-                        Entry::Occupied(entry) => {
-                            // TODO: return gene_type from entry
-                            *entry.get()
-                        }
-                    };
+                    //
+                    // BEGIN inline because of single mutable share compiler error when I put this
+                    // in Director impl and try to mut borrow self twice
+                    //
 
-                    // END INLINE
-                    // END INLINE
-                    // END INLINE
+                    let components: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+                    let mut current_path = String::new();
+                    let mut reg_gene_type = None;
+
+                    for component in &components {
+                        current_path.push('/');
+                        current_path.push_str(component);
+
+                        if let Some(gt) = self.gene_path_map.get(&current_path) {
+                            reg_gene_type = Some(*gt);
+                        }
+                    }
+                    let gene_type = reg_gene_type.unwrap_or(GeneType::Gauge);
+
+                    //
+                    // END inline
+                    //
+
                     let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
                     if let Some(store_actor) = &self.store_actor {
                         actor
@@ -276,27 +255,19 @@ impl Director {
                             })
                             .ok();
                     }
-                    post_jrnl(
-                        write_jrnl(message.clone(), &self.store_actor).await,
-                        message,
-                        respond_to,
-                        &actor,
-                        &self.output,
-                    )
-                    .await;
+                    let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
+                    if jrnled {
+                        send_to_actor(message, respond_to, &actor, &self.output).await;
+                    };
                     entry.insert(actor); // put it where you can find it again
                 }
                 Entry::Occupied(entry) => {
                     log::trace!("handle_update_or_query found live instance");
                     let actor = entry.get();
-                    post_jrnl(
-                        write_jrnl(message.clone(), &self.store_actor).await,
-                        message,
-                        respond_to,
-                        actor,
-                        &self.output,
-                    )
-                    .await;
+                    let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
+                    if jrnled {
+                        send_to_actor(message, respond_to, actor, &self.output).await;
+                    };
                 }
             };
         }
