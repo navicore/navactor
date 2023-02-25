@@ -1,3 +1,23 @@
+//! This module provides a set of abstractions for defining and using operators in the larger
+//! system for processing incoming data from `IoT` devices. The module defines a custom error type
+//! (`OpError`) that is returned by operators when an input is not valid, and uses the `time`
+//! crate to work with dates and times.
+//!
+//! The module exports the `Operator` trait, which defines the interface for all operators used in
+//! the system, and includes two structs (`Gauge` and `Accumulator`) that implement the `Operator`
+//! trait. The `Gauge` operator updates the current state of an actor with the most recent value of
+//! a given index, while the `Accumulator` operator accumulates the sum of all previously reported
+//! values for that index. The `Operator` trait also defines a `apply` method that applies an
+//! operator to an actor's current state to produce a new state, along with a custom error type
+//! (`OperatorError`) that is returned when an input is not valid for the operation, usually an
+//! invalid index.
+//!
+//! The `OperatorResult` type is also defined in the module, which is used as the result type for
+//! all `apply` methods of operators, and the `Gauge` and `Accumulator` structs implement the
+//! `Operator` trait using this type. The `OperatorResult` is a type alias for a `Result` with a
+//! value of type `T` and an error of type `OpError`. The module also defines the `State` type,
+//! which is used as the state of actors in the system and is passed as an argument to the `apply`
+//! method of all operators.
 use crate::actor::State;
 use std::fmt;
 use std::ops::Add;
