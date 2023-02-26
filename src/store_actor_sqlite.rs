@@ -69,6 +69,25 @@ pub struct StoreActor {
     pub disable_duplicate_detection: bool,
 }
 
+async fn insert_gene_mapping(
+    dbconn: &SqlitePool,
+    path: &String,
+    text: String,
+) -> Result<(), sqlx::error::Error> {
+    match sqlx::query("INSERT INTO gene_mappings (path, text) VALUES (?,?)")
+        .bind(path.clone())
+        .bind(text)
+        .execute(dbconn)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::warn!("persisting gene mapping for {} failed: {:?}", path, e);
+            Err(e)
+        }
+    }
+}
+
 /// record the latest event in the actors state
 async fn insert_update(
     dbconn: &SqlitePool,
@@ -147,7 +166,18 @@ async fn handle_gene_mapping(
     dbconn: &SqlitePool,
     respond_to: Option<Sender<NvResult<Message<f64>>>>,
 ) {
-    log::warn!("gene mapping persist not implemented: {path} {text} ");
+    match insert_gene_mapping(dbconn, &path.clone(), text.clone()).await {
+        Ok(_) => {
+            log::debug!("gene_mapping '{path}' -> '{text}' persisted");
+            respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
+        }
+        Err(e) => respond_or_log_error(
+            respond_to,
+            Err(NvError {
+                reason: e.to_string(),
+            }),
+        ),
+    }
 }
 
 async fn handle_update(
@@ -316,10 +346,40 @@ impl StoreActor {
     }
 }
 
-/// define table if it does not exist and log to console the journal mode
-async fn define_table_if_not_exist(db_url: &str, dbconn: SqlitePool) -> StoreResult<SqlitePool> {
+async fn define_gene_mapping_table_if_not_exist(
+    db_url: &str,
+    dbconn: &SqlitePool,
+) -> StoreResult<()> {
     let rows = sqlx::query("PRAGMA journal_mode;")
-        .fetch_all(&dbconn)
+        .fetch_all(dbconn)
+        .await
+        .map_err(|e| StoreError {
+            reason: format!("Failed to fetch journal_mode: {e}"),
+        })?;
+
+    let journal_mode: String = rows[0].get("journal_mode");
+    log::info!("connected to db in journal_mode: {journal_mode}");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS gene_mappings (
+              path TEXT NOT NULL,
+              text TEXT NOT NULL,
+              PRIMARY KEY (path)
+        )",
+    )
+    .execute(dbconn)
+    .await
+    .map_err(|e| StoreError {
+        reason: format!("Failed to create file {db_url}: {e}"),
+    })?;
+
+    Ok(())
+}
+
+/// define table if it does not exist and log to console the journal mode
+async fn define_updates_table_if_not_exist(db_url: &str, dbconn: &SqlitePool) -> StoreResult<()> {
+    let rows = sqlx::query("PRAGMA journal_mode;")
+        .fetch_all(dbconn)
         .await
         .map_err(|e| StoreError {
             reason: format!("Failed to fetch journal_mode: {e}"),
@@ -337,13 +397,13 @@ async fn define_table_if_not_exist(db_url: &str, dbconn: SqlitePool) -> StoreRes
               PRIMARY KEY (path, timestamp)
         )",
     )
-    .execute(&dbconn)
+    .execute(dbconn)
     .await
     .map_err(|e| StoreError {
         reason: format!("Failed to create file {db_url}: {e}"),
     })?;
 
-    Ok(dbconn)
+    Ok(())
 }
 
 /// enable write-ahead-logging mode for append-only-style db
@@ -390,8 +450,13 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<Sq
                     Err(e) => return Err(e),
                 }
             }
-
-            define_table_if_not_exist(db_url, dbconn).await
+            match define_updates_table_if_not_exist(db_url, &dbconn).await {
+                Ok(_) => match define_gene_mapping_table_if_not_exist(db_url, &dbconn).await {
+                    Ok(_) => Ok(dbconn),
+                    Err(e) => Err(e),
+                },
+                Err(e) => Err(e),
+            }
         }
         Err(e) => {
             log::error!("cannot connect to db: {e:?}");
