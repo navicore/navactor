@@ -202,12 +202,24 @@ impl Director {
                 _ => GeneType::Gauge,
             };
             self.gene_path_map.insert(path, gene_type);
-            // TODO: jrnl
-            // TODO: jrnl
-            // TODO: jrnl
-            // TODO: jrnl
-            // TODO: jrnl
-            respond_or_log_error(respond_to, Ok(message));
+            if let Some(store_actor) = &self.store_actor {
+                let jrnl_msg = store_actor.ask(message.clone()).await;
+                match jrnl_msg {
+                    Ok(_) => {
+                        // live mapping updated and persisted
+                        respond_or_log_error(respond_to, Ok(message));
+                    }
+                    Err(e) => respond_or_log_error(
+                        respond_to,
+                        Err(NvError {
+                            reason: format!("{e}"),
+                        }),
+                    ),
+                }
+            } else {
+                // no persistence - all is fine
+                respond_or_log_error(respond_to, Ok(message));
+            }
         } else {
             respond_or_log_error(
                 respond_to,

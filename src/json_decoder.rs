@@ -88,7 +88,7 @@ impl Actor for JsonDecoder {
                 path: _,
             } => {
                 self.handle_gene_mapping_json(&text, respond_to, datetime)
-                    .await
+                    .await;
             }
             m => {
                 let senv = Envelope {

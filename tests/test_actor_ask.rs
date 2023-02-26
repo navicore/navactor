@@ -123,6 +123,12 @@ fn test_decoder_ask() {
     });
 }
 
+/// This is probably an obsolete test even before the feature is complete.
+///
+/// For now. - text json mappings will only be useful when we have a JSON network API.
+///
+/// But for now we need the CLI to configure mappings and that is just params, no json.
+///
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_decoder_ask_accum_and_gauge() {
