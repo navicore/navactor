@@ -100,11 +100,12 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
                 Message::EndOfStream {} => {
                     // successfully jrnled the msg, it is now safe to
                     // send it to the actor to process
+                    log::trace!("jrnl msg successful - EndOfStream received");
                     true
                 }
-                // If the store message is unexpected, log a warning and return false
+                // If the message from the store actor is unexpected, log an error and return false
                 m => {
-                    log::warn!("Unexpected store message: {m}");
+                    log::error!("Unexpected store message: {m}");
                     false
                 }
             },
@@ -115,6 +116,7 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
         }
     } else {
         // If journaling is disabled, just process the message and return true
+        log::trace!("journaling messages is disabled - proceeding ok");
         true
     }
 }

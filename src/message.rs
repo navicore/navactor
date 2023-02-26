@@ -68,7 +68,7 @@ pub struct Envelope<T> {
 pub enum MtHint {
     Update,
     Query,
-    Gene,
+    GeneMapping,
 }
 
 impl fmt::Display for MtHint {
@@ -76,9 +76,9 @@ impl fmt::Display for MtHint {
         let display_text = match self {
             Self::Query => "query",
             Self::Update => "update",
-            Self::Gene => "gene",
+            Self::GeneMapping => "gene mapping",
         };
-        write!(f, "{display_text}")
+        write!(f, "[{display_text}]")
     }
 }
 

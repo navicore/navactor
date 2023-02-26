@@ -42,10 +42,12 @@ impl<T: Add<Output = T> + Copy> Gene<T> for AccumGene {
                 values,
             } => {
                 for &idx in values.keys() {
-                    let in_val = values.get(&idx).ok_or_else(|| OpError {
+                    let in_val = *values.get(&idx).ok_or_else(|| OpError {
                         reason: format!("unsupported idx: {idx}"),
                     })?;
-                    state = update_state_with_val(*in_val, idx, state, datetime)?;
+                    let len = state.keys().len();
+                    log::trace!("updating key {idx} of keys {len}");
+                    state = update_state_with_val(in_val, idx, state, datetime)?;
                 }
             }
             _ => {
