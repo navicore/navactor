@@ -72,17 +72,17 @@ impl Actor for JsonDecoder {
             ..
         } = envelope;
         match message {
-            Message::TextMsg {
+            Message::Content {
                 text,
                 hint: MtHint::Query,
                 path: _,
             } => self.handle_query_json(&text, respond_to, datetime).await,
-            Message::TextMsg {
+            Message::Content {
                 text,
                 hint: MtHint::Update,
                 path: _,
             } => self.handle_update_json(&text, respond_to, datetime).await,
-            Message::TextMsg {
+            Message::Content {
                 text,
                 hint: MtHint::GeneMapping,
                 path: _,
@@ -114,9 +114,10 @@ impl JsonDecoder {
         log::debug!("processing mapping update");
         match extract_gene_mapping_from_json(json_str) {
             Ok(gene_mapping) => {
-                let msg = Message::GeneMapping {
-                    path: gene_mapping.path,
-                    gene_type: gene_mapping.gene_type,
+                let msg = Message::Content {
+                    hint: MtHint::GeneMapping,
+                    path: Some(gene_mapping.path),
+                    text: gene_mapping.gene_type,
                 };
 
                 let senv = Envelope {

@@ -41,7 +41,7 @@ impl Actor for StdinActor {
                 log::error!("failed to read stream: {e:?}");
                 None
             }) {
-                let msg = Message::TextMsg {
+                let msg = Message::Content {
                     text,
                     hint: MtHint::Update,
                     path: None,

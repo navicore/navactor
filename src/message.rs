@@ -70,7 +70,7 @@ pub struct Envelope<T> {
     pub stream_from: Option<mpsc::Receiver<Message<T>>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MtHint {
     Update,
     Query,
@@ -91,9 +91,6 @@ impl fmt::Display for MtHint {
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message<T> {
-    /// 'Update' is usually the 'tell' payload
-    GeneMapping { path: String, gene_type: String },
-
     /// 'Query' is usually the 'ask' payload.  
     Query { path: String },
     /// 'Update' is usually the 'tell' payload
@@ -124,7 +121,7 @@ pub enum Message<T> {
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
-    TextMsg {
+    Content {
         text: String,
         hint: MtHint,
         path: Option<String>,
@@ -141,9 +138,9 @@ impl<T> fmt::Display for Envelope<T> {
 impl<T> fmt::Display for Message<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
-            Self::TextMsg { text, hint, path } => path.clone().map_or_else(
-                || format!("[TextMsg {hint}:{text}]"),
-                |path| format!("[TextMsg {path} {hint}:{text}]"),
+            Self::Content { text, hint, path } => path.clone().map_or_else(
+                || format!("[Content {hint}:{text}]"),
+                |path| format!("[Content {path} {hint}:{text}]"),
             ),
             Self::LoadCmd { path } => format!("[LoadCmd {path}]"),
             Self::ReadAllCmd {} => "[ReadAllCmd]".to_string(),
@@ -152,7 +149,6 @@ impl<T> fmt::Display for Message<T> {
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
-            Self::GeneMapping { .. } => "[GeneMapping]".to_string(),
         };
         write!(f, "{display_text}")
     }

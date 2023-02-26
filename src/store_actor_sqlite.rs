@@ -23,6 +23,7 @@ use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::MtHint;
 use crate::message::NvError;
 use crate::message::NvResult;
 use crate::nvtime::OffsetDateTimeWrapper;
@@ -140,6 +141,15 @@ async fn stream_message(
     }
 }
 
+async fn handle_gene_mapping(
+    path: String,
+    text: String,
+    dbconn: &SqlitePool,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
+) {
+    log::warn!("gene mapping persist not implemented: {path} {text} ");
+}
+
 async fn handle_update(
     path: String,
     datetime: OffsetDateTime,
@@ -220,9 +230,20 @@ impl Actor for StoreActor {
                     )
                     .await;
                 }
-
                 Message::LoadCmd { path } => {
                     handle_load_cmd(path, dbconn, stream_to).await;
+                }
+                Message::Content { path, text, hint }
+                    if path.is_some() && hint == MtHint::GeneMapping =>
+                {
+                    match path {
+                        Some(path) => {
+                            handle_gene_mapping(path, text, dbconn, respond_to).await;
+                        }
+                        _ => {
+                            log::error!("path not set");
+                        }
+                    }
                 }
                 m => log::warn!("Unexpected: {m}"),
             }

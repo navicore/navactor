@@ -77,7 +77,7 @@ fn test_write_and_read_jrnl() {
         let json_decoder_actor = setup_actors(db_file_prefix.clone(), namespace.clone()).await;
 
         // insert 1 update to the new db
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             text: ob_1_3_json,
             path: None,
             hint: MtHint::Update,
@@ -92,7 +92,7 @@ fn test_write_and_read_jrnl() {
         let json_decoder_actor = setup_actors(db_file_prefix, namespace).await;
 
         // query state of actor one from above updates
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             text: get_actor_one_json.clone(),
             path: None,
             hint: MtHint::Query,
@@ -120,7 +120,7 @@ fn test_write_and_read_jrnl() {
         };
 
         // insert 2nd update to the db
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             text: ob_2_3_json,
             path: None,
             hint: MtHint::Update,
@@ -129,7 +129,7 @@ fn test_write_and_read_jrnl() {
         assert_eq!(r.ok(), Some(()));
 
         // query state of actor one from above updates
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             text: get_actor_one_json,
             path: None,
             hint: MtHint::Query,

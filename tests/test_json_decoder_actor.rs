@@ -17,7 +17,7 @@ fn test_json_decode() {
         let output_actor = stdout_actor::new(8);
         let json_decoder_actor = json_decoder::new(8, output_actor); // parse input
 
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             hint: MtHint::Update,
             path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),

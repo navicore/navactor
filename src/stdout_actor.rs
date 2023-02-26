@@ -40,7 +40,7 @@ impl Actor for StdoutActor {
         } = envelope;
 
         match &message {
-            Message::TextMsg {
+            Message::Content {
                 text,
                 hint: _,
                 path: _,
