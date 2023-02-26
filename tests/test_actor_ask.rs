@@ -90,7 +90,7 @@ fn test_decoder_ask() {
         assert_eq!(r.ok(), Some(()));
 
         // update state
-        let cmd = Message::TextMsg {
+        let cmd: Message<f64> = Message::TextMsg {
             hint: MtHint::Update,
             path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
@@ -120,5 +120,71 @@ fn test_decoder_ask() {
             assert_ulps_eq!(v2.unwrap(), &2.9, max_ulps = 4);
 
         }
+    });
+}
+
+/// This is probably an obsolete test even before the feature is complete.
+///
+/// For now. - text json mappings will only be useful when we have a JSON network API.
+///
+/// But for now we need the CLI to configure mappings and that is just params, no json.
+///
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
+#[test]
+fn test_decoder_ask_accum_and_gauge() {
+    let rt = Runtime::new().unwrap();
+    rt.block_on(async {
+        let director = director::new(&String::from("/"), 8, None, None);
+        let json_decoder_actor = json_decoder::new(8, director); // parse input
+
+        // first set configure the gene mapping for accum
+        let cmd = Message::TextMsg {
+            hint: MtHint::GeneMapping,
+            path: None,
+            text: String::from("{ \"path\": \"/actors/blue\", \"gene_type\": \"accum\"}"),
+        };
+        let r = json_decoder_actor.tell(cmd).await;
+        assert_eq!(r.ok(), Some(()));
+
+            // init state
+            let cmd = Message::TextMsg {
+                hint: MtHint::Update,
+                path: None,
+                text: String::from("{ \"path\": \"/actors/blue/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"199\": 1.9, \"2\": 2.9} }"),
+            };
+            let r = json_decoder_actor.tell(cmd).await;
+            assert_eq!(r.ok(), Some(()));
+
+            // update state
+            let cmd: Message<f64> = Message::TextMsg {
+                hint: MtHint::Update,
+                path: None,
+                text: String::from("{ \"path\": \"/actors/blue/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"199\": 1.8} }"),
+            };
+            let reply = json_decoder_actor.ask(cmd).await;
+
+            assert!(matches!(
+                reply,
+                Ok(Message::StateReport {
+                    datetime: _,
+                    path: _,
+                    values: _
+                }),
+            ));
+
+            if let Ok(Message::StateReport {
+                datetime: _,
+                path: _,
+                values: new_values,
+            }) = reply
+            {
+                // ensure that the initial state for 2 is still there but that the initial state for 1
+                // was updated
+                let v1 = new_values.get(&199);
+                assert_ulps_eq!(v1.unwrap(), &3.7, max_ulps = 4);
+                let v2: Option<&f64> = new_values.get(&2);
+                assert_ulps_eq!(v2.unwrap(), &2.9, max_ulps = 4);
+
+            }
     });
 }

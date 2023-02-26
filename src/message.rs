@@ -52,6 +52,12 @@ pub struct Observations {
     pub path: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GeneMapping {
+    pub path: String,
+    pub gene_type: String,
+}
+
 /// all actor messages are delivered in envelops that contain optional
 /// sender objects - these are set when a `tell` message is sent so that
 /// the reply can be delivered.  These replies are not placed in envelopes.
@@ -68,7 +74,7 @@ pub struct Envelope<T> {
 pub enum MtHint {
     Update,
     Query,
-    Gene,
+    GeneMapping,
 }
 
 impl fmt::Display for MtHint {
@@ -76,22 +82,18 @@ impl fmt::Display for MtHint {
         let display_text = match self {
             Self::Query => "query",
             Self::Update => "update",
-            Self::Gene => "gene",
+            Self::GeneMapping => "gene mapping",
         };
-        write!(f, "{display_text}")
+        write!(f, "[{display_text}]")
     }
 }
 
 /// all actor API interaction is via async messages
 #[derive(Debug, Clone)]
 pub enum Message<T> {
-    /// Simple Message is a wrapper around an enum
-    /// TODO: replace TextMsg with this and possibly others
-    SimpleMsg {
-        content: T,
-        path: Option<String>,
-        hint: Option<MtHint>,
-    },
+    /// 'Update' is usually the 'tell' payload
+    GeneMapping { path: String, gene_type: String },
+
     /// 'Query' is usually the 'ask' payload.  
     Query { path: String },
     /// 'Update' is usually the 'tell' payload
@@ -150,7 +152,7 @@ impl<T> fmt::Display for Message<T> {
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
-            Self::SimpleMsg { .. } => "[SimpleMsg]".to_string(),
+            Self::GeneMapping { .. } => "[GeneMapping]".to_string(),
         };
         write!(f, "{display_text}")
     }

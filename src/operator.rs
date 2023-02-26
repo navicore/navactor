@@ -76,9 +76,8 @@ impl<T: Add<Output = T> + Copy> Operator<T> for Accumulator {
     fn apply(state: &State<T>, idx: i32, value: T, _: OffsetDateTime) -> OperatorResult<T> {
         state.get(&idx).map_or_else(
             || {
-                Err(OpError {
-                    reason: String::from("idx invalid"),
-                })
+                // init val - idx does not exist yet
+                Ok(value)
             },
             |old_val| {
                 let new_val = *old_val + value;

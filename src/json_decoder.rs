@@ -19,6 +19,7 @@ use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::Envelope;
+use crate::message::GeneMapping;
 use crate::message::Message;
 use crate::message::MtHint;
 use crate::message::NvError;
@@ -43,6 +44,14 @@ fn extract_path_from_json(text: &str) -> Result<PathQuery, String> {
         Err(e) => return Err(e.to_string()),
     };
     Ok(query)
+}
+
+fn extract_gene_mapping_from_json(text: &str) -> Result<GeneMapping, String> {
+    let gene_mapping: GeneMapping = match serde_json::from_str(text) {
+        Ok(o) => o,
+        Err(e) => return Err(e.to_string()),
+    };
+    Ok(gene_mapping)
 }
 
 fn extract_values_from_json(text: &str) -> Result<Observations, String> {
@@ -73,6 +82,14 @@ impl Actor for JsonDecoder {
                 hint: MtHint::Update,
                 path: _,
             } => self.handle_update_json(&text, respond_to, datetime).await,
+            Message::TextMsg {
+                text,
+                hint: MtHint::GeneMapping,
+                path: _,
+            } => {
+                self.handle_gene_mapping_json(&text, respond_to, datetime)
+                    .await;
+            }
             m => {
                 let senv = Envelope {
                     message: m,
@@ -88,6 +105,40 @@ impl Actor for JsonDecoder {
 }
 
 impl JsonDecoder {
+    async fn handle_gene_mapping_json(
+        &self,
+        json_str: &str,
+        respond_to: Option<tokio::sync::oneshot::Sender<NvResult<Message<f64>>>>,
+        datetime: OffsetDateTime,
+    ) {
+        log::debug!("processing mapping update");
+        match extract_gene_mapping_from_json(json_str) {
+            Ok(gene_mapping) => {
+                let msg = Message::GeneMapping {
+                    path: gene_mapping.path,
+                    gene_type: gene_mapping.gene_type,
+                };
+
+                let senv = Envelope {
+                    message: msg,
+                    respond_to,
+                    datetime,
+                    ..Default::default()
+                };
+                self.send_or_log_error(senv).await;
+            }
+            Err(error) => {
+                log::error!("error processing mapping update: {error}");
+                respond_or_log_error(
+                    respond_to,
+                    Err(NvError {
+                        reason: format!("json parse error: {error:?}"),
+                    }),
+                );
+            }
+        }
+    }
+
     async fn handle_update_json(
         &self,
         json_str: &str,
@@ -161,15 +212,16 @@ impl JsonDecoder {
         }
     }
 
-    async fn send_or_log_error(&self, value: Envelope<f64>)
+    async fn send_or_log_error(&self, envelope: Envelope<f64>)
     where
         Envelope<f64>: Send + std::fmt::Debug,
     {
-        match self.output.send(value).await {
+        match self.output.send(envelope).await {
             Ok(_) => (),
             Err(e) => log::error!("cannot send: {:?}", e),
         }
     }
+
     /// actor private constructor
     const fn new(receiver: mpsc::Receiver<Envelope<f64>>, output: Handle) -> Self {
         Self { receiver, output }

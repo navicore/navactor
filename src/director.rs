@@ -70,6 +70,8 @@ impl Actor for Director {
         } = envelope;
 
         match &message {
+            // maintain the path-to-gene mappings
+            Message::GeneMapping { .. } => self.handle_gene_mapping(message, respond_to).await,
             // If the message is an update or a query, handle it by calling the corresponding function
             Message::Update { .. } => self.handle_update_or_query(message, respond_to).await,
             Message::Query { .. } => self.handle_update_or_query(message, respond_to).await,
@@ -100,11 +102,12 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
                 Message::EndOfStream {} => {
                     // successfully jrnled the msg, it is now safe to
                     // send it to the actor to process
+                    log::trace!("jrnl msg successful - EndOfStream received");
                     true
                 }
-                // If the store message is unexpected, log a warning and return false
+                // If the message from the store actor is unexpected, log an error and return false
                 m => {
-                    log::warn!("Unexpected store message: {m}");
+                    log::error!("Unexpected store message: {m}");
                     false
                 }
             },
@@ -115,6 +118,7 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
         }
     } else {
         // If journaling is disabled, just process the message and return true
+        log::trace!("journaling messages is disabled - proceeding ok");
         true
     }
 }
@@ -184,6 +188,48 @@ fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
 
 /// actor private constructor
 impl Director {
+    async fn handle_gene_mapping(
+        &mut self,
+        message: Message<f64>,
+        respond_to: Option<Sender<NvResult<Message<f64>>>>,
+    ) {
+        log::debug!("new gene_mapping");
+        if let Message::GeneMapping { path, gene_type } = message.clone() {
+            let gene_type_str = gene_type.as_str();
+            let gene_type = match gene_type_str {
+                "accum" => GeneType::Accum,
+                "gauge_and_accum" => GeneType::GaugeAndAccum,
+                _ => GeneType::Gauge,
+            };
+            self.gene_path_map.insert(path, gene_type);
+            if let Some(store_actor) = &self.store_actor {
+                let jrnl_msg = store_actor.ask(message.clone()).await;
+                match jrnl_msg {
+                    Ok(_) => {
+                        // live mapping updated and persisted
+                        respond_or_log_error(respond_to, Ok(message));
+                    }
+                    Err(e) => respond_or_log_error(
+                        respond_to,
+                        Err(NvError {
+                            reason: format!("{e}"),
+                        }),
+                    ),
+                }
+            } else {
+                // no persistence - all is fine
+                respond_or_log_error(respond_to, Ok(message));
+            }
+        } else {
+            respond_or_log_error(
+                respond_to,
+                Err(NvError {
+                    reason: String::from("unexpected gene mapping format"),
+                }),
+            );
+        }
+    }
+
     async fn handle_end_of_stream(
         &self,
         message: Message<f64>,
