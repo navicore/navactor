@@ -119,8 +119,9 @@ TODO
 8. ~~default type that indicates which numeric fields are accumulators and which are gauges - this implies the built-in operator~~
 9. ~~code other built-ins for ranges of keys for the default type~~
 10. support different numeric types of actors, f64 vs u32 - tokio blocks us sending T
-11. persist path -> gene association
+11. ~~persist path -> gene association~~
 12. genes should tell director about time-scoped actors
+13. add path + gene mapping to cli args
 
 for #8 above - the default gene is all rust, don't figure out config yet.
 * the default gene reserves keys 100 - 199 for guages
