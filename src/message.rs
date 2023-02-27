@@ -227,7 +227,7 @@ impl<T> LifeCycleBuilder<T> {
                 stream_from: None,
                 stream_to: self.send_to,
                 message: Message::LoadCmd {
-                    hint: self.hint.clone().unwrap_or(MtHint::Update),
+                    hint: self.hint.unwrap_or(MtHint::Update),
                     path: self.send_to_path.unwrap_or_default(),
                 },
             },

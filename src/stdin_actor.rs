@@ -41,9 +41,10 @@ impl Actor for StdinActor {
                 log::error!("failed to read stream: {e:?}");
                 None
             }) {
-                let hint = match text.contains("gene_type") {
-                    true => MtHint::GeneMapping,
-                    _ => MtHint::Update,
+                let hint = if text.contains("gene_type") {
+                    MtHint::GeneMapping
+                } else {
+                    MtHint::Update
                 };
                 let msg = Message::Content {
                     text,

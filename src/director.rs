@@ -97,7 +97,7 @@ impl Actor for Director {
                                 };
 
                                 if let Some(path) = path {
-                                    count = count + 1;
+                                    count += 1;
                                     self.gene_path_map.insert(path.clone(), gene_type);
                                 }
                             }
