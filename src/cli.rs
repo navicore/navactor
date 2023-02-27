@@ -25,7 +25,23 @@
 //! arguments, making it easy for users to get up and running with the tool quickly and
 //! efficiently.
 
+use crate::gene::GeneType;
 use clap::{Args, Parser, Subcommand};
+
+// #[derive(Debug, clap::ValueEnum, Clone)]
+// pub enum Gene {
+//     Accum,
+//     Gauge,
+//     GaugeAndAccum,
+// }
+// impl fmt::Display for Gene {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         Self match {
+//             Self::Accum
+//         }
+//         write!(f, "{}", self.reason)
+//     }
+// }
 
 #[derive(Parser, Debug)]
 #[command(
@@ -55,8 +71,6 @@ pub struct Cli {
     pub verbose: u8,
     #[arg(long, action = clap::ArgAction::SetTrue, help = "No on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
     pub memory_only: Option<bool>,
-    // #[command(subcommand)]
-    // pub command: Option<Commands>,
     #[clap(subcommand)]
     pub command: Commands,
 }
@@ -74,8 +88,15 @@ pub enum Commands {
         allow_duplicates: Option<bool>,
     },
     Inspect {
-        #[arg(short, long, action = clap::ArgAction::Set, help = "get the state of an actor")]
+        #[arg(action = clap::ArgAction::Set, help = "get the state of an actor")]
         path: String,
+    },
+    Configure {
+        #[arg(action = clap::ArgAction::Set, help = "the pattern to apply the gene to")]
+        path: String,
+        #[arg(value_enum)]
+        #[arg(value_enum, action = clap::ArgAction::Set, help = "the gene to apply to every actor in path")]
+        gene: GeneType,
     },
     Completions {
         #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc... install via 'nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv'")]

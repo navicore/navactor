@@ -42,7 +42,7 @@ pub trait Gene<T: Add<Output = T>> {
 }
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(clap::ValueEnum, Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum GeneType {
     Accum,
     Gauge,

@@ -207,6 +207,9 @@ fn main() {
             );
         }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
+        Commands::Configure { path, gene } => {
+            println!("TODO: configure path {path} and gene {gene}");
+        }
         Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
             print_completions(shell, &mut cmd);
