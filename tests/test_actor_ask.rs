@@ -81,7 +81,7 @@ fn test_decoder_ask() {
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // init state
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             hint: MtHint::Update,
             path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.9, \"2\": 2.9} }"),
@@ -90,7 +90,7 @@ fn test_decoder_ask() {
         assert_eq!(r.ok(), Some(()));
 
         // update state
-        let cmd: Message<f64> = Message::TextMsg {
+        let cmd: Message<f64> = Message::Content {
             hint: MtHint::Update,
             path: None,
             text: String::from("{ \"path\": \"/actors\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"1\": 1.8} }"),
@@ -138,7 +138,7 @@ fn test_decoder_ask_accum_and_gauge() {
         let json_decoder_actor = json_decoder::new(8, director); // parse input
 
         // first set configure the gene mapping for accum
-        let cmd = Message::TextMsg {
+        let cmd = Message::Content {
             hint: MtHint::GeneMapping,
             path: None,
             text: String::from("{ \"path\": \"/actors/blue\", \"gene_type\": \"accum\"}"),
@@ -147,7 +147,7 @@ fn test_decoder_ask_accum_and_gauge() {
         assert_eq!(r.ok(), Some(()));
 
             // init state
-            let cmd = Message::TextMsg {
+            let cmd = Message::Content {
                 hint: MtHint::Update,
                 path: None,
                 text: String::from("{ \"path\": \"/actors/blue/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"199\": 1.9, \"2\": 2.9} }"),
@@ -156,7 +156,7 @@ fn test_decoder_ask_accum_and_gauge() {
             assert_eq!(r.ok(), Some(()));
 
             // update state
-            let cmd: Message<f64> = Message::TextMsg {
+            let cmd: Message<f64> = Message::Content {
                 hint: MtHint::Update,
                 path: None,
                 text: String::from("{ \"path\": \"/actors/blue/1\", \"datetime\": \"2023-01-11T23:17:57+0000\", \"values\": {\"199\": 1.8} }"),

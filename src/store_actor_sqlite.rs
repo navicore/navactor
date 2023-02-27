@@ -23,6 +23,7 @@ use crate::actor::Actor;
 use crate::actor::Handle;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::MtHint;
 use crate::message::NvError;
 use crate::message::NvResult;
 use crate::nvtime::OffsetDateTimeWrapper;
@@ -68,6 +69,25 @@ pub struct StoreActor {
     pub disable_duplicate_detection: bool,
 }
 
+async fn insert_gene_mapping(
+    dbconn: &SqlitePool,
+    path: &String,
+    text: &String,
+) -> Result<(), sqlx::error::Error> {
+    match sqlx::query("INSERT INTO gene_mappings (path, text) VALUES (?,?)")
+        .bind(path)
+        .bind(text)
+        .execute(dbconn)
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            log::warn!("persisting gene mapping for {} failed: {:?}", path, e);
+            Err(e)
+        }
+    }
+}
+
 /// record the latest event in the actors state
 async fn insert_update(
     dbconn: &SqlitePool,
@@ -109,7 +129,20 @@ async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> StoreResult<Vec<Message<f6
     match get_values(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
-            log::error!("cannot load from db: {e:?}");
+            log::error!("cannot load update jrnl from db: {e:?}");
+            Err(StoreError {
+                reason: format!("cannot load jrnl from db: {e:?}"),
+            })
+        }
+    }
+}
+
+/// retrieve the time series of events (observations) for the actor that is being resurrected
+async fn get_mappings(dbconn: &SqlitePool, path: &str) -> StoreResult<Vec<Message<f64>>> {
+    match get_mappings_for_ns(path, dbconn).await {
+        Ok(v) => Ok(v),
+        Err(e) => {
+            log::error!("cannot load mappings from db: {e:?}");
             Err(StoreError {
                 reason: format!("cannot load from db: {e:?}"),
             })
@@ -137,6 +170,26 @@ async fn stream_message(
         };
     } else {
         log::trace!("no stream available for {message}");
+    }
+}
+
+async fn handle_gene_mapping(
+    path: String,
+    text: String,
+    dbconn: &SqlitePool,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
+) {
+    match insert_gene_mapping(dbconn, &path, &text).await {
+        Ok(_) => {
+            log::debug!("gene_mapping '{path}' -> '{text}' persisted");
+            respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
+        }
+        Err(e) => respond_or_log_error(
+            respond_to,
+            Err(NvError {
+                reason: e.to_string(),
+            }),
+        ),
     }
 }
 
@@ -189,6 +242,24 @@ async fn handle_load_cmd(
     stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
 }
 
+async fn handle_gene_mapping_load_cmd(
+    path: String,
+    dbconn: &SqlitePool,
+    stream_to: Option<mpsc::Sender<Message<f64>>>,
+) {
+    match get_mappings(dbconn, &path).await {
+        Ok(rows) => {
+            for message in rows {
+                stream_message(&stream_to, message, StreamOption::LeaveOpen).await;
+            }
+        }
+        Err(e) => {
+            log::error!("cannot load gene mapping jrnl: {path} {e:?}");
+        }
+    };
+    stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
+}
+
 #[async_trait]
 impl Actor for StoreActor {
     /// the main entry point to every actor - this is where the jrnl read and
@@ -220,9 +291,23 @@ impl Actor for StoreActor {
                     )
                     .await;
                 }
-
-                Message::LoadCmd { path } => {
+                Message::LoadCmd { path, hint } if hint == MtHint::GeneMapping => {
+                    handle_gene_mapping_load_cmd(path, dbconn, stream_to).await;
+                }
+                Message::LoadCmd { path, hint } if hint == MtHint::Update => {
                     handle_load_cmd(path, dbconn, stream_to).await;
+                }
+                Message::Content { path, text, hint }
+                    if path.is_some() && hint == MtHint::GeneMapping =>
+                {
+                    match path {
+                        Some(path) => {
+                            handle_gene_mapping(path, text, dbconn, respond_to).await;
+                        }
+                        _ => {
+                            log::error!("path not set");
+                        }
+                    }
                 }
                 m => log::warn!("Unexpected: {m}"),
             }
@@ -230,11 +315,49 @@ impl Actor for StoreActor {
             log::error!("DB not configured");
         }
     }
+    async fn start(&mut self) {}
     async fn stop(&self) {
         if let Some(c) = &self.dbconn {
             c.close().await;
         }
     }
+}
+
+// TODO: store mappings with namespace / path compound key
+async fn get_mappings_for_ns(
+    path: &str,
+    dbconn: &SqlitePool,
+) -> Result<Vec<Message<f64>>, sqlx::error::Error> {
+    log::debug!("loading mappings for ns {path}");
+    sqlx::query("SELECT path, text FROM gene_mappings;")
+        .bind(path)
+        .try_map(|row: sqlx::sqlite::SqliteRow| {
+            let path = match row.try_get(0) {
+                //let path = match from_str(row.get(0)) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("cannot read path");
+                    return Err(sqlx::Error::Decode(Box::new(e)));
+                }
+            };
+
+            let text = match row.try_get(1) {
+                //let text = match from_str(row.get(1)) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("cannot read text");
+                    return Err(sqlx::Error::Decode(Box::new(e)));
+                }
+            };
+
+            Ok(Message::Content {
+                path: Some(path),
+                text,
+                hint: MtHint::GeneMapping,
+            })
+        })
+        .fetch_all(dbconn)
+        .await
 }
 
 async fn get_values(
@@ -295,10 +418,40 @@ impl StoreActor {
     }
 }
 
-/// define table if it does not exist and log to console the journal mode
-async fn define_table_if_not_exist(db_url: &str, dbconn: SqlitePool) -> StoreResult<SqlitePool> {
+async fn define_gene_mapping_table_if_not_exist(
+    db_url: &str,
+    dbconn: &SqlitePool,
+) -> StoreResult<()> {
     let rows = sqlx::query("PRAGMA journal_mode;")
-        .fetch_all(&dbconn)
+        .fetch_all(dbconn)
+        .await
+        .map_err(|e| StoreError {
+            reason: format!("Failed to fetch journal_mode: {e}"),
+        })?;
+
+    let journal_mode: String = rows[0].get("journal_mode");
+    log::info!("connected to db in journal_mode for mappings: {journal_mode}");
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS gene_mappings (
+              path TEXT NOT NULL,
+              text TEXT NOT NULL,
+              PRIMARY KEY (path)
+        )",
+    )
+    .execute(dbconn)
+    .await
+    .map_err(|e| StoreError {
+        reason: format!("Failed to create file {db_url}: {e}"),
+    })?;
+
+    Ok(())
+}
+
+/// define table if it does not exist and log to console the journal mode
+async fn define_updates_table_if_not_exist(db_url: &str, dbconn: &SqlitePool) -> StoreResult<()> {
+    let rows = sqlx::query("PRAGMA journal_mode;")
+        .fetch_all(dbconn)
         .await
         .map_err(|e| StoreError {
             reason: format!("Failed to fetch journal_mode: {e}"),
@@ -316,13 +469,13 @@ async fn define_table_if_not_exist(db_url: &str, dbconn: SqlitePool) -> StoreRes
               PRIMARY KEY (path, timestamp)
         )",
     )
-    .execute(&dbconn)
+    .execute(dbconn)
     .await
     .map_err(|e| StoreError {
         reason: format!("Failed to create file {db_url}: {e}"),
     })?;
 
-    Ok(dbconn)
+    Ok(())
 }
 
 /// enable write-ahead-logging mode for append-only-style db
@@ -369,8 +522,13 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<Sq
                     Err(e) => return Err(e),
                 }
             }
-
-            define_table_if_not_exist(db_url, dbconn).await
+            match define_updates_table_if_not_exist(db_url, &dbconn).await {
+                Ok(_) => match define_gene_mapping_table_if_not_exist(db_url, &dbconn).await {
+                    Ok(_) => Ok(dbconn),
+                    Err(e) => Err(e),
+                },
+                Err(e) => Err(e),
+            }
         }
         Err(e) => {
             log::error!("cannot connect to db: {e:?}");

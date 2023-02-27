@@ -109,6 +109,8 @@ impl Actor for StateActor {
         }
     }
     async fn stop(&self) {}
+
+    async fn start(&mut self) {}
 }
 
 /// actor private constructor

@@ -89,10 +89,6 @@ fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
     }
 }
 
-fn configure(path: &String, gene: &String, _: &Runtime) {
-    log::error!("not implemented. path: {path} gene: {gene}");
-}
-
 async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
     let p = std::path::Path::new(&path);
     let ns = p
@@ -211,7 +207,6 @@ fn main() {
             );
         }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
-        Commands::Configure { path, gene } => configure(&path, &gene, &runtime),
         Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
             print_completions(shell, &mut cmd);

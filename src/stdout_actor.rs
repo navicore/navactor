@@ -40,7 +40,7 @@ impl Actor for StdoutActor {
         } = envelope;
 
         match &message {
-            Message::TextMsg {
+            Message::Content {
                 text,
                 hint: _,
                 path: _,
@@ -66,6 +66,7 @@ impl Actor for StdoutActor {
         }
     }
     async fn stop(&self) {}
+    async fn start(&mut self) {}
 }
 
 /// actor private constructor

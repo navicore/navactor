@@ -27,8 +27,10 @@ use crate::gauge_and_accum_gene::GaugeAndAccumGene;
 use crate::gauge_gene::GaugeGene;
 use crate::gene::Gene;
 use crate::gene::GeneType;
+use crate::message::create_init_lifecycle;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::MtHint;
 use crate::message::NvError;
 use crate::message::NvResult;
 use crate::state_actor;
@@ -36,6 +38,7 @@ use async_trait::async_trait;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
 // TODO:
@@ -66,17 +69,80 @@ impl Actor for Director {
         let Envelope {
             message,
             respond_to,
+            stream_from,
             ..
         } = envelope;
 
         match &message {
+            Message::InitCmd { .. } => {
+                log::trace!("{} init started...", self.namespace);
+                // this is an init so read your old mappings
+                if let Some(mut stream_from) = stream_from {
+                    let mut count = 0;
+
+                    while let Some(message) = stream_from.recv().await {
+                        match &message {
+                            Message::EndOfStream {} => {
+                                break;
+                            }
+                            Message::Content {
+                                path,
+                                text,
+                                hint: _,
+                            } => {
+                                let gene_type = match text.as_str() {
+                                    "accum" => GeneType::Accum,
+                                    "gauge_and_accum" => GeneType::GaugeAndAccum,
+                                    _ => GeneType::Gauge,
+                                };
+
+                                if let Some(path) = path {
+                                    count += 1;
+                                    self.gene_path_map.insert(path.clone(), gene_type);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    log::trace!("{} init closing stream.", self.namespace);
+                    stream_from.close();
+
+                    log::debug!(
+                        "{} finished init with {} remembered mappings",
+                        self.namespace,
+                        count
+                    );
+
+                    respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
+                }
+            }
+
             // maintain the path-to-gene mappings
-            Message::GeneMapping { .. } => self.handle_gene_mapping(message, respond_to).await,
+            Message::Content {
+                hint: MtHint::GeneMapping,
+                path,
+                text,
+            } => match path {
+                Some(path) => {
+                    log::debug!("setting new mapping: {path} {text}");
+                    self.handle_gene_mapping(path, text, message.clone(), respond_to)
+                        .await;
+                }
+                _ => {
+                    log::error!("no path in content gene mapping");
+                }
+            },
             // If the message is an update or a query, handle it by calling the corresponding function
-            Message::Update { .. } => self.handle_update_or_query(message, respond_to).await,
-            Message::Query { .. } => self.handle_update_or_query(message, respond_to).await,
-            // If the message is an EndOfStream message, handle it by forwarding it to the output actor
-            // or by sending the response directly back to the original requester
+            Message::Update { path, .. } => {
+                self.handle_update_or_query(&path.clone(), message, respond_to)
+                    .await;
+            }
+            Message::Query { path, .. } => {
+                self.handle_update_or_query(&path.clone(), message, respond_to)
+                    .await;
+            }
+            // If the message is an EndOfStream message, forward it to the output actor
+            // or send the response directly to the original requester
             Message::EndOfStream {} => self.handle_end_of_stream(message, respond_to).await,
             // If the message is unexpected, log an error and respond with an NvError
             m => {
@@ -88,6 +154,33 @@ impl Actor for Director {
     }
 
     async fn stop(&self) {}
+    async fn start(&mut self) {
+        if let Some(store_actor) = &self.store_actor {
+            type ResultSender = Sender<NvResult<Message<f64>>>;
+            type ResultReceiver = oneshot::Receiver<NvResult<Message<f64>>>;
+            type SendReceivePair = (ResultSender, ResultReceiver);
+
+            let (send, recv): SendReceivePair = oneshot::channel();
+
+            let (init_cmd, load_cmd) =
+                create_init_lifecycle(self.namespace.clone(), 8, send, MtHint::GeneMapping);
+
+            store_actor
+                .send(load_cmd)
+                .await
+                .map_err(|e| {
+                    log::error!("cannot start director: {e}");
+                })
+                .ok();
+
+            self.handle_envelope(init_cmd).await;
+
+            match recv.await {
+                Ok(_) => {}
+                Err(e) => log::error!("cannot start director because of store error: {e}"),
+            }
+        }
+    }
 }
 
 /// This function returns true once the newly resurrected actor reads all its journal.
@@ -190,43 +283,36 @@ fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
 impl Director {
     async fn handle_gene_mapping(
         &mut self,
-        message: Message<f64>,
+        path: &str,
+        text: &str,
+        message: Message<f64>, // for jrnl
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
         log::debug!("new gene_mapping");
-        if let Message::GeneMapping { path, gene_type } = message.clone() {
-            let gene_type_str = gene_type.as_str();
-            let gene_type = match gene_type_str {
-                "accum" => GeneType::Accum,
-                "gauge_and_accum" => GeneType::GaugeAndAccum,
-                _ => GeneType::Gauge,
-            };
-            self.gene_path_map.insert(path, gene_type);
-            if let Some(store_actor) = &self.store_actor {
-                let jrnl_msg = store_actor.ask(message.clone()).await;
-                match jrnl_msg {
-                    Ok(_) => {
-                        // live mapping updated and persisted
-                        respond_or_log_error(respond_to, Ok(message));
-                    }
-                    Err(e) => respond_or_log_error(
-                        respond_to,
-                        Err(NvError {
-                            reason: format!("{e}"),
-                        }),
-                    ),
+        let gene_type_str = text;
+        let gene_type = match gene_type_str {
+            "accum" => GeneType::Accum,
+            "gauge_and_accum" => GeneType::GaugeAndAccum,
+            _ => GeneType::Gauge,
+        };
+        self.gene_path_map.insert(String::from(path), gene_type);
+        if let Some(store_actor) = &self.store_actor {
+            let jrnl_msg = store_actor.ask(message.clone()).await;
+            match jrnl_msg {
+                Ok(_) => {
+                    // live mapping updated and persisted
+                    respond_or_log_error(respond_to, Ok(message));
                 }
-            } else {
-                // no persistence - all is fine
-                respond_or_log_error(respond_to, Ok(message));
+                Err(e) => respond_or_log_error(
+                    respond_to,
+                    Err(NvError {
+                        reason: format!("{e}"),
+                    }),
+                ),
             }
         } else {
-            respond_or_log_error(
-                respond_to,
-                Err(NvError {
-                    reason: String::from("unexpected gene mapping format"),
-                }),
-            );
+            // no persistence - all is fine
+            respond_or_log_error(respond_to, Ok(message));
         }
     }
 
@@ -258,65 +344,63 @@ impl Director {
 
     async fn handle_update_or_query(
         &mut self,
+        path: &String,
         message: Message<f64>,
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
-        if let Message::Update { path, .. } | Message::Query { path } = &message {
-            // resurrect and forward if this is either Update or Query
+        // resurrect and forward if this is either Update or Query
+        match self.actors.entry(path.clone()) {
+            Entry::Vacant(entry) => {
+                log::trace!("handle_update_or_query creating new or resurrected instance");
 
-            match self.actors.entry(path.clone()) {
-                Entry::Vacant(entry) => {
-                    log::trace!("handle_update_or_query creating new or resurrected instance");
+                //
+                // BEGIN inline because of single mutable share compiler error when I put this
+                // in Director impl and try to mut borrow self twice
+                //
 
-                    //
-                    // BEGIN inline because of single mutable share compiler error when I put this
-                    // in Director impl and try to mut borrow self twice
-                    //
+                let components: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+                let mut current_path = String::new();
+                let mut reg_gene_type = None;
 
-                    let components: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
-                    let mut current_path = String::new();
-                    let mut reg_gene_type = None;
+                for component in &components {
+                    current_path.push('/');
+                    current_path.push_str(component);
 
-                    for component in &components {
-                        current_path.push('/');
-                        current_path.push_str(component);
-
-                        if let Some(gt) = self.gene_path_map.get(&current_path) {
-                            reg_gene_type = Some(*gt);
-                        }
+                    if let Some(gt) = self.gene_path_map.get(&current_path) {
+                        reg_gene_type = Some(*gt);
                     }
-                    let gene_type = reg_gene_type.unwrap_or(GeneType::Gauge);
-
-                    //
-                    // END inline
-                    //
-
-                    let actor = state_actor::new(String::from(path), 8, get_gene(gene_type), None);
-                    if let Some(store_actor) = &self.store_actor {
-                        actor
-                            .integrate(String::from(path), store_actor)
-                            .await
-                            .map_err(|e| {
-                                log::error!("can not load actor {e} from journal");
-                            })
-                            .ok();
-                    }
-                    let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
-                    if jrnled {
-                        send_to_actor(message, respond_to, &actor, &self.output).await;
-                    };
-                    entry.insert(actor); // put it where you can find it again
                 }
-                Entry::Occupied(entry) => {
-                    log::trace!("handle_update_or_query found live instance");
-                    let actor = entry.get();
-                    let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
-                    if jrnled {
-                        send_to_actor(message, respond_to, actor, &self.output).await;
-                    };
+                let gene_type = reg_gene_type.unwrap_or(GeneType::Gauge);
+
+                //
+                // END inline
+                //
+
+                let actor = state_actor::new(path.clone(), 8, get_gene(gene_type), None);
+                if let Some(store_actor) = &self.store_actor {
+                    actor
+                        .integrate(String::from(path), store_actor, MtHint::Update)
+                        .await
+                        .map_err(|e| {
+                            log::error!("can not load actor {e} from journal");
+                        })
+                        .ok();
                 }
-            };
-        }
+                let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
+                if jrnled {
+                    send_to_actor(message, respond_to, &actor, &self.output).await;
+                };
+                entry.insert(actor); // put it where you can find it again
+            }
+            Entry::Occupied(entry) => {
+                log::trace!("handle_update_or_query found live instance");
+                let actor = entry.get();
+                let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
+                if jrnled {
+                    send_to_actor(message, respond_to, actor, &self.output).await;
+                };
+            }
+        };
     }
 
     fn new(
@@ -345,6 +429,7 @@ pub fn new(
     store_actor: Option<Handle>,
 ) -> Handle {
     async fn start(mut actor: Director) {
+        actor.start().await;
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }
