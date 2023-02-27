@@ -77,12 +77,6 @@ pub enum Commands {
         #[arg(short, long, action = clap::ArgAction::Set, help = "get the state of an actor")]
         path: String,
     },
-    Configure {
-        #[arg(short, long, action = clap::ArgAction::Set, help = "set the gene for the path", long_help = "Set the gene for a path of actors - '/' being root and all actors, /somepath will set the gene for all actors under 'somepath', overriding the root gene.")]
-        path: String,
-        #[arg(short, long, action = clap::ArgAction::Set)]
-        gene: String,
-    },
     Completions {
         #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc... install via 'nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv'")]
         shell: clap_complete::Shell,

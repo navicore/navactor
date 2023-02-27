@@ -66,6 +66,7 @@ impl Actor for StdoutActor {
         }
     }
     async fn stop(&self) {}
+    async fn start(&mut self) {}
 }
 
 /// actor private constructor

@@ -41,9 +41,13 @@ impl Actor for StdinActor {
                 log::error!("failed to read stream: {e:?}");
                 None
             }) {
+                let hint = match text.contains("gene_type") {
+                    true => MtHint::GeneMapping,
+                    _ => MtHint::Update,
+                };
                 let msg = Message::Content {
                     text,
-                    hint: MtHint::Update,
+                    hint,
                     path: None,
                 };
                 match self.output.tell(msg).await {
@@ -74,6 +78,7 @@ impl Actor for StdinActor {
         }
     }
     async fn stop(&self) {}
+    async fn start(&mut self) {}
 }
 
 /// actor private constructor

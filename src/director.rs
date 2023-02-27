@@ -27,6 +27,7 @@ use crate::gauge_and_accum_gene::GaugeAndAccumGene;
 use crate::gauge_gene::GaugeGene;
 use crate::gene::Gene;
 use crate::gene::GeneType;
+use crate::message::create_init_lifecycle;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::MtHint;
@@ -37,6 +38,7 @@ use async_trait::async_trait;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 
 // TODO:
@@ -67,10 +69,54 @@ impl Actor for Director {
         let Envelope {
             message,
             respond_to,
+            stream_from,
             ..
         } = envelope;
 
         match &message {
+            Message::InitCmd { .. } => {
+                log::trace!("{} init started...", self.namespace);
+                // this is an init so read your old mappings
+                if let Some(mut stream_from) = stream_from {
+                    let mut count = 0;
+
+                    while let Some(message) = stream_from.recv().await {
+                        match &message {
+                            Message::EndOfStream {} => {
+                                break;
+                            }
+                            Message::Content {
+                                path,
+                                text,
+                                hint: _,
+                            } => {
+                                let gene_type = match text.as_str() {
+                                    "accum" => GeneType::Accum,
+                                    "gauge_and_accum" => GeneType::GaugeAndAccum,
+                                    _ => GeneType::Gauge,
+                                };
+
+                                if let Some(path) = path {
+                                    count = count + 1;
+                                    self.gene_path_map.insert(path.clone(), gene_type);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    log::trace!("{} init closing stream.", self.namespace);
+                    stream_from.close();
+
+                    log::debug!(
+                        "{} finished init with {} remembered mappings",
+                        self.namespace,
+                        count
+                    );
+
+                    respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
+                }
+            }
+
             // maintain the path-to-gene mappings
             Message::Content {
                 hint: MtHint::GeneMapping,
@@ -78,6 +124,7 @@ impl Actor for Director {
                 text,
             } => match path {
                 Some(path) => {
+                    log::debug!("setting new mapping: {path} {text}");
                     self.handle_gene_mapping(path, text, message.clone(), respond_to)
                         .await;
                 }
@@ -107,6 +154,33 @@ impl Actor for Director {
     }
 
     async fn stop(&self) {}
+    async fn start(&mut self) {
+        if let Some(store_actor) = &self.store_actor {
+            type ResultSender = Sender<NvResult<Message<f64>>>;
+            type ResultReceiver = oneshot::Receiver<NvResult<Message<f64>>>;
+            type SendReceivePair = (ResultSender, ResultReceiver);
+
+            let (send, recv): SendReceivePair = oneshot::channel();
+
+            let (init_cmd, load_cmd) =
+                create_init_lifecycle(self.namespace.clone(), 8, send, MtHint::GeneMapping);
+
+            store_actor
+                .send(load_cmd)
+                .await
+                .map_err(|e| {
+                    log::error!("cannot start director: {e}");
+                })
+                .ok();
+
+            self.handle_envelope(init_cmd).await;
+
+            match recv.await {
+                Ok(_) => {}
+                Err(e) => log::error!("cannot start director because of store error: {e}"),
+            }
+        }
+    }
 }
 
 /// This function returns true once the newly resurrected actor reads all its journal.
@@ -305,7 +379,7 @@ impl Director {
                 let actor = state_actor::new(path.clone(), 8, get_gene(gene_type), None);
                 if let Some(store_actor) = &self.store_actor {
                     actor
-                        .integrate(String::from(path), store_actor)
+                        .integrate(String::from(path), store_actor, MtHint::Update)
                         .await
                         .map_err(|e| {
                             log::error!("can not load actor {e} from journal");
@@ -355,6 +429,7 @@ pub fn new(
     store_actor: Option<Handle>,
 ) -> Handle {
     async fn start(mut actor: Director) {
+        actor.start().await;
         while let Some(envelope) = actor.receiver.recv().await {
             actor.handle_envelope(envelope).await;
         }

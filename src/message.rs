@@ -70,7 +70,7 @@ pub struct Envelope<T> {
     pub stream_from: Option<mpsc::Receiver<Message<T>>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum MtHint {
     Update,
     Query,
@@ -112,12 +112,12 @@ pub enum Message<T> {
     /// InitCmd instructs the actor to flip into init mode and recalculate its
     /// state from the incoming eventstream using a tokio receiver in the
     /// envelope delivering the InitCmd.
-    InitCmd {},
+    InitCmd { hint: MtHint },
     /// LoadCmd is sent to the persistence actor that will use the path to
     /// read and send all the actor's previous events to the new instantiation of
     /// that actor.  the tokio "sender" is presented to the actor looking up the
     /// events in the envelope delivering the LoadCmd.
-    LoadCmd { path: String },
+    LoadCmd { path: String, hint: MtHint },
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
@@ -142,9 +142,9 @@ impl<T> fmt::Display for Message<T> {
                 || format!("[Content {hint}:{text}]"),
                 |path| format!("[Content {path} {hint}:{text}]"),
             ),
-            Self::LoadCmd { path } => format!("[LoadCmd {path}]"),
+            Self::LoadCmd { path, hint } => format!("[LoadCmd {path} {hint}]"),
             Self::ReadAllCmd {} => "[ReadAllCmd]".to_string(),
-            Self::InitCmd {} => "[InitCmd]".to_string(),
+            Self::InitCmd { hint } => format!("[InitCmd {hint}]"),
             Self::EndOfStream {} => "[EndOfStream]".to_string(),
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
@@ -171,11 +171,13 @@ struct LifeCycleBuilder<T> {
     send_to: Option<mpsc::Sender<Message<T>>>,
     send_to_path: Option<String>,
     respond_to: Option<oneshot::Sender<NvResult<Message<T>>>>,
+    hint: Option<MtHint>,
 }
 
 impl<T> LifeCycleBuilder<T> {
     const fn new() -> Self {
         Self {
+            hint: None,
             load_from: None,
             send_to: None,
             send_to_path: None,
@@ -202,6 +204,12 @@ impl<T> LifeCycleBuilder<T> {
         self
     }
 
+    #[allow(clippy::missing_const_for_fn)]
+    fn with_hint(mut self, hint: MtHint) -> Self {
+        self.hint = Some(hint);
+        self
+    }
+
     fn build(self) -> (Envelope<T>, Envelope<T>) {
         (
             Envelope {
@@ -209,7 +217,9 @@ impl<T> LifeCycleBuilder<T> {
                 respond_to: self.respond_to,
                 stream_from: self.load_from,
                 stream_to: None,
-                message: Message::InitCmd {},
+                message: Message::InitCmd {
+                    hint: self.hint.unwrap_or(MtHint::Update),
+                },
             },
             Envelope {
                 datetime: OffsetDateTime::now_utc(),
@@ -217,6 +227,7 @@ impl<T> LifeCycleBuilder<T> {
                 stream_from: None,
                 stream_to: self.send_to,
                 message: Message::LoadCmd {
+                    hint: self.hint.clone().unwrap_or(MtHint::Update),
                     path: self.send_to_path.unwrap_or_default(),
                 },
             },
@@ -230,11 +241,13 @@ pub fn create_init_lifecycle<T>(
     path: String,
     bufsz: usize,
     respond_to: oneshot::Sender<NvResult<Message<T>>>,
+    hint: MtHint,
 ) -> (Envelope<T>, Envelope<T>) {
     let (tx, rx) = mpsc::channel(bufsz);
     let builder = LifeCycleBuilder::new()
         .with_load_from(rx)
         .with_send_to(tx, path)
-        .with_respond_to(respond_to);
+        .with_respond_to(respond_to)
+        .with_hint(hint);
     builder.build()
 }

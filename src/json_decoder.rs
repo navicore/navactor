@@ -102,6 +102,8 @@ impl Actor for JsonDecoder {
     }
 
     async fn stop(&self) {}
+
+    async fn start(&mut self) {}
 }
 
 impl JsonDecoder {

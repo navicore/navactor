@@ -24,6 +24,7 @@
 use crate::message::create_init_lifecycle;
 use crate::message::Envelope;
 use crate::message::Message;
+use crate::message::MtHint;
 use crate::message::NvError;
 use crate::message::NvResult;
 use async_trait::async_trait;
@@ -39,6 +40,7 @@ pub type State<T> = std::collections::HashMap<i32, T>;
 pub trait Actor {
     /// the function to implement per actor
     async fn handle_envelope(&mut self, envelope: Envelope<f64>);
+    async fn start(&mut self);
     async fn stop(&self);
 }
 
@@ -110,14 +112,19 @@ impl<'a> Handle {
     ///
     /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// two actors don't exchange lifecycle info
-    pub async fn integrate(&self, path: String, helper: &Self) -> NvResult<Message<f64>> {
+    pub async fn integrate(
+        &self,
+        path: String,
+        helper: &Self,
+        hint: MtHint,
+    ) -> NvResult<Message<f64>> {
         type ResultSender = Sender<NvResult<Message<f64>>>;
         type ResultReceiver = oneshot::Receiver<NvResult<Message<f64>>>;
         type SendReceivePair = (ResultSender, ResultReceiver);
 
         let (send, recv): SendReceivePair = oneshot::channel();
 
-        let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send);
+        let (init_cmd, load_cmd) = create_init_lifecycle(path, 8, send, hint);
 
         helper.send(load_cmd).await.map_err(|e| NvError {
             reason: e.to_string(),
