@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "navactor"
-version = "0.2.10"
+version = "0.3.0"
 dependencies = [
  "approx",
  "async-trait",
