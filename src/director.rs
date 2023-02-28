@@ -137,10 +137,29 @@ impl Actor for Director {
                 self.handle_update_or_query(&path.clone(), message, respond_to)
                     .await;
             }
-            Message::Query { path, .. } => {
+            Message::Query { path, hint, .. } if hint == &MtHint::State => {
+                // TODO: let query get all actor paths if path ends with a "/" otherwise get state
                 self.handle_update_or_query(&path.clone(), message, respond_to)
                     .await;
             }
+            Message::Query { path, hint, .. } if hint == &MtHint::GeneMapping => {
+                if let Some(gt) = self.gene_path_map.get(path) {
+                    let msg = Message::Content {
+                        path: None,
+                        text: format!("{gt}"),
+                        hint: MtHint::GeneMapping,
+                    };
+                    self.forward_report(msg, respond_to).await;
+                } else {
+                    let msg = Message::Content {
+                        path: None,
+                        text: format!("<not set>"),
+                        hint: MtHint::GeneMapping,
+                    };
+                    self.forward_report(msg, respond_to).await;
+                }
+            }
+
             // If the message is an EndOfStream message, forward it to the output actor
             // or send the response directly to the original requester
             Message::EndOfStream {} => self.handle_end_of_stream(message, respond_to).await,
@@ -312,6 +331,28 @@ impl Director {
             }
         } else {
             // no persistence - all is fine
+            respond_or_log_error(respond_to, Ok(message));
+        }
+    }
+
+    async fn forward_report(
+        &self,
+        message: Message<f64>,
+        respond_to: Option<Sender<NvResult<Message<f64>>>>,
+    ) {
+        if let Some(a) = &self.output {
+            let senv = Envelope {
+                message,
+                respond_to,
+                ..Default::default()
+            };
+            a.send(senv)
+                .await
+                .map_err(|e| {
+                    log::error!("cannot send: {e:?}");
+                })
+                .ok();
+        } else {
             respond_or_log_error(respond_to, Ok(message));
         }
     }

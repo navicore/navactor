@@ -28,21 +28,6 @@
 use crate::gene::GeneType;
 use clap::{Args, Parser, Subcommand};
 
-// #[derive(Debug, clap::ValueEnum, Clone)]
-// pub enum Gene {
-//     Accum,
-//     Gauge,
-//     GaugeAndAccum,
-// }
-// impl fmt::Display for Gene {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         Self match {
-//             Self::Accum
-//         }
-//         write!(f, "{}", self.reason)
-//     }
-// }
-
 #[derive(Parser, Debug)]
 #[command(
     name = "nv",
@@ -89,6 +74,10 @@ pub enum Commands {
     },
     Inspect {
         #[arg(action = clap::ArgAction::Set, help = "get the state of an actor")]
+        path: String,
+    },
+    Explain {
+        #[arg(action = clap::ArgAction::Set, help = "show all the genes possible for a path and its children")]
         path: String,
     },
     Configure {

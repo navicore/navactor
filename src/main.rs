@@ -3,9 +3,11 @@ use clap_complete::{generate, Generator};
 use navactor::cli;
 use navactor::cli::Commands;
 use navactor::director;
+use navactor::gene::GeneType;
 use navactor::json_decoder;
 use navactor::message::Message;
 use navactor::message::Message::EndOfStream;
+use navactor::message::MtHint;
 use navactor::stdin_actor;
 use navactor::stdout_actor;
 use navactor::store_actor_sqlite;
@@ -78,6 +80,115 @@ async fn run_async_update(
     }
 }
 
+fn configure(path: String, gene_type: GeneType, bufsz: usize, runtime: &Runtime) {
+    let result = run_async_configure(path, gene_type, bufsz);
+
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_configure(
+    path: String,
+    gene_type: GeneType,
+    bufsz: usize,
+) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    let ns = p
+        .components()
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
+    let output = stdout_actor::new(bufsz); // print state
+
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
+
+    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+
+    let gene_type_str = match gene_type {
+        GeneType::Accum => "accum",
+        GeneType::Gauge => "gauge",
+        _ => "gauge_and_accum",
+    };
+
+    match director
+        .ask(Message::Content {
+            path: Some(path),
+            text: String::from(gene_type_str),
+            hint: MtHint::GeneMapping,
+        })
+        .await
+    {
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
+        Err(e) => {
+            log::error!("error {e}");
+        }
+    }
+
+    // send complete to keep the job running long enough to print the above
+    match output.ask(EndOfStream {}).await {
+        Ok(EndOfStream {}) => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
+fn explain(path: String, bufsz: usize, runtime: &Runtime) {
+    let result = run_async_explain(path, bufsz);
+
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_explain(path: String, bufsz: usize) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    let ns = p
+        .components()
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
+    let output = stdout_actor::new(bufsz); // print state
+
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
+
+    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+
+    match director
+        .ask(Message::Query {
+            path,
+            hint: MtHint::GeneMapping,
+        })
+        .await
+    {
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
+        Err(e) => {
+            log::error!("error {e}");
+        }
+    }
+
+    // send complete to keep the job running long enough to print the above
+    match output.ask(EndOfStream {}).await {
+        Ok(EndOfStream {}) => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
 fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
     let result = run_async_inspect(path, bufsz);
 
@@ -103,7 +214,13 @@ async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
 
     let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
 
-    match director.ask(Message::Query { path }).await {
+    match director
+        .ask(Message::Query {
+            path,
+            hint: MtHint::State,
+        })
+        .await
+    {
         Ok(m) => match output.tell(m).await {
             Ok(_) => {}
             Err(e) => {
@@ -207,9 +324,8 @@ fn main() {
             );
         }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
-        Commands::Configure { path, gene } => {
-            println!("TODO: configure path {path} and gene {gene}");
-        }
+        Commands::Explain { path } => explain(path, bufsz, &runtime),
+        Commands::Configure { path, gene } => configure(path, gene, bufsz, &runtime),
         Commands::Completions { shell } => {
             let mut cmd = cli::Cli::command();
             print_completions(shell, &mut cmd);
