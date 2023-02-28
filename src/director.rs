@@ -153,7 +153,7 @@ impl Actor for Director {
                 } else {
                     let msg = Message::Content {
                         path: None,
-                        text: format!("<not set>"),
+                        text: String::from("<not set>"),
                         hint: MtHint::GeneMapping,
                     };
                     self.forward_report(msg, respond_to).await;
