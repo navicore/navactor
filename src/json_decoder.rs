@@ -194,6 +194,7 @@ impl JsonDecoder {
                 log::trace!("query json parsed");
                 let msg = Message::Query {
                     path: path_query.path,
+                    hint: MtHint::State,
                 };
 
                 let senv = Envelope {

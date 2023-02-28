@@ -74,6 +74,7 @@ pub struct Envelope<T> {
 pub enum MtHint {
     Update,
     Query,
+    State,
     GeneMapping,
 }
 
@@ -81,6 +82,7 @@ impl fmt::Display for MtHint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
             Self::Query => "query",
+            Self::State => "state",
             Self::Update => "update",
             Self::GeneMapping => "gene mapping",
         };
@@ -92,7 +94,7 @@ impl fmt::Display for MtHint {
 #[derive(Debug, Clone)]
 pub enum Message<T> {
     /// 'Query' is usually the 'ask' payload.  
-    Query { path: String },
+    Query { path: String, hint: MtHint },
     /// 'Update' is usually the 'tell' payload
     Update {
         datetime: OffsetDateTime,

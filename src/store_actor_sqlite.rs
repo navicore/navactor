@@ -328,7 +328,7 @@ async fn get_mappings_for_ns(
     path: &str,
     dbconn: &SqlitePool,
 ) -> Result<Vec<Message<f64>>, sqlx::error::Error> {
-    log::debug!("loading mappings for ns {path}");
+    log::debug!("loading mappings for path {path}");
     sqlx::query("SELECT path, text FROM gene_mappings;")
         .bind(path)
         .try_map(|row: sqlx::sqlite::SqliteRow| {
