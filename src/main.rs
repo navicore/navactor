@@ -299,7 +299,6 @@ fn main() {
             wal,
             allow_duplicates,
         } => {
-            let namespace = namespace.unwrap_or_else(|| "actors".to_owned());
             let silent = match silent {
                 Some(true) => OptionVariant::On,
                 _ => OptionVariant::Off,

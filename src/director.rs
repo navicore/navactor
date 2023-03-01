@@ -143,21 +143,28 @@ impl Actor for Director {
                     .await;
             }
             Message::Query { path, hint, .. } if hint == &MtHint::GeneMapping => {
-                if let Some(gt) = self.gene_path_map.get(path) {
-                    let msg = Message::Content {
-                        path: None,
-                        text: format!("{gt}"),
-                        hint: MtHint::GeneMapping,
-                    };
-                    self.forward_report(msg, respond_to).await;
-                } else {
-                    let msg = Message::Content {
-                        path: None,
-                        text: String::from("<not set>"),
-                        hint: MtHint::GeneMapping,
-                    };
-                    self.forward_report(msg, respond_to).await;
+                let prefix: &str = path;
+                let mut response: String = String::new();
+                let pairs: Vec<(&String, &GeneType)> = self
+                    .gene_path_map
+                    .iter()
+                    .filter(|(key, _)| key.starts_with(prefix))
+                    .collect();
+                for (key, val) in pairs {
+                    if response.is_empty() {
+                        response += "\n";
+                    }
+                    response += format!("{key} -> {val}").as_str();
                 }
+                if response.is_empty() {
+                    response = String::from("<not set>");
+                }
+                let msg = Message::Content {
+                    path: None,
+                    text: response,
+                    hint: MtHint::GeneMapping,
+                };
+                self.forward_report(msg, respond_to).await;
             }
 
             // If the message is an EndOfStream message, forward it to the output actor
