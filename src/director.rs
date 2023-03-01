@@ -143,15 +143,29 @@ impl Actor for Director {
                     .await;
             }
             Message::Query { path, hint, .. } if hint == &MtHint::GeneMapping => {
-                let prefix: &str = path;
+                let path_string = String::from(path);
+                let prefix_string = if path_string.ends_with('/') {
+                    path_string
+                } else {
+                    path_string + "/"
+                };
+                let mut clean_prefix_string: String = prefix_string.clone();
+                if clean_prefix_string.ends_with('/') {
+                    clean_prefix_string.pop();
+                };
+
+                let clean_prefix: &str = clean_prefix_string.as_str();
+                let prefix: &str = prefix_string.as_str();
                 let mut response: String = String::new();
                 let pairs: Vec<(&String, &GeneType)> = self
                     .gene_path_map
                     .iter()
-                    .filter(|(key, _)| key.starts_with(prefix))
+                    .filter(|(key, _)| {
+                        key == &path || key == &clean_prefix || key.starts_with(prefix)
+                    })
                     .collect();
                 for (key, val) in pairs {
-                    if response.is_empty() {
+                    if !response.is_empty() {
                         response += "\n";
                     }
                     response += format!("{key} -> {val}").as_str();
