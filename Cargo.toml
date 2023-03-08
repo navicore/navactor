@@ -20,7 +20,7 @@ env_logger = "0.10.0"
 glob = "0.3.1"
 log = "0.4.17"
 petgraph = "0.6.3"
-serde = { version = "1.0.152", features = ["derive"] }
+serde = { version = "1.0.153", features = ["derive"] }
 serde_json = "1.0.94"
 sqlx = { version = "0.6", features = [ "sqlite", "runtime-tokio-rustls" ] }
 test-log = "0.2.11"
