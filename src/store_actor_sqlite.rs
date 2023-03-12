@@ -532,9 +532,9 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<Sq
         }
         Err(e) => {
             log::error!("cannot connect to db: {e:?}");
-            return Err(StoreError {
+            Err(StoreError {
                 reason: format!("{e:?}"),
-            });
+            })
         }
     }
 }
