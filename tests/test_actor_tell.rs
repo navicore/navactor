@@ -7,6 +7,9 @@ use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
+/**
+ * Create a director actor factory and send it json via `Message::Content`.
+ */
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::expect_used))]
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
@@ -41,8 +44,6 @@ fn test_actor_tell() {
         let result = recv.await;
 
         let result_message = result.expect("failed with RecvErr");
-
-        log::debug!("result_message: {:?}", result_message);
 
         assert!(matches!(result_message, Ok(Message::EndOfStream {}),));
     });

@@ -10,6 +10,9 @@ use test_log::test;
 use time::OffsetDateTime;
 use tokio::runtime::Runtime;
 
+/**
+ * create a state actor and send it updates via `Message::Update` a hashmap
+ */
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_actor_ask() {
@@ -71,6 +74,9 @@ fn test_actor_ask() {
     });
 }
 
+/**
+ * create a decoder actor factory and send it updates via JSON in `Message::Content`
+ */
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
 fn test_decoder_ask() {
