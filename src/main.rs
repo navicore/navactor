@@ -8,11 +8,32 @@ use navactor::json_decoder;
 use navactor::message::Message;
 use navactor::message::Message::EndOfStream;
 use navactor::message::MtHint;
+use navactor::server::serve;
 use navactor::stdin_actor;
 use navactor::stdout_actor;
 use navactor::store_actor_sqlite;
 use std::io;
 use tokio::runtime::Runtime;
+
+fn run_serve(runtime: &Runtime, port: Option<u16>, interface: Option<String>) {
+    let result = run_async_serve(port, interface);
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("can not launch server: {e}");
+        }
+    }
+}
+
+async fn run_async_serve(port: Option<u16>, interface: Option<String>) -> Result<(), String> {
+    match serve(interface, port).await {
+        () => Ok(()),
+        // e => {
+        //     log::error!("{:?}", e);
+        //     Err(format!("{:?}", e))
+        // }
+    }
+}
 
 fn update(
     namespace: String,
@@ -293,6 +314,7 @@ fn main() {
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
     match pcli.command {
+        Commands::Serve { port, interface } => run_serve(&runtime, port, interface),
         Commands::Update {
             namespace,
             silent,

@@ -76,13 +76,18 @@ pub enum Commands {
     Configure {
         #[arg(action = clap::ArgAction::Set, help = "the pattern to apply the gene to")]
         path: String,
-        #[arg(value_enum)]
         #[arg(value_enum, action = clap::ArgAction::Set, help = "the gene to apply to every actor in path")]
         gene: GeneType,
     },
     Completions {
         #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc... install via 'nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv'")]
         shell: clap_complete::Shell,
+    },
+    Serve {
+        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener port", default_value = "8800")]
+        port: Option<u16>,
+        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener interface", default_value = "0.0.0.0")]
+        interface: Option<String>,
     },
 }
 
