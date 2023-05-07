@@ -1,105 +1,283 @@
-//! Navactor makes use of the `Clap` library to define and parse command-line arguments. The `CLI`
-//! is used to manage and interact with actors in a distributed system.
-//!
-//! The main struct defined in this code is `Cli`, which is derived from the `Parser` and `Debug`
-//! traits provided by Clap. The `Cli` struct defines the command-line arguments that the program
-//! expects to receive, such as the name of the event store file, the size of the actor mailbox,
-//! and the verbosity level of the program's logging.
-//!
-//! The `Cli` struct also defines a command field that holds a variant of the `Commands` enum,
-//! which is also derived from the `Subcommand` and Debug traits provided by Clap. The `Commands`
-//! enum represents the different `subcommands` that the program can accept, such as Update,
-//! Inspect, `Configure`, and `Completions`.
-//!
-//! Each variant of the `Commands` enum defines its own set of command-line arguments that are
-//! specific to that `subcommand`. For example, the Update variant has several arguments such as
-//! `silent`, `wal`, `namespace`, and `allow_duplicates`, while the `Configure` variant has path
-//! and gene arguments.
-//!
-//! Finally, the `NoArgs` struct is defined, which is used to represent a command that takes no
-//! arguments.
-//!
-//! Overall, this Rust code defines the command-line interface for a distributed system management
-//! tool, allowing users to interact with actors in the system by issuing commands and passing
-//! arguments. The code makes use of the `Clap` library to define and parse the command-line
-//! arguments, making it easy for users to get up and running with the tool quickly and
-//! efficiently.
-
+use crate::director;
 use crate::gene::GeneType;
-use clap::{Args, Parser, Subcommand};
+use crate::json_decoder;
+use crate::message::Message;
+use crate::message::Message::EndOfStream;
+use crate::message::MtHint;
+use crate::server::serve;
+use crate::stdin_actor;
+use crate::stdout_actor;
+use crate::store_actor_sqlite;
+use clap::Command;
+use clap_complete::{generate, Generator};
+use std::io;
+use tokio::runtime::Runtime;
 
-#[derive(Parser, Debug)]
-#[command(
-    name = "nv",
-    author,
-    version,
-    about,
-    long_about = "nv is the CLI for the DtLaboratory project",
-    propagate_version = true
-)] // Read from `Cargo.toml`
-pub struct Cli {
-    #[arg(
-        short,
-        long,
-        help = "Actor mailbox size",
-        long_help = "The number of unread messages allowed in an actor's mailbox.  Small numbers can cause the system to single-thread / serialize work.  Large numbers can harm data integrity / commits and leave a lot of unfinished work if the server stops."
-    )]
-    pub buffer: Option<usize>,
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    pub verbose: u8,
-    #[arg(long, action = clap::ArgAction::SetTrue, help = "No on-disk db file", long_help = "For best performance, but you should not run with '--silent' as you won't know what the in-memory data was since it is now ephemeral.")]
-    pub memory_only: Option<bool>,
-    #[clap(subcommand)]
-    pub command: Commands,
+//} => run_serve(&runtime, port, interface, uipath, disable_ui),
+pub fn run_serve(
+    runtime: &Runtime,
+    port: Option<u16>,
+    interface: Option<String>,
+    external_host: Option<String>,
+    uipath: Option<String>,
+    disable_ui: Option<bool>,
+) {
+    let result = run_async_serve(port, interface, external_host, uipath, disable_ui);
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("can not launch server: {e}");
+        }
+    }
 }
 
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    Update {
-        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
-        silent: Option<bool>,
-        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
-        wal: Option<bool>,
-        #[arg(short, long, action = clap::ArgAction::Set, long_help = "the director and db file to default to")]
-        namespace: String,
-        #[arg(short,long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
-        allow_duplicates: Option<bool>,
-    },
-    Inspect {
-        #[arg(action = clap::ArgAction::Set, help = "get the state of an actor")]
-        path: String,
-    },
-    Explain {
-        #[arg(action = clap::ArgAction::Set, help = "show all the genes possible for a path and its children")]
-        path: String,
-    },
-    Configure {
-        #[arg(action = clap::ArgAction::Set, help = "the pattern to apply the gene to")]
-        path: String,
-        #[arg(value_enum, action = clap::ArgAction::Set, help = "the gene to apply to every actor in path")]
-        gene: GeneType,
-    },
-    Completions {
-        #[arg(short, long, action = clap::ArgAction::Set, help = "print script for shell tab completion", long_help = "Pipe the output of this command to a file or to a shell program as appropriate for 'bash', or 'zsh', etc... install via 'nv completions -s zsh > /usr/local/share/zsh/site-functions/_nv'")]
-        shell: clap_complete::Shell,
-    },
-    Serve {
-        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener port", default_value = "8800")]
-        port: Option<u16>,
-
-        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener interface", default_value = "127.0.0.1")]
-        interface: Option<String>,
-
-        #[arg(long, action = clap::ArgAction::Set, help = "externally known base url for this server", default_value = "http://localhost:8800")]
-        external_host: Option<String>,
-
-        #[arg(long, action = clap::ArgAction::Set, help = "API Spec UI path", default_value = "/")]
-        uipath: Option<String>,
-
-        #[arg(long, action = clap::ArgAction::SetTrue, help = "disable API Spec UI")]
-        disable_ui: Option<bool>,
-    },
+async fn run_async_serve(
+    port: Option<u16>,
+    interface: Option<String>,
+    external_host: Option<String>,
+    uipath: Option<String>,
+    disable_ui: Option<bool>,
+) -> Result<(), String> {
+    match serve(interface, port, external_host, uipath, disable_ui).await {
+        Ok(()) => Ok(()),
+        e => {
+            log::error!("{:?}", e);
+            Err(format!("{:?}", e))
+        }
+    }
 }
 
-#[derive(Args, Debug)]
-struct NoArgs {}
+pub fn update(
+    namespace: String,
+    bufsz: usize,
+    runtime: &Runtime,
+    silent: OptionVariant,
+    memory_only: OptionVariant,
+    write_ahead_logging: OptionVariant,
+    allow_dupelicates: OptionVariant,
+) {
+    let result = run_async_update(
+        namespace,
+        bufsz,
+        silent,
+        memory_only,
+        write_ahead_logging,
+        allow_dupelicates,
+    );
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("can not launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_update(
+    namespace: String,
+    bufsz: usize,
+    silent: OptionVariant,
+    memory_only: OptionVariant,
+    write_ahead_logging: OptionVariant,
+    allow_duplicates: OptionVariant,
+) -> Result<(), String> {
+    let output = match silent {
+        OptionVariant::Off => Some(stdout_actor::new(bufsz)),
+        OptionVariant::On => None,
+    };
+
+    let store_actor = match memory_only {
+        OptionVariant::Off => Some(store_actor_sqlite::new(
+            bufsz,
+            namespace.clone(),
+            write_ahead_logging == OptionVariant::On,
+            allow_duplicates == OptionVariant::On,
+        )),
+        OptionVariant::On => None,
+    };
+
+    let director_w_persist = director::new(&namespace, bufsz, output, store_actor);
+
+    let json_decoder_actor = json_decoder::new(bufsz, director_w_persist);
+
+    let input = stdin_actor::new(bufsz, json_decoder_actor);
+
+    match input.ask(Message::ReadAllCmd {}).await {
+        Ok(EndOfStream {}) => {
+            log::trace!("end of stream");
+            Ok(())
+        }
+        e => {
+            log::error!("{:?}", e);
+            Err("END and response: sucks.".to_string())
+        }
+    }
+}
+
+pub fn configure(path: String, gene_type: GeneType, bufsz: usize, runtime: &Runtime) {
+    let result = run_async_configure(path, gene_type, bufsz);
+
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_configure(
+    path: String,
+    gene_type: GeneType,
+    bufsz: usize,
+) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    let ns = p
+        .components()
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
+    let output = stdout_actor::new(bufsz); // print state
+
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
+
+    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+
+    let gene_type_str = match gene_type {
+        GeneType::Accum => "accum",
+        GeneType::Gauge => "gauge",
+        _ => "gauge_and_accum",
+    };
+
+    match director
+        .ask(Message::Content {
+            path: Some(path),
+            text: String::from(gene_type_str),
+            hint: MtHint::GeneMapping,
+        })
+        .await
+    {
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
+        Err(e) => {
+            log::error!("error {e}");
+        }
+    }
+
+    // send complete to keep the job running long enough to print the above
+    match output.ask(EndOfStream {}).await {
+        Ok(EndOfStream {}) => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
+pub fn explain(path: String, bufsz: usize, runtime: &Runtime) {
+    let result = run_async_explain(path, bufsz);
+
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_explain(path: String, bufsz: usize) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    let ns = p
+        .components()
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
+    let output = stdout_actor::new(bufsz); // print state
+
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
+
+    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+
+    match director
+        .ask(Message::Query {
+            path,
+            hint: MtHint::GeneMapping,
+        })
+        .await
+    {
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
+        Err(e) => {
+            log::error!("error {e}");
+        }
+    }
+
+    // send complete to keep the job running long enough to print the above
+    match output.ask(EndOfStream {}).await {
+        Ok(EndOfStream {}) => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
+pub fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
+    let result = run_async_inspect(path, bufsz);
+
+    match runtime.block_on(result) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("cannot launch thread: {e}");
+        }
+    }
+}
+
+async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
+    let p = std::path::Path::new(&path);
+    let ns = p
+        .components()
+        .find(|c| *c != std::path::Component::RootDir)
+        .and_then(|c| c.as_os_str().to_str())
+        .unwrap_or("unk");
+    log::trace!("inspect of ns {ns}");
+    let output = stdout_actor::new(bufsz); // print state
+
+    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
+
+    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+
+    match director
+        .ask(Message::Query {
+            path,
+            hint: MtHint::State,
+        })
+        .await
+    {
+        Ok(m) => match output.tell(m).await {
+            Ok(_) => {}
+            Err(e) => {
+                log::warn!("cannot tell {e}");
+            }
+        },
+        Err(e) => {
+            log::error!("error {e}");
+        }
+    }
+
+    // send complete to keep the job running long enough to print the above
+    match output.ask(EndOfStream {}).await {
+        Ok(EndOfStream {}) => Ok(()),
+        _ => Err("END and response: sucks.".to_string()),
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OptionVariant {
+    On,
+    Off,
+}
+
+pub fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
+    generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
+}

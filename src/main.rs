@@ -1,7 +1,6 @@
 use clap::{CommandFactory, Parser};
-use navactor::cli;
-use navactor::cli::Commands;
-use navactor::cli_impl::*;
+use navactor::cli::*;
+use navactor::cli_interface::*;
 use tokio::runtime::Runtime;
 
 /// This is the `main` entry point for the application. It imports various Rust crates and a set of
@@ -37,7 +36,7 @@ fn main() {
     env_logger::init();
     log::info!("nv started");
 
-    let pcli = cli::Cli::parse();
+    let pcli = Cli::parse();
     let bufsz: usize = pcli.buffer.unwrap_or(8);
     let memory_only = pcli.memory_only.map(|m| {
         if m {
@@ -90,7 +89,7 @@ fn main() {
         Commands::Explain { path } => explain(path, bufsz, &runtime),
         Commands::Configure { path, gene } => configure(path, gene, bufsz, &runtime),
         Commands::Completions { shell } => {
-            let mut cmd = cli::Cli::command();
+            let mut cmd = Cli::command();
             print_completions(shell, &mut cmd);
         }
     }

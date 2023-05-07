@@ -1,7 +1,7 @@
 pub mod accum_gene;
 pub mod actor;
 pub mod cli;
-pub mod cli_impl;
+pub mod cli_interface;
 pub mod director;
 pub mod gauge_and_accum_gene;
 pub mod gauge_gene;
