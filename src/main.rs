@@ -1,253 +1,8 @@
-use clap::{Command, CommandFactory, Parser};
-use clap_complete::{generate, Generator};
+use clap::{CommandFactory, Parser};
 use navactor::cli;
 use navactor::cli::Commands;
-use navactor::director;
-use navactor::gene::GeneType;
-use navactor::json_decoder;
-use navactor::message::Message;
-use navactor::message::Message::EndOfStream;
-use navactor::message::MtHint;
-use navactor::stdin_actor;
-use navactor::stdout_actor;
-use navactor::store_actor_sqlite;
-use std::io;
+use navactor::cli_impl::*;
 use tokio::runtime::Runtime;
-
-fn update(
-    namespace: String,
-    bufsz: usize,
-    runtime: &Runtime,
-    silent: OptionVariant,
-    memory_only: OptionVariant,
-    write_ahead_logging: OptionVariant,
-    allow_dupelicates: OptionVariant,
-) {
-    let result = run_async_update(
-        namespace,
-        bufsz,
-        silent,
-        memory_only,
-        write_ahead_logging,
-        allow_dupelicates,
-    );
-    match runtime.block_on(result) {
-        Ok(_) => {}
-        Err(e) => {
-            log::error!("can not launch thread: {e}");
-        }
-    }
-}
-
-async fn run_async_update(
-    namespace: String,
-    bufsz: usize,
-    silent: OptionVariant,
-    memory_only: OptionVariant,
-    write_ahead_logging: OptionVariant,
-    allow_duplicates: OptionVariant,
-) -> Result<(), String> {
-    let output = match silent {
-        OptionVariant::Off => Some(stdout_actor::new(bufsz)),
-        OptionVariant::On => None,
-    };
-
-    let store_actor = match memory_only {
-        OptionVariant::Off => Some(store_actor_sqlite::new(
-            bufsz,
-            namespace.clone(),
-            write_ahead_logging == OptionVariant::On,
-            allow_duplicates == OptionVariant::On,
-        )),
-        OptionVariant::On => None,
-    };
-
-    let director_w_persist = director::new(&namespace, bufsz, output, store_actor);
-
-    let json_decoder_actor = json_decoder::new(bufsz, director_w_persist);
-
-    let input = stdin_actor::new(bufsz, json_decoder_actor);
-
-    match input.ask(Message::ReadAllCmd {}).await {
-        Ok(EndOfStream {}) => {
-            log::trace!("end of stream");
-            Ok(())
-        }
-        e => {
-            log::error!("{:?}", e);
-            Err("END and response: sucks.".to_string())
-        }
-    }
-}
-
-fn configure(path: String, gene_type: GeneType, bufsz: usize, runtime: &Runtime) {
-    let result = run_async_configure(path, gene_type, bufsz);
-
-    match runtime.block_on(result) {
-        Ok(_) => {}
-        Err(e) => {
-            log::error!("cannot launch thread: {e}");
-        }
-    }
-}
-
-async fn run_async_configure(
-    path: String,
-    gene_type: GeneType,
-    bufsz: usize,
-) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
-    let ns = p
-        .components()
-        .find(|c| *c != std::path::Component::RootDir)
-        .and_then(|c| c.as_os_str().to_str())
-        .unwrap_or("unk");
-    let output = stdout_actor::new(bufsz); // print state
-
-    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
-
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
-
-    let gene_type_str = match gene_type {
-        GeneType::Accum => "accum",
-        GeneType::Gauge => "gauge",
-        _ => "gauge_and_accum",
-    };
-
-    match director
-        .ask(Message::Content {
-            path: Some(path),
-            text: String::from(gene_type_str),
-            hint: MtHint::GeneMapping,
-        })
-        .await
-    {
-        Ok(m) => match output.tell(m).await {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("cannot tell {e}");
-            }
-        },
-        Err(e) => {
-            log::error!("error {e}");
-        }
-    }
-
-    // send complete to keep the job running long enough to print the above
-    match output.ask(EndOfStream {}).await {
-        Ok(EndOfStream {}) => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
-    }
-}
-
-fn explain(path: String, bufsz: usize, runtime: &Runtime) {
-    let result = run_async_explain(path, bufsz);
-
-    match runtime.block_on(result) {
-        Ok(_) => {}
-        Err(e) => {
-            log::error!("cannot launch thread: {e}");
-        }
-    }
-}
-
-async fn run_async_explain(path: String, bufsz: usize) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
-    let ns = p
-        .components()
-        .find(|c| *c != std::path::Component::RootDir)
-        .and_then(|c| c.as_os_str().to_str())
-        .unwrap_or("unk");
-    let output = stdout_actor::new(bufsz); // print state
-
-    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
-
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
-
-    match director
-        .ask(Message::Query {
-            path,
-            hint: MtHint::GeneMapping,
-        })
-        .await
-    {
-        Ok(m) => match output.tell(m).await {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("cannot tell {e}");
-            }
-        },
-        Err(e) => {
-            log::error!("error {e}");
-        }
-    }
-
-    // send complete to keep the job running long enough to print the above
-    match output.ask(EndOfStream {}).await {
-        Ok(EndOfStream {}) => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
-    }
-}
-
-fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
-    let result = run_async_inspect(path, bufsz);
-
-    match runtime.block_on(result) {
-        Ok(_) => {}
-        Err(e) => {
-            log::error!("cannot launch thread: {e}");
-        }
-    }
-}
-
-async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
-    let p = std::path::Path::new(&path);
-    let ns = p
-        .components()
-        .find(|c| *c != std::path::Component::RootDir)
-        .and_then(|c| c.as_os_str().to_str())
-        .unwrap_or("unk");
-    log::trace!("inspect of ns {ns}");
-    let output = stdout_actor::new(bufsz); // print state
-
-    let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
-
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
-
-    match director
-        .ask(Message::Query {
-            path,
-            hint: MtHint::State,
-        })
-        .await
-    {
-        Ok(m) => match output.tell(m).await {
-            Ok(_) => {}
-            Err(e) => {
-                log::warn!("cannot tell {e}");
-            }
-        },
-        Err(e) => {
-            log::error!("error {e}");
-        }
-    }
-
-    // send complete to keep the job running long enough to print the above
-    match output.ask(EndOfStream {}).await {
-        Ok(EndOfStream {}) => Ok(()),
-        _ => Err("END and response: sucks.".to_string()),
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum OptionVariant {
-    On,
-    Off,
-}
-
-fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
-    generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
-}
 
 /// This is the `main` entry point for the application. It imports various Rust crates and a set of
 /// local modules that constitute the program.
@@ -271,6 +26,8 @@ fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
 /// The `completions` command is used by shell completion functionality to generate command-line
 /// completion suggestions.
 ///
+/// The `serve` command is launches a REST API and OpenAPI UI is optionally available via browser.
+///
 /// The entry point for the application is the main function which reads the command-line arguments
 /// and invokes the appropriate `subcommand` functions.
 ///
@@ -293,6 +50,13 @@ fn main() {
     let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
 
     match pcli.command {
+        Commands::Serve {
+            port,
+            interface,
+            external_host,
+            uipath,
+            disable_ui,
+        } => run_serve(&runtime, port, interface, external_host, uipath, disable_ui),
         Commands::Update {
             namespace,
             silent,
