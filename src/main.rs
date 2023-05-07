@@ -20,7 +20,7 @@ use tokio::runtime::Runtime;
 /// `director` and `store_actor_sqlite` modules to query the state of the actors and writes the output
 /// to `stdout`.
 ///
-/// The `configure` command is not yet implemented and will allow for configuring actor properties.
+/// The `configure` command allows for configuring actor properties as genes.
 ///
 /// The `completions` command is used by shell completion functionality to generate command-line
 /// completion suggestions.
