@@ -86,8 +86,18 @@ pub enum Commands {
     Serve {
         #[arg(short, long, action = clap::ArgAction::Set, help = "server listener port", default_value = "8800")]
         port: Option<u16>,
-        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener interface", default_value = "0.0.0.0")]
+
+        #[arg(short, long, action = clap::ArgAction::Set, help = "server listener interface", default_value = "127.0.0.1")]
         interface: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::Set, help = "externally known base url for this server", default_value = "http://localhost:8800")]
+        external_host: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::Set, help = "API Spec UI path", default_value = "/")]
+        uipath: Option<String>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "disable API Spec UI")]
+        disable_ui: Option<bool>,
     },
 }
 
