@@ -3,6 +3,9 @@ use poem_openapi::{param::Query, payload::PlainText, OpenApi, OpenApiService};
 
 pub struct Api;
 
+// ejs TODO: model state on
+//https://github.com/poem-web/poem/blob/master/examples/openapi/users-crud/src/main.rs
+
 #[OpenApi]
 impl Api {
     #[oai(path = "/hello", method = "get")]
@@ -31,8 +34,8 @@ pub async fn serve(
 
     log::debug!("navactor server starting on {}:{}.", i, p);
 
-    let api_service =
-        OpenApiService::new(Api, "Hello World", "1.0").server(swagger_api_target.clone());
+    let api_service = OpenApiService::new(Api, clap::crate_name!(), clap::crate_version!())
+        .server(swagger_api_target.clone());
 
     let app = if disui {
         Route::new().nest("/api", api_service)

@@ -14,7 +14,7 @@ path = "src/main.rs"
 [dependencies]
 approx = "0.5.1"
 async-trait = "0.1.68"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "cargo"] }
 clap_complete = "4"
 env_logger = "0.10.0"
 glob = "0.3.1"
