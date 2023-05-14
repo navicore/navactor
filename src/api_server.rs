@@ -72,15 +72,20 @@ impl NvApi {
         match nv.ask(cmd).await {
             Ok(r) => {
                 if let Message::StateReport {
-                    datetime: _,
+                    datetime,
                     path,
                     values,
                 } = r
                 {
-                    Ok(GetResponse::NotFound(PlainText(format!(
-                        "todo `{}` not found ha ha",
-                        id.0
-                    ))))
+                    Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
+                        datetime: datetime.to_string(),
+                        path,
+                        values,
+                    })))
+                    // Ok(GetResponse::NotFound(PlainText(format!(
+                    //     "todo `{}` not found ha ha",
+                    //     id.0
+                    // ))))
                 } else {
                     Ok(GetResponse::NotFound(PlainText(format!(
                         "todo `{}` not found ha ha too",
