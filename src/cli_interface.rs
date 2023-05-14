@@ -13,7 +13,7 @@
 //!
 //! Each variant of the `Commands` enum defines its own set of command-line arguments that are
 //! specific to that `subcommand`. For example, the Update variant has several arguments such as
-//! `silent`, `wal`, `namespace`, and `allow_duplicates`, while the `Configure` variant has path
+//! `silent`, `wal`, `namespace`, and `disable_duplicate_detection`, while the `Configure` variant has path
 //! and gene arguments.
 //!
 //! Finally, the `NoArgs` struct is defined, which is used to represent a command that takes no
@@ -58,12 +58,12 @@ pub enum Commands {
     Update {
         #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
         silent: Option<bool>,
-        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes")]
-        wal: Option<bool>,
-        #[arg(short, long, action = clap::ArgAction::Set, long_help = "the director and db file to default to")]
+        #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes", default_value = "false")]
+        disable_wal: Option<bool>,
+        #[arg(long, action = clap::ArgAction::Set, long_help = "the director and db file to default to")]
         namespace: String,
-        #[arg(short,long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
-        allow_duplicates: Option<bool>,
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.", default_value = "false")]
+        disable_duplicate_detection: Option<bool>,
     },
     Inspect {
         #[arg(action = clap::ArgAction::Set, help = "get the state of an actor")]
@@ -93,11 +93,20 @@ pub enum Commands {
         #[arg(long, action = clap::ArgAction::Set, help = "externally known base url for this server", default_value = "http://localhost:8800")]
         external_host: Option<String>,
 
+        #[arg(short, long, action = clap::ArgAction::Set, long_help = "the director and db file to default to", default_value = "actors")]
+        namespace: String,
+
         #[arg(long, action = clap::ArgAction::Set, help = "API Spec UI path", default_value = "/")]
         uipath: Option<String>,
 
         #[arg(long, action = clap::ArgAction::SetTrue, help = "disable API Spec UI")]
         disable_ui: Option<bool>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Disable Write Ahead Logging", long_help = "Disable Write Ahead Logging (WAL) performance improvements for use cases with frequent writes")]
+        disable_wal: Option<bool>,
+
+        #[arg(long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.")]
+        disable_duplicate_detection: Option<bool>,
     },
 }
 

@@ -82,10 +82,6 @@ impl NvApi {
                         path,
                         values,
                     })))
-                    // Ok(GetResponse::NotFound(PlainText(format!(
-                    //     "todo `{}` not found ha ha",
-                    //     id.0
-                    // ))))
                 } else {
                     Ok(GetResponse::NotFound(PlainText(format!(
                         "todo `{}` not found ha ha too",
