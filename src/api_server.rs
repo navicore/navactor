@@ -42,13 +42,13 @@ impl Deref for SharedHandle {
     }
 }
 
-// Implements a token extractor
 #[poem::async_trait]
 impl<'a> FromRequest<'a> for SharedHandle {
     async fn from_request(req: &'a Request, _body: &mut RequestBody) -> Result<Self> {
+        log::debug!("from_request");
         match req.data::<Arc<Handle>>() {
             Some(shared_handle) => Ok(SharedHandle(Arc::clone(&shared_handle))),
-            None => Err(Error::from_string("missing token", StatusCode::BAD_REQUEST)),
+            None => Err(Error::from_string("error", StatusCode::BAD_REQUEST)),
         }
     }
 }
@@ -62,6 +62,7 @@ impl NvApi {
         nv: Data<&SharedHandle>,
         id: Path<i64>,
     ) -> Result<GetResponse, poem::Error> {
+        log::debug!("get");
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
             text: "{ \"path\": \"/actors/one\" }".to_string(),
@@ -77,21 +78,27 @@ impl NvApi {
                 } = r
                 {
                     Ok(GetResponse::NotFound(PlainText(format!(
-                        "todo `{}` not found",
+                        "todo `{}` not found ha ha",
                         id.0
                     ))))
                 } else {
                     Ok(GetResponse::NotFound(PlainText(format!(
-                        "todo `{}` not found",
+                        "todo `{}` not found ha ha too",
                         id.0
                     ))))
                 }
             }
             Err(e) => Ok(GetResponse::NotFound(PlainText(format!(
-                "todo `{}` not found",
+                "todo `{}` not found?",
                 id.0
             )))),
         }
+    }
+}
+
+impl Clone for SharedHandle {
+    fn clone(&self) -> Self {
+        SharedHandle(Arc::clone(&self.0))
     }
 }
 
@@ -126,12 +133,14 @@ pub async fn serve<'a>(
         let ui = api_service.swagger_ui();
 
         if disui {
-            Route::new().nest("/api", api_service).data(nv.clone())
-        } else {
             Route::new()
                 .nest("/api", api_service)
+                .data(SharedHandle(nv.clone()))
+        } else {
+            Route::new()
                 .nest(format!("/{}", uip), ui)
-                .data(nv.clone())
+                .nest("/api", api_service)
+                .data(SharedHandle(nv.clone()))
         }
     };
 
