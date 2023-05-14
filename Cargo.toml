@@ -29,3 +29,4 @@ time = { version = "0.3.20", features = ["macros", "parsing", "serde"] }
 tokio = { version = "1", features = ["full"] }
 poem = { version = "1", features = ["test"]}
 poem-openapi = { version = "2", features = ["swagger-ui"]}
+futures = "0.3.28"

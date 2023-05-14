@@ -1,16 +1,18 @@
+use crate::actor::Handle;
+use crate::api_server::serve;
 use crate::director;
 use crate::gene::GeneType;
 use crate::json_decoder;
 use crate::message::Message;
 use crate::message::Message::EndOfStream;
 use crate::message::MtHint;
-use crate::server::serve;
 use crate::stdin_actor;
 use crate::stdout_actor;
 use crate::store_actor_sqlite;
 use clap::Command;
 use clap_complete::{generate, Generator};
 use std::io;
+use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 //} => run_serve(&runtime, port, interface, uipath, disable_ui),
@@ -31,6 +33,20 @@ pub fn run_serve(
     }
 }
 
+fn setup_actor(db_file_prefix: String, namespace: String) -> Arc<Handle> {
+    let output_actor = stdout_actor::new(8);
+
+    // do not configured to tolerate collisions because the "allow dupes" setting uses envelope
+    // time and that causes collisions due to sub-millisecond execution of the test.
+    let store_actor = store_actor_sqlite::new(8, db_file_prefix, false, false);
+
+    let director_w_persist = director::new(&namespace, 8, Some(output_actor), Some(store_actor));
+
+    let nv = json_decoder::new(8, director_w_persist);
+
+    Arc::new(nv)
+}
+
 async fn run_async_serve(
     port: Option<u16>,
     interface: Option<String>,
@@ -38,7 +54,17 @@ async fn run_async_serve(
     uipath: Option<String>,
     disable_ui: Option<bool>,
 ) -> Result<(), String> {
-    match serve(interface, port, external_host, uipath, disable_ui).await {
+    let shared_handle: Arc<Handle> = setup_actor("test".to_string(), "test".to_string());
+    match serve(
+        shared_handle,
+        interface,
+        port,
+        external_host,
+        uipath,
+        disable_ui,
+    )
+    .await
+    {
         Ok(()) => Ok(()),
         e => {
             log::error!("{:?}", e);

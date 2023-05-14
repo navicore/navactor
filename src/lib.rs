@@ -1,5 +1,6 @@
 pub mod accum_gene;
 pub mod actor;
+pub mod api_server;
 pub mod cli;
 pub mod cli_interface;
 pub mod director;

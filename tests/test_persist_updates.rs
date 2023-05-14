@@ -44,7 +44,7 @@ fn test_write_and_read_jrnl() {
         fs::remove_file(path).unwrap();
     }
 
-    let get_actor_one_file = "tests/data/get_actors_one_state.json";
+    let get_actor_one_file = "tests/data/get_actor_one_state.json";
     let get_actor_one_json = match fs::read_to_string(get_actor_one_file) {
         Ok(text) => text,
         Err(e) => {
