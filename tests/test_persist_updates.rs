@@ -13,7 +13,7 @@ use tokio::runtime::Runtime;
 async fn setup_actors(db_file_prefix: String, namespace: String) -> Handle {
     let output_actor = stdout_actor::new(8);
 
-    // do not configured to tolerate collisions because the "allow dupes" setting uses envelope
+    // do not configure to tolerate collisions because the "allow dupes" setting uses envelope
     // time and that causes collisions due to sub-millisecond execution of the test.
     let store_actor = store_actor_sqlite::new(8, db_file_prefix, false, false);
 
@@ -44,7 +44,7 @@ fn test_write_and_read_jrnl() {
         fs::remove_file(path).unwrap();
     }
 
-    let get_actor_one_file = "tests/data/get_actors_one_state.json";
+    let get_actor_one_file = "tests/data/get_actor_one_state.json";
     let get_actor_one_json = match fs::read_to_string(get_actor_one_file) {
         Ok(text) => text,
         Err(e) => {

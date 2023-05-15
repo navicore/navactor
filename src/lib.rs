@@ -1,5 +1,6 @@
 pub mod accum_gene;
 pub mod actor;
+pub mod api_server;
 pub mod cli;
 pub mod cli_interface;
 pub mod director;
@@ -10,7 +11,6 @@ pub mod json_decoder;
 pub mod message;
 pub mod nvtime;
 pub mod operator;
-pub mod server;
 pub mod state_actor;
 pub mod stdin_actor;
 pub mod stdout_actor;

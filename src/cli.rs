@@ -1,28 +1,41 @@
+use crate::actor::Handle;
+use crate::api_server::serve;
 use crate::director;
 use crate::gene::GeneType;
 use crate::json_decoder;
 use crate::message::Message;
 use crate::message::Message::EndOfStream;
 use crate::message::MtHint;
-use crate::server::serve;
 use crate::stdin_actor;
 use crate::stdout_actor;
 use crate::store_actor_sqlite;
 use clap::Command;
 use clap_complete::{generate, Generator};
 use std::io;
+use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-//} => run_serve(&runtime, port, interface, uipath, disable_ui),
 pub fn run_serve(
     runtime: &Runtime,
     port: Option<u16>,
     interface: Option<String>,
     external_host: Option<String>,
+    namespace: String,
     uipath: Option<String>,
     disable_ui: Option<bool>,
+    write_ahead_logging: OptionVariant,
+    disable_dupe_detection: OptionVariant,
 ) {
-    let result = run_async_serve(port, interface, external_host, uipath, disable_ui);
+    let result = run_async_serve(
+        port,
+        interface,
+        external_host,
+        namespace,
+        uipath,
+        disable_ui,
+        write_ahead_logging,
+        disable_dupe_detection,
+    );
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
@@ -31,14 +44,52 @@ pub fn run_serve(
     }
 }
 
+fn setup_server_actor(
+    db_file_prefix: String,
+    namespace: String,
+    write_ahead_logging: OptionVariant,
+    disable_dupe_detection: OptionVariant,
+) -> Arc<Handle> {
+    let store_actor = store_actor_sqlite::new(
+        8,
+        db_file_prefix,
+        write_ahead_logging == OptionVariant::On,
+        disable_dupe_detection == OptionVariant::On,
+    );
+
+    let director_w_persist = director::new(&namespace, 8, None, Some(store_actor));
+
+    let nv = json_decoder::new(8, director_w_persist);
+
+    Arc::new(nv)
+}
+
 async fn run_async_serve(
     port: Option<u16>,
     interface: Option<String>,
     external_host: Option<String>,
+    namespace: String,
     uipath: Option<String>,
     disable_ui: Option<bool>,
+    write_ahead_logging: OptionVariant,
+    disable_dupe_detection: OptionVariant,
 ) -> Result<(), String> {
-    match serve(interface, port, external_host, uipath, disable_ui).await {
+    let shared_handle: Arc<Handle> = setup_server_actor(
+        namespace.clone(),
+        namespace,
+        write_ahead_logging,
+        disable_dupe_detection,
+    );
+    match serve(
+        shared_handle,
+        interface,
+        port,
+        external_host,
+        uipath,
+        disable_ui,
+    )
+    .await
+    {
         Ok(()) => Ok(()),
         e => {
             log::error!("{:?}", e);
@@ -54,7 +105,7 @@ pub fn update(
     silent: OptionVariant,
     memory_only: OptionVariant,
     write_ahead_logging: OptionVariant,
-    allow_dupelicates: OptionVariant,
+    disable_dupe_detection: OptionVariant,
 ) {
     let result = run_async_update(
         namespace,
@@ -62,7 +113,7 @@ pub fn update(
         silent,
         memory_only,
         write_ahead_logging,
-        allow_dupelicates,
+        disable_dupe_detection,
     );
     match runtime.block_on(result) {
         Ok(_) => {}
@@ -78,7 +129,7 @@ async fn run_async_update(
     silent: OptionVariant,
     memory_only: OptionVariant,
     write_ahead_logging: OptionVariant,
-    allow_duplicates: OptionVariant,
+    disable_dupe_detection: OptionVariant,
 ) -> Result<(), String> {
     let output = match silent {
         OptionVariant::Off => Some(stdout_actor::new(bufsz)),
@@ -90,7 +141,7 @@ async fn run_async_update(
             bufsz,
             namespace.clone(),
             write_ahead_logging == OptionVariant::On,
-            allow_duplicates == OptionVariant::On,
+            disable_dupe_detection == OptionVariant::On,
         )),
         OptionVariant::On => None,
     };

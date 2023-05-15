@@ -1223,6 +1223,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "env_logger",
+ "futures",
  "glob",
  "log",
  "petgraph",

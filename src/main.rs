@@ -53,26 +53,54 @@ fn main() {
             port,
             interface,
             external_host,
+            namespace,
             uipath,
             disable_ui,
-        } => run_serve(&runtime, port, interface, external_host, uipath, disable_ui),
+            disable_wal,
+            disable_duplicate_detection,
+        } => {
+            let wal = match disable_wal {
+                Some(true) => OptionVariant::Off,
+                Some(false) => OptionVariant::On,
+                _ => OptionVariant::On,
+            };
+            let disable_duplicate_detection = match disable_duplicate_detection {
+                Some(true) => OptionVariant::On,
+                Some(false) => OptionVariant::Off,
+                _ => OptionVariant::On,
+            };
+            run_serve(
+                &runtime,
+                port,
+                interface,
+                external_host,
+                namespace,
+                uipath,
+                disable_ui,
+                wal,
+                disable_duplicate_detection,
+            );
+        }
         Commands::Update {
             namespace,
             silent,
-            wal,
-            allow_duplicates,
+            disable_wal,
+            disable_duplicate_detection,
         } => {
             let silent = match silent {
                 Some(true) => OptionVariant::On,
+                Some(false) => OptionVariant::Off,
                 _ => OptionVariant::Off,
             };
             let memory_only = memory_only.unwrap_or(OptionVariant::Off);
-            let wal = match wal {
-                Some(true) => OptionVariant::On,
-                _ => OptionVariant::Off,
+            let wal = match disable_wal {
+                Some(true) => OptionVariant::Off,
+                Some(false) => OptionVariant::On,
+                _ => OptionVariant::On,
             };
-            let allow_duplicates = match allow_duplicates {
+            let disable_duplicate_detection = match disable_duplicate_detection {
                 Some(true) => OptionVariant::On,
+                Some(false) => OptionVariant::Off,
                 _ => OptionVariant::Off,
             };
             update(
@@ -82,7 +110,7 @@ fn main() {
                 silent,
                 memory_only,
                 wal,
-                allow_duplicates,
+                disable_duplicate_detection,
             );
         }
         Commands::Inspect { path } => inspect(path, bufsz, &runtime),
