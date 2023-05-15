@@ -31,6 +31,9 @@ enum PostResponse {
 
     #[oai(status = 404)]
     NotFound(PlainText<String>),
+
+    #[oai(status = 500)]
+    InternalServerError(PlainText<String>),
 }
 
 #[derive(ApiResponse)]
@@ -40,6 +43,9 @@ enum GetResponse {
 
     #[oai(status = 404)]
     NotFound(PlainText<String>),
+
+    #[oai(status = 500)]
+    InternalServerError(PlainText<String>),
 }
 
 struct NvApi;
@@ -59,7 +65,10 @@ impl<'a> FromRequest<'a> for SharedHandle {
         log::debug!("from_request");
         match req.data::<Arc<Handle>>() {
             Some(shared_handle) => Ok(SharedHandle(Arc::clone(&shared_handle))),
-            None => Err(Error::from_string("error", StatusCode::BAD_REQUEST)),
+            None => Err(Error::from_string(
+                "error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )),
         }
     }
 }
@@ -94,21 +103,28 @@ impl NvApi {
                     values,
                 } = r
                 {
-                    Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
-                        datetime: datetime.to_string(),
-                        path,
-                        values,
-                    })))
+                    if values.is_empty() {
+                        Ok(GetResponse::NotFound(PlainText(format!(
+                            "No observations found for id `{}`",
+                            id.0
+                        ))))
+                    } else {
+                        Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
+                            datetime: datetime.to_string(),
+                            path,
+                            values,
+                        })))
+                    }
                 } else {
-                    Ok(GetResponse::NotFound(PlainText(format!(
-                        "todo `{}` not found ha ha too",
-                        id.0
+                    Ok(GetResponse::InternalServerError(PlainText(format!(
+                        "id: {} error: {}",
+                        id.0, r
                     ))))
                 }
             }
-            Err(e) => Ok(GetResponse::NotFound(PlainText(format!(
-                "todo `{}` not found?",
-                id.0
+            Err(e) => Ok(GetResponse::InternalServerError(PlainText(format!(
+                "id: {} error: {}",
+                id.0, e
             )))),
         }
     }
@@ -140,21 +156,28 @@ impl NvApi {
                     values,
                 } = r
                 {
-                    Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
-                        datetime: datetime.to_string(),
-                        path,
-                        values,
-                    })))
+                    if values.is_empty() {
+                        Ok(PostResponse::NotFound(PlainText(format!(
+                            "No actor resurected for id `{}`",
+                            id.0
+                        ))))
+                    } else {
+                        Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
+                            datetime: datetime.to_string(),
+                            path,
+                            values,
+                        })))
+                    }
                 } else {
-                    Ok(PostResponse::NotFound(PlainText(format!(
-                        "todo `{}` not found ha ha too",
-                        id.0
+                    Ok(PostResponse::InternalServerError(PlainText(format!(
+                        "id: {} error: {}",
+                        id.0, r
                     ))))
                 }
             }
-            Err(e) => Ok(PostResponse::NotFound(PlainText(format!(
-                "todo `{}` not found?",
-                id.0
+            Err(e) => Ok(PostResponse::InternalServerError(PlainText(format!(
+                "id: {} error: {}",
+                id.0, e
             )))),
         }
     }
