@@ -5,6 +5,8 @@ use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,
     RequestBody, Result, Route,
 };
+use serde::Serialize;
+use serde_json::to_string;
 use std::ops::Deref;
 
 use poem_openapi::{
@@ -15,11 +17,20 @@ use poem_openapi::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[derive(Object)]
+#[derive(Object, Serialize)]
 struct ApiStateReport {
-    datetime: String, // todo: what kind of datetime is supported in Object?
+    datetime: String,
     path: String,
-    values: HashMap<i32, f64>,
+    values: HashMap<i32, f64>, // TODO: why does the api ui show this as a String, Number map?
+}
+
+#[derive(ApiResponse)]
+enum PostResponse {
+    #[oai(status = 200)]
+    ApiStateReport(Json<ApiStateReport>),
+
+    #[oai(status = 404)]
+    NotFound(PlainText<String>),
 }
 
 #[derive(ApiResponse)]
@@ -53,19 +64,25 @@ impl<'a> FromRequest<'a> for SharedHandle {
     }
 }
 
+// TODO: /actors/building1/floor10/room5/mymachine
+
 #[OpenApi]
 impl NvApi {
-    /// Find item by id
-    #[oai(path = "/nv/:id", method = "get")]
+    #[oai(path = "/:namespace/:id", method = "get")]
     async fn get(
         &self,
         nv: Data<&SharedHandle>,
-        id: Path<i64>,
+        namespace: Path<String>,
+        id: Path<String>,
     ) -> Result<GetResponse, poem::Error> {
-        log::debug!("get");
+        log::debug!("get {}/{}", namespace.as_str(), id.as_str());
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: "{ \"path\": \"/actors/one\" }".to_string(),
+            text: format!(
+                "{{ \"path\": \"/{}/{}\" }}",
+                namespace.as_str(),
+                id.as_str()
+            ),
             path: None,
             hint: MtHint::Query,
         };
@@ -90,6 +107,52 @@ impl NvApi {
                 }
             }
             Err(e) => Ok(GetResponse::NotFound(PlainText(format!(
+                "todo `{}` not found?",
+                id.0
+            )))),
+        }
+    }
+
+    #[oai(path = "/:namespace/:id", method = "post")]
+    async fn post(
+        &self,
+        nv: Data<&SharedHandle>,
+        namespace: Path<String>,
+        id: Path<String>,
+        body: Json<ApiStateReport>,
+    ) -> Result<PostResponse, poem::Error> {
+        log::debug!("post {}/{}", namespace.as_str(), id.as_str());
+        // record observation
+        let body_str = to_string(&body.0).unwrap_or_else(|e| {
+            log::error!("Failed to serialize JSON: {:?}", e);
+            String::new()
+        });
+        let cmd: Message<f64> = Message::Content {
+            text: body_str,
+            path: None,
+            hint: MtHint::Update,
+        };
+        match nv.ask(cmd).await {
+            Ok(r) => {
+                if let Message::StateReport {
+                    datetime,
+                    path,
+                    values,
+                } = r
+                {
+                    Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
+                        datetime: datetime.to_string(),
+                        path,
+                        values,
+                    })))
+                } else {
+                    Ok(PostResponse::NotFound(PlainText(format!(
+                        "todo `{}` not found ha ha too",
+                        id.0
+                    ))))
+                }
+            }
+            Err(e) => Ok(PostResponse::NotFound(PlainText(format!(
                 "todo `{}` not found?",
                 id.0
             )))),

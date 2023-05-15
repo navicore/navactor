@@ -58,10 +58,13 @@ pub enum Commands {
     Update {
         #[arg(short, long, action = clap::ArgAction::SetTrue, help = "No output to console.", long_help = "Supress logging for slightly improved performance if you are loading a lot of piped data to a physical db file.")]
         silent: Option<bool>,
+
         #[arg(short, long, action = clap::ArgAction::SetTrue, help = "Write Ahead Logging", long_help = "Enable Write Ahead Logging (WAL) for performance improvements for use cases with frequent writes", default_value = "false")]
         disable_wal: Option<bool>,
-        #[arg(long, action = clap::ArgAction::Set, long_help = "the director and db file to default to")]
+
+        #[arg(short, long, action = clap::ArgAction::Set, long_help = "the director and db file to default to", default_value = "actors")]
         namespace: String,
+
         #[arg(long, action = clap::ArgAction::SetTrue, help = "Accept path+datetime collisions", long_help = "The journal stores and replays events in the order that they arrive but will ignore events that have a path and observation timestamp previously recorded - this is the best option for consistency and performance.  With 'disable-duplicate-detection' flag, the journal will accept observations regardless of the payload timestamp - this is good for testing and best for devices with unreliable notions of time.", default_value = "false")]
         disable_duplicate_detection: Option<bool>,
     },

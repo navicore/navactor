@@ -50,8 +50,6 @@ fn setup_server_actor(
     write_ahead_logging: OptionVariant,
     disable_dupe_detection: OptionVariant,
 ) -> Arc<Handle> {
-    let output_actor = stdout_actor::new(8);
-
     let store_actor = store_actor_sqlite::new(
         8,
         db_file_prefix,
@@ -59,7 +57,7 @@ fn setup_server_actor(
         disable_dupe_detection == OptionVariant::On,
     );
 
-    let director_w_persist = director::new(&namespace, 8, Some(output_actor), Some(store_actor));
+    let director_w_persist = director::new(&namespace, 8, None, Some(store_actor));
 
     let nv = json_decoder::new(8, director_w_persist);
 
