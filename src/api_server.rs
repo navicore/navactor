@@ -32,6 +32,9 @@ enum PostResponse {
     #[oai(status = 404)]
     NotFound(PlainText<String>),
 
+    #[oai(status = 409)]
+    ConstraintViolation(PlainText<String>),
+
     #[oai(status = 500)]
     InternalServerError(PlainText<String>),
 }
@@ -150,33 +153,61 @@ impl NvApi {
         };
         match nv.ask(cmd).await {
             Ok(r) => {
-                if let Message::StateReport {
-                    datetime,
-                    path,
-                    values,
-                } = r
-                {
-                    if values.is_empty() {
-                        Ok(PostResponse::NotFound(PlainText(format!(
-                            "No actor resurected for id `{}`",
-                            id.0
-                        ))))
-                    } else {
-                        Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
-                            datetime: datetime.to_string(),
-                            path,
-                            values,
-                        })))
+                match r.clone() {
+                    Message::StateReport {
+                        datetime,
+                        path,
+                        values,
+                    } => {
+                        if values.is_empty() {
+                            Ok(PostResponse::NotFound(PlainText(format!(
+                                "No actor resurected for id `{}`",
+                                id.0
+                            ))))
+                        } else {
+                            Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
+                                datetime: datetime.to_string(),
+                                path,
+                                values,
+                            })))
+                        }
                     }
-                } else {
-                    Ok(PostResponse::InternalServerError(PlainText(format!(
-                        "id: {} error: {}",
+                    Message::ConstraintViolation {} => Ok(PostResponse::ConstraintViolation(
+                        PlainText(format!("constraint violation for id: {} ", id.0)),
+                    )),
+                    e => Ok(PostResponse::InternalServerError(PlainText(format!(
+                        "ee id: {} error: {}",
                         id.0, r
-                    ))))
+                    )))),
                 }
+
+                // if let Message::StateReport {
+                //     datetime,
+                //     path,
+                //     values,
+                // } = r
+                // {
+                //     if values.is_empty() {
+                //         Ok(PostResponse::NotFound(PlainText(format!(
+                //             "No actor resurected for id `{}`",
+                //             id.0
+                //         ))))
+                //     } else {
+                //         Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
+                //             datetime: datetime.to_string(),
+                //             path,
+                //             values,
+                //         })))
+                //     }
+                // } else {
+                //     Ok(PostResponse::InternalServerError(PlainText(format!(
+                //         "e1 id: {} error: {}",
+                //         id.0, r
+                //     ))))
+                // }
             }
             Err(e) => Ok(PostResponse::InternalServerError(PlainText(format!(
-                "id: {} error: {}",
+                "e2 id: {} error: {}!",
                 id.0, e
             )))),
         }

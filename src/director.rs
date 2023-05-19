@@ -226,7 +226,11 @@ impl Actor for Director {
 }
 
 /// This function returns true once the newly resurrected actor reads all its journal.
-async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
+/// TODO: needs to return a result
+async fn journal_message(
+    message: Message<f64>,
+    store_actor: &Option<Handle>,
+) -> Result<Message<f64>, NvError> {
     if let Some(store_actor) = store_actor {
         log::trace!("journal_message {message}");
         // jrnl the new msg
@@ -234,27 +238,40 @@ async fn journal_message(message: Message<f64>, store_actor: &Option<Handle>) ->
         match jrnl_msg {
             Ok(r) => match r {
                 // If the message was successfully journalled, it is safe to send it to the actor to process
-                Message::EndOfStream {} => {
+                Message::Persisted {} => {
                     // successfully jrnled the msg, it is now safe to
                     // send it to the actor to process
                     log::trace!("jrnl msg successful - EndOfStream received");
-                    true
+                    Ok(r)
                 }
+                Message::ConstraintViolation {} => {
+                    // successfully jrnled the msg, it is now safe to
+                    // send it to the actor to process
+                    log::debug!("jrnl msg unsuccessful - ConstraintViolation received");
+                    // todo: can I call respond_or_log_error from here? ejs
+                    // todo: can I call respond_or_log_error from here? ejs
+                    // todo: can I call respond_or_log_error from here? ejs
+                    // todo: can I call respond_or_log_error from here? ejs
+                    //respond_or_log_error(respond_to, Ok(r.clone()));
+                    Ok(r)
+                }
+
                 // If the message from the store actor is unexpected, log an error and return false
                 m => {
                     log::error!("Unexpected store message: {m}");
-                    false
+                    Ok(m)
                 }
             },
+            // todo: propogate new Message::ContraintViolation
             Err(e) => {
-                log::warn!("error {e}");
-                false
+                log::error!("error {e}");
+                Err(e)
             }
         }
     } else {
         // If journaling is disabled, just process the message and return true
         log::trace!("journaling messages is disabled - proceeding ok");
-        true
+        Ok(Message::Persisted)
     }
 }
 
@@ -278,16 +295,21 @@ async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Ha
     }
 }
 
-async fn write_jrnl(message: Message<f64>, store_actor: &Option<Handle>) -> bool {
+async fn write_jrnl(
+    message: Message<f64>,
+    store_actor: &Option<Handle>,
+) -> Result<Message<f64>, NvError> {
     match message.clone() {
         Message::Update { path: _, .. } => {
             log::trace!("write_jrnl");
             journal_message(message.clone(), store_actor).await
         }
-        Message::Query { path: _, .. } => true,
+        Message::Query { path: _, .. } => Ok(Message::Persisted),
         m => {
             log::warn!("unexpected message: {m}");
-            false
+            Err(NvError {
+                reason: "unexpected msg".to_string(),
+            })
         }
     }
 }
@@ -451,17 +473,34 @@ impl Director {
                         .ok();
                 }
                 let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
-                if jrnled {
-                    send_to_actor(message, respond_to, &actor, &self.output).await;
-                };
+                match jrnled {
+                    Ok(Message::Persisted) => {
+                        send_to_actor(message, respond_to, &actor, &self.output).await;
+                    }
+                    Ok(Message::ConstraintViolation) => {
+                        respond_or_log_error(respond_to, Ok(Message::ConstraintViolation {}));
+                    }
+                    _ => {
+                        respond_or_log_error(respond_to, jrnled);
+                    }
+                }
                 entry.insert(actor); // put it where you can find it again
             }
             Entry::Occupied(entry) => {
                 log::trace!("handle_update_or_query found live instance");
                 let actor = entry.get();
                 let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
-                if jrnled {
-                    send_to_actor(message, respond_to, actor, &self.output).await;
+                // todo: return meaningful errors
+                match jrnled {
+                    Ok(Message::Persisted) => {
+                        send_to_actor(message, respond_to, actor, &self.output).await;
+                    }
+                    Ok(Message::ConstraintViolation) => {
+                        respond_or_log_error(respond_to, Ok(Message::ConstraintViolation {}));
+                    }
+                    _ => {
+                        respond_or_log_error(respond_to, jrnled);
+                    }
                 };
             }
         };

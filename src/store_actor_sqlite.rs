@@ -29,6 +29,7 @@ use crate::message::NvResult;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;
+use sqlx::error::DatabaseError;
 use sqlx::Row;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
@@ -118,6 +119,7 @@ async fn insert_update(
     {
         Ok(_) => Ok(()),
         Err(e) => {
+            // consider handling types of errors differently, ie: constraint violation is "debug"
             log::warn!("jrnling for {} failed: {:?}", path, e);
             Err(e)
         }
@@ -208,14 +210,35 @@ async fn handle_update(
     } else {
         datetime
     };
+
+    // this is bad ... figure out how to combine the extractor and the try_downcast_ref
     match insert_update(dbconn, &path, dt, sequence, values).await {
-        Ok(_) => respond_or_log_error(respond_to, Ok(Message::EndOfStream {})),
-        Err(e) => respond_or_log_error(
-            respond_to,
-            Err(NvError {
-                reason: e.to_string(),
-            }),
-        ),
+        Ok(_) => respond_or_log_error(respond_to, Ok(Message::Persisted {})),
+        Err(e) => {
+            let reason = e.to_string();
+            match e {
+                sqlx::Error::Database(db_error) => {
+                    if let Some(sqlite_error) =
+                        db_error.try_downcast_ref::<sqlx::sqlite::SqliteError>()
+                    {
+                        if sqlite_error.code().as_deref() == Some("1555") {
+                            // handle constraint violation here
+                            respond_or_log_error(respond_to, Ok(Message::ConstraintViolation {}));
+                        } else {
+                            // handle other Sqlite errors here
+                            respond_or_log_error(respond_to, Err(NvError { reason }))
+                        }
+                    } else {
+                        // handle other types of errors here
+                        respond_or_log_error(respond_to, Err(NvError { reason }))
+                    }
+                }
+                _ => {
+                    // handle other types of sqlx::Error here
+                    respond_or_log_error(respond_to, Err(NvError { reason }))
+                }
+            }
+        }
     }
 }
 

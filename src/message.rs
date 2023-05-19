@@ -94,7 +94,10 @@ impl fmt::Display for MtHint {
 #[derive(Debug, Clone)]
 pub enum Message<T> {
     /// 'Query' is usually the 'ask' payload.  
-    Query { path: String, hint: MtHint },
+    Query {
+        path: String,
+        hint: MtHint,
+    },
     /// 'Update' is usually the 'tell' payload
     Update {
         datetime: OffsetDateTime,
@@ -111,15 +114,22 @@ pub enum Message<T> {
     /// their state from event source replays when they are first instantiated.
     /// EndOfStream is used to complete the jrnl stream at init time.
     EndOfStream {},
+    Persisted,
+    ConstraintViolation,
     /// InitCmd instructs the actor to flip into init mode and recalculate its
     /// state from the incoming eventstream using a tokio receiver in the
     /// envelope delivering the InitCmd.
-    InitCmd { hint: MtHint },
+    InitCmd {
+        hint: MtHint,
+    },
     /// LoadCmd is sent to the persistence actor that will use the path to
     /// read and send all the actor's previous events to the new instantiation of
     /// that actor.  the tokio "sender" is presented to the actor looking up the
     /// events in the envelope delivering the LoadCmd.
-    LoadCmd { path: String, hint: MtHint },
+    LoadCmd {
+        path: String,
+        hint: MtHint,
+    },
     /// ReadAllCmd and PrintOneCmd orchestrate reads from stdin and writes to
     /// stdout in cli use cases
     ReadAllCmd {},
@@ -148,6 +158,8 @@ impl<T> fmt::Display for Message<T> {
             Self::ReadAllCmd {} => "[ReadAllCmd]".to_string(),
             Self::InitCmd { hint } => format!("[InitCmd {hint}]"),
             Self::EndOfStream {} => "[EndOfStream]".to_string(),
+            Self::Persisted {} => "[Persisted]".to_string(),
+            Self::ConstraintViolation {} => "[Contraint Violation]".to_string(),
             Self::StateReport { .. } => "[StateReport]".to_string(),
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
