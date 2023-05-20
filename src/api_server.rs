@@ -1,3 +1,4 @@
+#![allow(clippy::useless_let_if_seq)]
 use crate::actor::Handle;
 use crate::message::Message;
 use crate::message::MtHint;
@@ -21,7 +22,7 @@ use std::sync::Arc;
 struct ApiStateReport {
     datetime: String,
     path: String,
-    values: HashMap<i32, f64>, // TODO: why does the api ui show this as a String, Number map?
+    values: HashMap<i32, f64>,
 }
 
 #[derive(ApiResponse)]
@@ -66,13 +67,16 @@ impl Deref for SharedHandle {
 impl<'a> FromRequest<'a> for SharedHandle {
     async fn from_request(req: &'a Request, _body: &mut RequestBody) -> Result<Self> {
         log::debug!("from_request");
-        match req.data::<Arc<Handle>>() {
-            Some(shared_handle) => Ok(SharedHandle(Arc::clone(&shared_handle))),
-            None => Err(Error::from_string(
-                "error",
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )),
-        }
+
+        req.data::<Arc<Handle>>().map_or_else(
+            || {
+                Err(Error::from_string(
+                    "error",
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ))
+            },
+            |shared_handle| Ok(Self(Arc::clone(shared_handle))),
+        )
     }
 }
 
@@ -99,35 +103,26 @@ impl NvApi {
             hint: MtHint::Query,
         };
         match nv.ask(cmd).await {
-            Ok(r) => {
-                if let Message::StateReport {
-                    datetime,
-                    path,
-                    values,
-                } = r
-                {
-                    if values.is_empty() {
-                        Ok(GetResponse::NotFound(PlainText(format!(
-                            "No observations found for id `{}`",
-                            id.0
-                        ))))
-                    } else {
-                        Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
-                            datetime: datetime.to_string(),
-                            path,
-                            values,
-                        })))
-                    }
-                } else {
-                    Ok(GetResponse::InternalServerError(PlainText(format!(
-                        "id: {} error: {}",
-                        id.0, r
-                    ))))
-                }
-            }
-            Err(e) => Ok(GetResponse::InternalServerError(PlainText(format!(
-                "id: {} error: {}",
-                id.0, e
+            Ok(Message::StateReport {
+                datetime: _,
+                path: _,
+                values,
+            }) if values.is_empty() => Ok(GetResponse::NotFound(PlainText(format!(
+                "No observations for id `{}`",
+                id.0
+            )))),
+            Ok(Message::StateReport {
+                datetime,
+                path,
+                values,
+            }) => Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
+                datetime: datetime.to_string(),
+                path,
+                values,
+            }))),
+            m => Ok(GetResponse::InternalServerError(PlainText(format!(
+                "server error for id {}: {:?}",
+                id.0, m
             )))),
         }
     }
@@ -152,62 +147,28 @@ impl NvApi {
             hint: MtHint::Update,
         };
         match nv.ask(cmd).await {
-            Ok(r) => {
-                match r.clone() {
-                    Message::StateReport {
-                        datetime,
-                        path,
-                        values,
-                    } => {
-                        if values.is_empty() {
-                            Ok(PostResponse::NotFound(PlainText(format!(
-                                "No actor resurected for id `{}`",
-                                id.0
-                            ))))
-                        } else {
-                            Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
-                                datetime: datetime.to_string(),
-                                path,
-                                values,
-                            })))
-                        }
-                    }
-                    Message::ConstraintViolation {} => Ok(PostResponse::ConstraintViolation(
-                        PlainText(format!("constraint violation for id: {} ", id.0)),
-                    )),
-                    e => Ok(PostResponse::InternalServerError(PlainText(format!(
-                        "ee id: {} error: {}",
-                        id.0, r
-                    )))),
-                }
-
-                // if let Message::StateReport {
-                //     datetime,
-                //     path,
-                //     values,
-                // } = r
-                // {
-                //     if values.is_empty() {
-                //         Ok(PostResponse::NotFound(PlainText(format!(
-                //             "No actor resurected for id `{}`",
-                //             id.0
-                //         ))))
-                //     } else {
-                //         Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
-                //             datetime: datetime.to_string(),
-                //             path,
-                //             values,
-                //         })))
-                //     }
-                // } else {
-                //     Ok(PostResponse::InternalServerError(PlainText(format!(
-                //         "e1 id: {} error: {}",
-                //         id.0, r
-                //     ))))
-                // }
-            }
-            Err(e) => Ok(PostResponse::InternalServerError(PlainText(format!(
-                "e2 id: {} error: {}!",
+            Ok(Message::StateReport {
+                datetime: _,
+                path: _,
+                values,
+            }) if values.is_empty() => Ok(PostResponse::NotFound(PlainText(format!(
+                "No actor resurected with id `{}`",
+                id.0
+            )))),
+            Ok(Message::StateReport {
+                datetime,
+                path,
+                values,
+            }) => Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
+                datetime: datetime.to_string(),
+                path,
+                values,
+            }))),
+            Ok(Message::ConstraintViolation {}) => Ok(PostResponse::ConstraintViolation(
+                PlainText(format!("contraint violation with id {}", id.0)),
+            )),
+            e => Ok(PostResponse::InternalServerError(PlainText(format!(
+                "server error with id {}: {:?}",
                 id.0, e
             )))),
         }
@@ -216,10 +177,15 @@ impl NvApi {
 
 impl Clone for SharedHandle {
     fn clone(&self) -> Self {
-        SharedHandle(Arc::clone(&self.0))
+        Self(Arc::clone(&self.0))
     }
 }
 
+/// start a server on port and interface
+///
+/// # Errors
+///
+/// Returns `Err` if server can not be started
 pub async fn serve<'a>(
     nv: Arc<Handle>,
     interface: Option<String>,
@@ -229,24 +195,25 @@ pub async fn serve<'a>(
     disable_ui: Option<bool>,
 ) -> Result<(), std::io::Error> {
     let p = port.unwrap_or(8800);
-    let i = interface.unwrap_or("127.0.0.1".to_string());
-    let disui = disable_ui.unwrap_or(false);
-    let ifc_host_str = format!("{}:{}", i, p);
-    let default_external_host_str = format!("http://localhost:{}", p);
-    let external_host_str = external_host.unwrap_or(default_external_host_str);
-    let swagger_api_target = format!("{}/api", external_host_str);
+    let i = interface.unwrap_or_else(|| "127.0.0.1".to_string());
 
-    log::debug!("navactor server starting on {}:{}.", i, p);
+    let disui = disable_ui.unwrap_or(false);
+    let ifc_host_str = format!("{i}:{p}");
+    let default_external_host_str = format!("http://localhost:{p}");
+    let external_host_str = external_host.unwrap_or(default_external_host_str);
+    let swagger_api_target = format!("{external_host_str}/api");
+
+    log::debug!("navactor server starting on {i}:{p}.");
 
     let api_service = OpenApiService::new(NvApi, clap::crate_name!(), clap::crate_version!())
         .server(swagger_api_target.clone());
 
     let app = {
         let uip = uipath
-            .unwrap_or("".to_string())
+            .unwrap_or_default()
             .trim_start_matches('/')
             .to_string();
-        let swagger_ui_host = format!("{}/{}", external_host_str, uip);
+        let swagger_ui_host = format!("{external_host_str}/{uip}");
         log::debug!("swagger UI is available at {}.", swagger_ui_host);
         let ui = api_service.swagger_ui();
 
@@ -256,7 +223,7 @@ pub async fn serve<'a>(
                 .data(SharedHandle(nv.clone()))
         } else {
             Route::new()
-                .nest(format!("/{}", uip), ui)
+                .nest(format!("/{uip}"), ui)
                 .nest("/api", api_service)
                 .data(SharedHandle(nv.clone()))
         }

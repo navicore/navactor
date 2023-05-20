@@ -1,6 +1,9 @@
 use clap::{CommandFactory, Parser};
-use navactor::cli::*;
-use navactor::cli_interface::*;
+use navactor::cli::{
+    configure, explain, inspect, print_completions, run_serve, update, HttpServerConfig,
+    OptionVariant,
+};
+use navactor::cli_interface::{Cli, Commands};
 use tokio::runtime::Runtime;
 
 /// This is the `main` entry point for the application. It imports various Rust crates and a set of
@@ -25,7 +28,8 @@ use tokio::runtime::Runtime;
 /// The `completions` command is used by shell completion functionality to generate command-line
 /// completion suggestions.
 ///
-/// The `serve` command is launches a REST API and OpenAPI UI is optionally available via browser.
+/// The `serve` command is launches a REST API and `OpenAPI` UI is optionally available via
+/// browser.
 ///
 /// The entry point for the application is the main function which reads the command-line arguments
 /// and invokes the appropriate `subcommand` functions.
@@ -61,20 +65,21 @@ fn main() {
         } => {
             let wal = match disable_wal {
                 Some(true) => OptionVariant::Off,
-                Some(false) => OptionVariant::On,
                 _ => OptionVariant::On,
             };
             let disable_duplicate_detection = match disable_duplicate_detection {
-                Some(true) => OptionVariant::On,
                 Some(false) => OptionVariant::Off,
                 _ => OptionVariant::On,
             };
-            run_serve(
-                &runtime,
+            let server_config = HttpServerConfig {
                 port,
                 interface,
                 external_host,
                 namespace,
+            };
+            run_serve(
+                server_config,
+                &runtime,
                 uipath,
                 disable_ui,
                 wal,
@@ -89,18 +94,15 @@ fn main() {
         } => {
             let silent = match silent {
                 Some(true) => OptionVariant::On,
-                Some(false) => OptionVariant::Off,
                 _ => OptionVariant::Off,
             };
             let memory_only = memory_only.unwrap_or(OptionVariant::Off);
             let wal = match disable_wal {
                 Some(true) => OptionVariant::Off,
-                Some(false) => OptionVariant::On,
                 _ => OptionVariant::On,
             };
             let disable_duplicate_detection = match disable_duplicate_detection {
                 Some(true) => OptionVariant::On,
-                Some(false) => OptionVariant::Off,
                 _ => OptionVariant::Off,
             };
             update(

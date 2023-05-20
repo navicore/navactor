@@ -15,22 +15,23 @@ use std::io;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
+pub struct HttpServerConfig {
+    pub port: Option<u16>,
+    pub interface: Option<String>,
+    pub external_host: Option<String>,
+    pub namespace: String,
+}
+
 pub fn run_serve(
+    server_config: HttpServerConfig,
     runtime: &Runtime,
-    port: Option<u16>,
-    interface: Option<String>,
-    external_host: Option<String>,
-    namespace: String,
     uipath: Option<String>,
     disable_ui: Option<bool>,
     write_ahead_logging: OptionVariant,
     disable_dupe_detection: OptionVariant,
 ) {
     let result = run_async_serve(
-        port,
-        interface,
-        external_host,
-        namespace,
+        server_config,
         uipath,
         disable_ui,
         write_ahead_logging,
@@ -46,7 +47,7 @@ pub fn run_serve(
 
 fn setup_server_actor(
     db_file_prefix: String,
-    namespace: String,
+    namespace: &str,
     write_ahead_logging: OptionVariant,
     disable_dupe_detection: OptionVariant,
 ) -> Arc<Handle> {
@@ -57,7 +58,7 @@ fn setup_server_actor(
         disable_dupe_detection == OptionVariant::On,
     );
 
-    let director_w_persist = director::new(&namespace, 8, None, Some(store_actor));
+    let director_w_persist = director::new(namespace, 8, None, Some(store_actor));
 
     let nv = json_decoder::new(8, director_w_persist);
 
@@ -65,26 +66,23 @@ fn setup_server_actor(
 }
 
 async fn run_async_serve(
-    port: Option<u16>,
-    interface: Option<String>,
-    external_host: Option<String>,
-    namespace: String,
+    server_config: HttpServerConfig,
     uipath: Option<String>,
     disable_ui: Option<bool>,
     write_ahead_logging: OptionVariant,
     disable_dupe_detection: OptionVariant,
 ) -> Result<(), String> {
     let shared_handle: Arc<Handle> = setup_server_actor(
-        namespace.clone(),
-        namespace,
+        server_config.namespace.clone(),
+        server_config.namespace.as_str(),
         write_ahead_logging,
         disable_dupe_detection,
     );
     match serve(
         shared_handle,
-        interface,
-        port,
-        external_host,
+        server_config.interface,
+        server_config.port,
+        server_config.external_host,
         uipath,
         disable_ui,
     )
@@ -92,8 +90,8 @@ async fn run_async_serve(
     {
         Ok(()) => Ok(()),
         e => {
-            log::error!("{:?}", e);
-            Err(format!("{:?}", e))
+            log::error!("{e:?}");
+            Err(format!("{e:?}"))
         }
     }
 }
@@ -146,7 +144,7 @@ async fn run_async_update(
         OptionVariant::On => None,
     };
 
-    let director_w_persist = director::new(&namespace, bufsz, output, store_actor);
+    let director_w_persist = director::new(namespace.as_str(), bufsz, output, store_actor);
 
     let json_decoder_actor = json_decoder::new(bufsz, director_w_persist);
 
@@ -190,7 +188,7 @@ async fn run_async_configure(
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
 
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+    let director = director::new(path.as_str(), bufsz, None, Some(store_actor));
 
     let gene_type_str = match gene_type {
         GeneType::Accum => "accum",
@@ -246,7 +244,7 @@ async fn run_async_explain(path: String, bufsz: usize) -> Result<(), String> {
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
 
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+    let director = director::new(path.as_str(), bufsz, None, Some(store_actor));
 
     match director
         .ask(Message::Query {
@@ -296,7 +294,7 @@ async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
 
-    let director = director::new(&path.clone(), bufsz, None, Some(store_actor));
+    let director = director::new(path.as_str(), bufsz, None, Some(store_actor));
 
     match director
         .ask(Message::Query {
