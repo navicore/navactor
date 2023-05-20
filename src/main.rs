@@ -1,7 +1,7 @@
 use clap::{CommandFactory, Parser};
+use navactor::api_server::HttpServerConfig;
 use navactor::cli::{
-    configure, explain, inspect, print_completions, run_serve, update, HttpServerConfig,
-    OptionVariant,
+    configure, explain, inspect, print_completions, run_serve, update, OptionVariant,
 };
 use navactor::cli_interface::{Cli, Commands};
 use tokio::runtime::Runtime;

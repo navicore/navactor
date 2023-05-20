@@ -18,6 +18,13 @@ use poem_openapi::{
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub struct HttpServerConfig {
+    pub port: Option<u16>,
+    pub interface: Option<String>,
+    pub external_host: Option<String>,
+    pub namespace: String,
+}
+
 #[derive(Object, Serialize)]
 struct ApiStateReport {
     datetime: String,
@@ -188,19 +195,21 @@ impl Clone for SharedHandle {
 /// Returns `Err` if server can not be started
 pub async fn serve<'a>(
     nv: Arc<Handle>,
-    interface: Option<String>,
-    port: Option<u16>,
-    external_host: Option<String>,
+    server_config: HttpServerConfig,
     uipath: Option<String>,
     disable_ui: Option<bool>,
 ) -> Result<(), std::io::Error> {
-    let p = port.unwrap_or(8800);
-    let i = interface.unwrap_or_else(|| "127.0.0.1".to_string());
+    let p = server_config.port.unwrap_or(8800);
+    let i = server_config
+        .interface
+        .unwrap_or_else(|| "127.0.0.1".to_string());
 
     let disui = disable_ui.unwrap_or(false);
     let ifc_host_str = format!("{i}:{p}");
     let default_external_host_str = format!("http://localhost:{p}");
-    let external_host_str = external_host.unwrap_or(default_external_host_str);
+    let external_host_str = server_config
+        .external_host
+        .unwrap_or(default_external_host_str);
     let swagger_api_target = format!("{external_host_str}/api");
 
     log::debug!("navactor server starting on {i}:{p}.");

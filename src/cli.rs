@@ -1,5 +1,6 @@
 use crate::actor::Handle;
 use crate::api_server::serve;
+use crate::api_server::HttpServerConfig;
 use crate::director;
 use crate::gene::GeneType;
 use crate::json_decoder;
@@ -14,13 +15,6 @@ use clap_complete::{generate, Generator};
 use std::io;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
-
-pub struct HttpServerConfig {
-    pub port: Option<u16>,
-    pub interface: Option<String>,
-    pub external_host: Option<String>,
-    pub namespace: String,
-}
 
 pub fn run_serve(
     server_config: HttpServerConfig,
@@ -78,16 +72,7 @@ async fn run_async_serve(
         write_ahead_logging,
         disable_dupe_detection,
     );
-    match serve(
-        shared_handle,
-        server_config.interface,
-        server_config.port,
-        server_config.external_host,
-        uipath,
-        disable_ui,
-    )
-    .await
-    {
+    match serve(shared_handle, server_config, uipath, disable_ui).await {
         Ok(()) => Ok(()),
         e => {
             log::error!("{e:?}");
