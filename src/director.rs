@@ -11,10 +11,9 @@
 //!functions are responsible for handling messages of different types (`Update`, `Query`,
 //!`EndOfStream`), integrating newly created actors, journaling messages, and forwarding actor
 //!results to an optional output. The `Director` also has a public constructor function that
-//!creates a new handle for the `Director` actor, which is used to send messages to the `Director`.
-//!
-//!The `Director` is also responsible for creating and storing graph edges to support arbitrary
-//!paths.
+//!creates a new handle for the `Director` actor, which is used to send messages to the
+//!`Director`. The `Director` is also responsible for creating and storing graph edges to
+//!support arbitrary paths.
 //!
 //!The `Director` uses other Rust crates and libraries, such as `tokio`, `async_trait`,
 //!`std::collections::HashMap`, and others.
@@ -225,8 +224,7 @@ impl Actor for Director {
     }
 }
 
-/// This function returns true once the newly resurrected actor reads all its journal.
-/// TODO: needs to return a result
+// wrapper to support flow when no persistence is configured
 async fn journal_message(
     message: Message<f64>,
     store_actor: &Option<Handle>,
@@ -234,42 +232,9 @@ async fn journal_message(
     if let Some(store_actor) = store_actor {
         log::trace!("journal_message {message}");
         // jrnl the new msg
-        let jrnl_msg = store_actor.ask(message.clone()).await;
-        match jrnl_msg {
-            Ok(r) => match r {
-                // If the message was successfully journalled, it is safe to send it to the actor to process
-                Message::Persisted {} => {
-                    // successfully jrnled the msg, it is now safe to
-                    // send it to the actor to process
-                    log::trace!("jrnl msg successful - EndOfStream received");
-                    Ok(r)
-                }
-                Message::ConstraintViolation {} => {
-                    // successfully jrnled the msg, it is now safe to
-                    // send it to the actor to process
-                    log::debug!("jrnl msg unsuccessful - ConstraintViolation received");
-                    // todo: can I call respond_or_log_error from here? ejs
-                    // todo: can I call respond_or_log_error from here? ejs
-                    // todo: can I call respond_or_log_error from here? ejs
-                    // todo: can I call respond_or_log_error from here? ejs
-                    //respond_or_log_error(respond_to, Ok(r.clone()));
-                    Ok(r)
-                }
-
-                // If the message from the store actor is unexpected, log an error and return false
-                m => {
-                    log::error!("Unexpected store message: {m}");
-                    Ok(m)
-                }
-            },
-            // todo: propogate new Message::ContraintViolation
-            Err(e) => {
-                log::error!("error {e}");
-                Err(e)
-            }
-        }
+        store_actor.ask(message.clone()).await
     } else {
-        // If journaling is disabled, just process the message and return true
+        // If journaling is explicitly not supported in this deployment return success
         log::trace!("journaling messages is disabled - proceeding ok");
         Ok(Message::Persisted)
     }
@@ -526,7 +491,7 @@ impl Director {
 /// actor handle public constructor
 #[must_use]
 pub fn new(
-    namespace: &String,
+    namespace: &str,
     bufsz: usize,
     output: Option<Handle>,
     store_actor: Option<Handle>,
@@ -540,7 +505,7 @@ pub fn new(
 
     let (sender, receiver) = mpsc::channel(bufsz);
 
-    let actor = Director::new(namespace.clone(), receiver, output, store_actor);
+    let actor = Director::new(namespace.to_string(), receiver, output, store_actor);
 
     let actor_handle = Handle::new(sender);
 

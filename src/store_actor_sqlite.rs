@@ -226,16 +226,16 @@ async fn handle_update(
                             respond_or_log_error(respond_to, Ok(Message::ConstraintViolation {}));
                         } else {
                             // handle other Sqlite errors here
-                            respond_or_log_error(respond_to, Err(NvError { reason }))
+                            respond_or_log_error(respond_to, Err(NvError { reason }));
                         }
                     } else {
                         // handle other types of errors here
-                        respond_or_log_error(respond_to, Err(NvError { reason }))
+                        respond_or_log_error(respond_to, Err(NvError { reason }));
                     }
                 }
                 _ => {
                     // handle other types of sqlx::Error here
-                    respond_or_log_error(respond_to, Err(NvError { reason }))
+                    respond_or_log_error(respond_to, Err(NvError { reason }));
                 }
             }
         }
