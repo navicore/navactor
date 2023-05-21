@@ -5,9 +5,7 @@ use navactor::cli::{
 };
 use navactor::cli_interface::{Cli, Commands};
 use tokio::runtime::Runtime;
-use tracing;
 use tracing::info;
-use tracing_subscriber;
 
 /// This is the `main` entry point for the application. It imports various Rust crates and a set of
 /// local modules that constitute the program.
