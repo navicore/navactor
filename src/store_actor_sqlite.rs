@@ -39,6 +39,11 @@ use std::path::Path;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot::Sender;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
+use tracing::trace;
+use tracing::warn;
 
 // used by instances of the actor trait - TODO should this be here if no actor ifc uses it?
 pub type StoreResult<T> = Result<T, StoreError>;
@@ -83,7 +88,7 @@ async fn insert_gene_mapping(
     {
         Ok(_) => Ok(()),
         Err(e) => {
-            log::warn!("persisting gene mapping for {} failed: {:?}", path, e);
+            warn!("persisting gene mapping for {} failed: {:?}", path, e);
             Err(e)
         }
     }
@@ -110,7 +115,7 @@ async fn insert_update(
     .bind(
         serde_json::to_string(&values)
             .map_err(|e| {
-                log::error!("cannot serialize values: {e:?}");
+                error!("cannot serialize values: {e:?}");
             })
             .ok(),
     )
@@ -120,7 +125,7 @@ async fn insert_update(
         Ok(_) => Ok(()),
         Err(e) => {
             // consider handling types of errors differently, ie: constraint violation is "debug"
-            log::warn!("jrnling for {} failed: {:?}", path, e);
+            warn!("jrnling for {} failed: {:?}", path, e);
             Err(e)
         }
     }
@@ -131,7 +136,7 @@ async fn get_jrnl(dbconn: &SqlitePool, path: &str) -> StoreResult<Vec<Message<f6
     match get_values(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
-            log::error!("cannot load update jrnl from db: {e:?}");
+            error!("cannot load update jrnl from db: {e:?}");
             Err(StoreError {
                 reason: format!("cannot load jrnl from db: {e:?}"),
             })
@@ -144,7 +149,7 @@ async fn get_mappings(dbconn: &SqlitePool, path: &str) -> StoreResult<Vec<Messag
     match get_mappings_for_ns(path, dbconn).await {
         Ok(v) => Ok(v),
         Err(e) => {
-            log::error!("cannot load mappings from db: {e:?}");
+            error!("cannot load mappings from db: {e:?}");
             Err(StoreError {
                 reason: format!("cannot load from db: {e:?}"),
             })
@@ -164,14 +169,14 @@ async fn stream_message(
         match stream_to.send(message).await {
             Ok(_) => (),
             Err(err) => {
-                log::error!("Can not integrate from helper: {}", err);
+                error!("Can not integrate from helper: {}", err);
             }
         }
         if stream_option == StreamOption::Close {
             stream_to.closed().await;
         };
     } else {
-        log::trace!("no stream available for {message}");
+        trace!("no stream available for {message}");
     }
 }
 
@@ -183,7 +188,7 @@ async fn handle_gene_mapping(
 ) {
     match insert_gene_mapping(dbconn, &path, &text).await {
         Ok(_) => {
-            log::debug!("gene_mapping '{path}' -> '{text}' persisted");
+            debug!("gene_mapping '{path}' -> '{text}' persisted");
             respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
         }
         Err(e) => respond_or_log_error(
@@ -259,7 +264,7 @@ async fn handle_load_cmd(
             }
         }
         Err(e) => {
-            log::error!("cannot load jrnl: {path} {e:?}");
+            error!("cannot load jrnl: {path} {e:?}");
         }
     };
     stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
@@ -277,7 +282,7 @@ async fn handle_gene_mapping_load_cmd(
             }
         }
         Err(e) => {
-            log::error!("cannot load gene mapping jrnl: {path} {e:?}");
+            error!("cannot load gene mapping jrnl: {path} {e:?}");
         }
     };
     stream_message(&stream_to, Message::EndOfStream {}, StreamOption::Close).await;
@@ -328,14 +333,14 @@ impl Actor for StoreActor {
                             handle_gene_mapping(path, text, dbconn, respond_to).await;
                         }
                         _ => {
-                            log::error!("path not set");
+                            error!("path not set");
                         }
                     }
                 }
-                m => log::warn!("Unexpected: {m}"),
+                m => warn!("Unexpected: {m}"),
             }
         } else {
-            log::error!("DB not configured");
+            error!("DB not configured");
         }
     }
     async fn start(&mut self) {}
@@ -351,7 +356,7 @@ async fn get_mappings_for_ns(
     path: &str,
     dbconn: &SqlitePool,
 ) -> Result<Vec<Message<f64>>, sqlx::error::Error> {
-    log::debug!("loading mappings for path {path}");
+    debug!("loading mappings for path {path}");
     sqlx::query("SELECT path, text FROM gene_mappings;")
         .bind(path)
         .try_map(|row: sqlx::sqlite::SqliteRow| {
@@ -359,7 +364,7 @@ async fn get_mappings_for_ns(
                 //let path = match from_str(row.get(0)) {
                 Ok(p) => p,
                 Err(e) => {
-                    log::error!("cannot read path");
+                    error!("cannot read path");
                     return Err(sqlx::Error::Decode(Box::new(e)));
                 }
             };
@@ -368,7 +373,7 @@ async fn get_mappings_for_ns(
                 //let text = match from_str(row.get(1)) {
                 Ok(p) => p,
                 Err(e) => {
-                    log::error!("cannot read text");
+                    error!("cannot read text");
                     return Err(sqlx::Error::Decode(Box::new(e)));
                 }
             };
@@ -410,7 +415,7 @@ async fn get_values(
             let dt = match date_parsed.to_ts() {
                 Ok(dt) => dt,
                 Err(e) => {
-                    log::error!("can not parse date - using 'now': {e}");
+                    error!("can not parse date - using 'now': {e}");
                     OffsetDateTime::now_utc()
                 }
             };
@@ -453,7 +458,7 @@ async fn define_gene_mapping_table_if_not_exist(
         })?;
 
     let journal_mode: String = rows[0].get("journal_mode");
-    log::info!("connected to db in journal_mode for mappings: {journal_mode}");
+    info!("connected to db in journal_mode for mappings: {journal_mode}");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS gene_mappings (
@@ -481,7 +486,7 @@ async fn define_updates_table_if_not_exist(db_url: &str, dbconn: &SqlitePool) ->
         })?;
 
     let journal_mode: String = rows[0].get("journal_mode");
-    log::info!("connected to db in journal_mode: {journal_mode}");
+    info!("connected to db in journal_mode: {journal_mode}");
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS updates (
@@ -526,7 +531,7 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<Sq
     let db_path = Path::new(db_url);
     if !db_path.exists() {
         match File::create(db_url) {
-            Ok(_) => log::debug!("File {} has been created", db_url),
+            Ok(_) => debug!("File {} has been created", db_url),
             Err(e) => {
                 return Err(StoreError {
                     reason: format!("Failed to create file {db_url}: {e}"),
@@ -554,7 +559,7 @@ async fn init_db(namespace: String, write_ahead_logging: bool) -> StoreResult<Sq
             }
         }
         Err(e) => {
-            log::error!("cannot connect to db: {e:?}");
+            error!("cannot connect to db: {e:?}");
             Err(StoreError {
                 reason: format!("{e:?}"),
             })
@@ -577,7 +582,7 @@ pub fn new(
         let dbconn = init_db(namespace, write_ahead_logging)
             .await
             .map_err(|e| {
-                log::error!("cannot get dbconn: {e:?}");
+                error!("cannot get dbconn: {e:?}");
             })
             .ok();
 

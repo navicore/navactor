@@ -31,6 +31,9 @@ use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
+use tracing::error;
+use tracing::instrument;
+use tracing::trace;
 
 /// in-mem state for an actor
 pub type State<T> = std::collections::HashMap<i32, T>;
@@ -45,6 +48,7 @@ pub trait Actor {
 }
 
 /// `ActorHandle` is the API for all actors
+#[derive(Debug)]
 pub struct Handle {
     #[doc(hidden)]
     pub sender: mpsc::Sender<Envelope<f64>>,
@@ -58,6 +62,7 @@ impl<'a> Handle {
     // INTERNAL: currently used by builtins (nv actors) implementing
     // actors that forward respond_to in workflows.
     #[doc(hidden)]
+    #[instrument]
     pub async fn send(&self, envelope: Envelope<f64>) -> NvResult<()> {
         self.sender.send(envelope).await.map_err(|e| NvError {
             reason: e.to_string(),
@@ -69,6 +74,7 @@ impl<'a> Handle {
     /// # Errors
     /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// message is not received by the target actor
+    #[instrument]
     pub async fn tell(&self, message: Message<f64>) -> NvResult<()> {
         let envelope = Envelope {
             message,
@@ -76,7 +82,7 @@ impl<'a> Handle {
             ..Default::default()
         };
 
-        log::trace!("tell sending envelope {envelope:?}");
+        trace!("tell sending envelope {envelope:?}");
         self.send(envelope).await
     }
 
@@ -86,6 +92,7 @@ impl<'a> Handle {
     ///
     /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// message is not received and replied to by the target actor
+    #[instrument]
     pub async fn ask(&self, message: Message<f64>) -> NvResult<Message<f64>> {
         let (send, recv) = oneshot::channel();
 
@@ -95,7 +102,7 @@ impl<'a> Handle {
             ..Default::default()
         };
 
-        log::trace!("ask sending envelope: {envelope:?}");
+        trace!("ask sending envelope: {envelope:?}");
         match self.send(envelope).await {
             Ok(_) => recv.await.map_err(|e| NvError {
                 reason: e.to_string(),
@@ -112,6 +119,7 @@ impl<'a> Handle {
     ///
     /// Returns [`NvError`](../message/struct.NvError.html) if the
     /// two actors don't exchange lifecycle info
+    #[instrument]
     pub async fn integrate(
         &self,
         path: String,
@@ -158,7 +166,7 @@ pub fn respond_or_log_error(
             match respond_to.send(result) {
                 Ok(_) => (),
                 Err(err) => {
-                    log::error!("Cannot respond to 'ask' with confirmation: {:?}", err);
+                    error!("Cannot respond to 'ask' with confirmation: {:?}", err);
                 }
             }
         }

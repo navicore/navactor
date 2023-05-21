@@ -6,7 +6,6 @@ use navactor::message::Message;
 use navactor::message::MtHint;
 use navactor::state_actor;
 use std::collections::HashMap;
-use test_log::test;
 use time::OffsetDateTime;
 use tokio::runtime::Runtime;
 

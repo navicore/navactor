@@ -32,6 +32,9 @@ use time::OffsetDateTime;
 use tokio::sync::mpsc;
 extern crate serde;
 extern crate serde_json;
+use tracing::debug;
+use tracing::error;
+use tracing::trace;
 
 pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
@@ -113,7 +116,7 @@ impl JsonDecoder {
         respond_to: Option<tokio::sync::oneshot::Sender<NvResult<Message<f64>>>>,
         datetime: OffsetDateTime,
     ) {
-        log::debug!("processing mapping update");
+        debug!("processing mapping update");
         match extract_gene_mapping_from_json(json_str) {
             Ok(gene_mapping) => {
                 let msg = Message::Content {
@@ -131,7 +134,7 @@ impl JsonDecoder {
                 self.send_or_log_error(senv).await;
             }
             Err(error) => {
-                log::error!("error processing mapping update: {error}");
+                error!("error processing mapping update: {error}");
                 respond_or_log_error(
                     respond_to,
                     Err(NvError {
@@ -150,7 +153,7 @@ impl JsonDecoder {
     ) {
         match extract_values_from_json(json_str) {
             Ok(observations) => {
-                log::trace!("json parsed");
+                trace!("json parsed");
                 match extract_datetime(&observations.datetime) {
                     Ok(dt) => {
                         let msg = Message::Update {
@@ -168,7 +171,7 @@ impl JsonDecoder {
                         self.send_or_log_error(senv).await;
                     }
                     Err(e) => {
-                        log::error!("cannot parse datetime: {e}");
+                        error!("cannot parse datetime: {e}");
                     }
                 }
             }
@@ -191,7 +194,7 @@ impl JsonDecoder {
     ) {
         match extract_path_from_json(json_str) {
             Ok(path_query) => {
-                log::trace!("query json parsed");
+                trace!("query json parsed");
                 let msg = Message::Query {
                     path: path_query.path,
                     hint: MtHint::State,
@@ -222,7 +225,7 @@ impl JsonDecoder {
     {
         match self.output.send(envelope).await {
             Ok(_) => (),
-            Err(e) => log::error!("cannot send: {:?}", e),
+            Err(e) => error!("cannot send: {:?}", e),
         }
     }
 

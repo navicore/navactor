@@ -39,6 +39,11 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
+use tracing::debug;
+use tracing::error;
+use tracing::instrument;
+use tracing::trace;
+use tracing::warn;
 
 // TODO:
 // use rust std Path to update and persist petgraph graph Edges and
@@ -47,6 +52,7 @@ use tokio::sync::oneshot::Sender;
 /// This struct represents a graph director that creates a graph and instantiates all the actors
 /// that it is forwarding commands to. The director also accepts metadata to create and store graph
 /// edges to support arbitrary paths.
+#[derive(Debug)]
 pub struct Director {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
     pub store_actor: Option<Handle>,
@@ -60,8 +66,9 @@ pub struct Director {
 impl Actor for Director {
     // This function is called when an envelope is received by the Director actor
     #[allow(clippy::too_many_lines)]
+    #[instrument]
     async fn handle_envelope(&mut self, envelope: Envelope<f64>) {
-        log::trace!(
+        trace!(
             "director namespace {} handling_envelope {envelope}",
             self.namespace
         );
@@ -74,7 +81,7 @@ impl Actor for Director {
 
         match &message {
             Message::InitCmd { .. } => {
-                log::trace!("{} init started...", self.namespace);
+                trace!("{} init started...", self.namespace);
                 // this is an init so read your old mappings
                 if let Some(mut stream_from) = stream_from {
                     let mut count = 0;
@@ -103,13 +110,12 @@ impl Actor for Director {
                             _ => {}
                         }
                     }
-                    log::trace!("{} init closing stream.", self.namespace);
+                    trace!("{} init closing stream.", self.namespace);
                     stream_from.close();
 
-                    log::debug!(
+                    debug!(
                         "{} finished init with {} remembered mappings",
-                        self.namespace,
-                        count
+                        self.namespace, count
                     );
 
                     respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
@@ -123,12 +129,12 @@ impl Actor for Director {
                 text,
             } => match path {
                 Some(path) => {
-                    log::debug!("setting new mapping: {path} {text}");
+                    debug!("setting new mapping: {path} {text}");
                     self.handle_gene_mapping(path, text, message.clone(), respond_to)
                         .await;
                 }
                 _ => {
-                    log::error!("no path in content gene mapping");
+                    error!("no path in content gene mapping");
                 }
             },
             // If the message is an update or a query, handle it by calling the corresponding function
@@ -188,13 +194,15 @@ impl Actor for Director {
             // If the message is unexpected, log an error and respond with an NvError
             m => {
                 let emsg = format!("unexpected message: {m}");
-                log::error!("{emsg}");
+                error!("{emsg}");
                 respond_or_log_error(respond_to, Err(NvError { reason: emsg }));
             }
         }
     }
 
+    #[instrument]
     async fn stop(&self) {}
+    #[instrument]
     async fn start(&mut self) {
         if let Some(store_actor) = &self.store_actor {
             type ResultSender = Sender<NvResult<Message<f64>>>;
@@ -210,7 +218,7 @@ impl Actor for Director {
                 .send(load_cmd)
                 .await
                 .map_err(|e| {
-                    log::error!("cannot start director: {e}");
+                    error!("cannot start director: {e}");
                 })
                 .ok();
 
@@ -218,31 +226,33 @@ impl Actor for Director {
 
             match recv.await {
                 Ok(_) => {}
-                Err(e) => log::error!("cannot start director because of store error: {e}"),
+                Err(e) => error!("cannot start director because of store error: {e}"),
             }
         }
     }
 }
 
 // wrapper to support flow when no persistence is configured
+#[instrument]
 async fn journal_message(
     message: Message<f64>,
     store_actor: &Option<Handle>,
 ) -> Result<Message<f64>, NvError> {
     if let Some(store_actor) = store_actor {
-        log::trace!("journal_message {message}");
+        trace!("journal_message {message}");
         // jrnl the new msg
         store_actor.ask(message.clone()).await
     } else {
         // If journaling is explicitly not supported in this deployment return success
-        log::trace!("journaling messages is disabled - proceeding ok");
+        trace!("journaling messages is disabled - proceeding ok");
         Ok(Message::Persisted)
     }
 }
 
+#[instrument]
 async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Handle>) {
     //forward to optional output
-    log::trace!("forward_actor_result");
+    trace!("forward_actor_result");
     if let Some(o) = output {
         if let Ok(message) = result {
             let senv = Envelope {
@@ -253,25 +263,26 @@ async fn forward_actor_result(result: NvResult<Message<f64>>, output: &Option<Ha
             match o.send(senv).await {
                 Ok(_) => {}
                 Err(e) => {
-                    log::error!("can not forward: {e:?}");
+                    error!("can not forward: {e:?}");
                 }
             }
         }
     }
 }
 
+#[instrument]
 async fn write_jrnl(
     message: Message<f64>,
     store_actor: &Option<Handle>,
 ) -> Result<Message<f64>, NvError> {
     match message.clone() {
         Message::Update { path: _, .. } => {
-            log::trace!("write_jrnl");
+            trace!("write_jrnl");
             journal_message(message.clone(), store_actor).await
         }
         Message::Query { path: _, .. } => Ok(Message::Persisted),
         m => {
-            log::warn!("unexpected message: {m}");
+            warn!("unexpected message: {m}");
             Err(NvError {
                 reason: "unexpected msg".to_string(),
             })
@@ -279,13 +290,14 @@ async fn write_jrnl(
     }
 }
 
+#[instrument]
 async fn send_to_actor(
     message: Message<f64>,
     respond_to: Option<Sender<NvResult<Message<f64>>>>,
     actor: &Handle,
     output: &Option<Handle>,
 ) {
-    log::trace!("send_to_actor sending to actor");
+    trace!("send_to_actor sending to actor");
     //send message to the actor and support ask results
     let r = actor.ask(message).await;
     respond_or_log_error(respond_to, r.clone());
@@ -310,6 +322,7 @@ fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
 
 /// actor private constructor
 impl Director {
+    #[instrument]
     async fn handle_gene_mapping(
         &mut self,
         path: &str,
@@ -317,7 +330,7 @@ impl Director {
         message: Message<f64>, // for jrnl
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
-        log::debug!("new gene_mapping");
+        debug!("new gene_mapping");
         let gene_type_str = text;
         let gene_type = match gene_type_str {
             "accum" => GeneType::Accum,
@@ -345,6 +358,7 @@ impl Director {
         }
     }
 
+    #[instrument]
     async fn forward_report(
         &self,
         message: Message<f64>,
@@ -359,7 +373,7 @@ impl Director {
             a.send(senv)
                 .await
                 .map_err(|e| {
-                    log::error!("cannot send: {e:?}");
+                    error!("cannot send: {e:?}");
                 })
                 .ok();
         } else {
@@ -367,12 +381,13 @@ impl Director {
         }
     }
 
+    #[instrument]
     async fn handle_end_of_stream(
         &self,
         message: Message<f64>,
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
-        log::debug!("complete");
+        debug!("complete");
 
         // forward message to output but direct response directly back to
         // original requester instead of here
@@ -385,7 +400,7 @@ impl Director {
             a.send(senv)
                 .await
                 .map_err(|e| {
-                    log::error!("cannot send: {e:?}");
+                    error!("cannot send: {e:?}");
                 })
                 .ok();
         } else {
@@ -393,6 +408,7 @@ impl Director {
         }
     }
 
+    #[instrument]
     async fn handle_update_or_query(
         &mut self,
         path: &String,
@@ -402,7 +418,7 @@ impl Director {
         // resurrect and forward if this is either Update or Query
         match self.actors.entry(path.clone()) {
             Entry::Vacant(entry) => {
-                log::trace!("handle_update_or_query creating new or resurrected instance");
+                trace!("handle_update_or_query creating new or resurrected instance");
 
                 //
                 // BEGIN inline because of single mutable share compiler error when I put this
@@ -433,7 +449,7 @@ impl Director {
                         .integrate(String::from(path), store_actor, MtHint::Update)
                         .await
                         .map_err(|e| {
-                            log::error!("can not load actor {e} from journal");
+                            error!("can not load actor {e} from journal");
                         })
                         .ok();
                 }
@@ -452,7 +468,7 @@ impl Director {
                 entry.insert(actor); // put it where you can find it again
             }
             Entry::Occupied(entry) => {
-                log::trace!("handle_update_or_query found live instance");
+                trace!("handle_update_or_query found live instance");
                 let actor = entry.get();
                 let jrnled = write_jrnl(message.clone(), &self.store_actor).await;
                 // todo: return meaningful errors
@@ -496,6 +512,7 @@ pub fn new(
     output: Option<Handle>,
     store_actor: Option<Handle>,
 ) -> Handle {
+    #[instrument]
     async fn start(mut actor: Director) {
         actor.start().await;
         while let Some(envelope) = actor.receiver.recv().await {
@@ -511,6 +528,6 @@ pub fn new(
 
     tokio::spawn(start(actor));
 
-    log::debug!("{} started", namespace);
+    debug!("{} started", namespace);
     actor_handle
 }

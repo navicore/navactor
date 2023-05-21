@@ -4,6 +4,8 @@
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Iso8601;
 use time::OffsetDateTime;
+use tracing::error;
+use tracing::warn;
 
 pub type TimeResult = Result<OffsetDateTime, TimeError>;
 
@@ -28,7 +30,7 @@ pub fn extract_datetime(datetime_str: &str) -> TimeResult {
     match OffsetDateTime::parse(datetime_str, &Iso8601::DEFAULT) {
         Ok(d) => Ok(d),
         Err(e) => {
-            log::warn!("can not parse datetime {} due to: {}", datetime_str, e);
+            warn!("can not parse datetime {} due to: {}", datetime_str, e);
             Err(TimeError {
                 reason: format!("{e}"),
             })
@@ -52,7 +54,7 @@ impl OffsetDateTimeWrapper {
         match OffsetDateTime::from_unix_timestamp(self.datetime_num) {
             Ok(ts) => Ok(ts),
             Err(e) => {
-                log::error!("can not get ts: {e}");
+                error!("can not get ts: {e}");
                 Err(TimeError {
                     reason: format!("{e}"),
                 })

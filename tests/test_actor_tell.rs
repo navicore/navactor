@@ -3,7 +3,6 @@ use navactor::json_decoder;
 use navactor::message::Envelope;
 use navactor::message::Message;
 use navactor::message::MtHint;
-use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 

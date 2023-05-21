@@ -23,6 +23,8 @@ use crate::message::Envelope;
 use crate::message::Message;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
+use tracing::error;
+use tracing::warn;
 
 /// in CLI mode, printing to stdout is helpful and can enable `nv` to be used
 /// in combination with other *nix tools.
@@ -57,11 +59,11 @@ impl Actor for StdoutActor {
                 if let Some(respond_to) = respond_to {
                     respond_to
                         .send(Ok(Message::EndOfStream {}))
-                        .unwrap_or_else(|e| log::error!("cannot respond to ask: {e:?}"));
+                        .unwrap_or_else(|e| error!("cannot respond to ask: {e:?}"));
                 }
             }
             _ => {
-                log::warn!("unexpected: {message}");
+                warn!("unexpected: {message}");
             }
         }
     }

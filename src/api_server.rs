@@ -17,6 +17,9 @@ use poem_openapi::{
 };
 use std::collections::HashMap;
 use std::sync::Arc;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 
 pub struct HttpServerConfig {
     pub port: Option<u16>,
@@ -73,7 +76,7 @@ impl Deref for SharedHandle {
 #[poem::async_trait]
 impl<'a> FromRequest<'a> for SharedHandle {
     async fn from_request(req: &'a Request, _body: &mut RequestBody) -> Result<Self> {
-        log::debug!("from_request");
+        debug!("from_request");
 
         req.data::<Arc<Handle>>().map_or_else(
             || {
@@ -89,6 +92,8 @@ impl<'a> FromRequest<'a> for SharedHandle {
 
 // TODO: /actors/building1/floor10/room5/mymachine
 
+//TODO: wildcard https://github.com/poem-web/poem/blob/9941b48961c8c59a8dc92dd4e91ca62f834f7dc2/poem/src/route/router.rs#LL56C3-L56C3
+
 #[OpenApi]
 impl NvApi {
     #[oai(path = "/:namespace/:id", method = "get")]
@@ -98,7 +103,7 @@ impl NvApi {
         namespace: Path<String>,
         id: Path<String>,
     ) -> Result<GetResponse, poem::Error> {
-        log::debug!("get {}/{}", namespace.as_str(), id.as_str());
+        debug!("get {}/{}", namespace.as_str(), id.as_str());
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
             text: format!(
@@ -142,10 +147,10 @@ impl NvApi {
         id: Path<String>,
         body: Json<ApiStateReport>,
     ) -> Result<PostResponse, poem::Error> {
-        log::debug!("post {}/{}", namespace.as_str(), id.as_str());
+        debug!("post {}/{}", namespace.as_str(), id.as_str());
         // record observation
         let body_str = to_string(&body.0).unwrap_or_else(|e| {
-            log::error!("Failed to serialize JSON: {:?}", e);
+            error!("Failed to serialize JSON: {:?}", e);
             String::new()
         });
         let cmd: Message<f64> = Message::Content {
@@ -212,7 +217,7 @@ pub async fn serve<'a>(
         .unwrap_or(default_external_host_str);
     let swagger_api_target = format!("{external_host_str}/api");
 
-    log::debug!("navactor server starting on {i}:{p}.");
+    debug!("navactor server starting on {i}:{p}.");
 
     let api_service = OpenApiService::new(NvApi, clap::crate_name!(), clap::crate_version!())
         .server(swagger_api_target.clone());
@@ -223,7 +228,7 @@ pub async fn serve<'a>(
             .trim_start_matches('/')
             .to_string();
         let swagger_ui_host = format!("{external_host_str}/{uip}");
-        log::debug!("swagger UI is available at {}.", swagger_ui_host);
+        debug!("swagger UI is available at {}.", swagger_ui_host);
         let ui = api_service.swagger_ui();
 
         if disui {
@@ -239,6 +244,6 @@ pub async fn serve<'a>(
     };
 
     let server = poem::Server::new(TcpListener::bind(ifc_host_str)).run(app);
-    log::info!("navactor API is available at {}.", swagger_api_target);
+    info!("navactor API is available at {}.", swagger_api_target);
     server.await
 }
