@@ -30,6 +30,7 @@ pub struct HttpServerConfig {
 }
 
 impl HttpServerConfig {
+    #[must_use]
     pub fn new(
         port: Option<u16>,
         interface: Option<String>,
@@ -37,7 +38,7 @@ impl HttpServerConfig {
         namespace: String,
     ) -> Self {
         Self {
-            port: port.unwrap_or_else(|| 8800),
+            port: port.unwrap_or(8800),
             interface: interface.unwrap_or_else(|| "127.0.0.1".to_string()),
             external_host: external_host.unwrap_or_else(|| "http://localhost:8800".to_string()),
             namespace,
