@@ -18,6 +18,10 @@ use crate::message::NvError;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
+use tracing::debug;
+use tracing::error;
+use tracing::trace;
+use tracing::warn;
 
 // TODO: reject late reporters based on genes
 // TODO: reject late reporters based on genes
@@ -48,10 +52,10 @@ impl Actor for StateActor {
 
         match message {
             Message::InitCmd { .. } => {
-                log::trace!("{} init started...", self.path);
+                trace!("{} init started...", self.path);
                 // this is an init so read your old events to recalculate your state
                 if let Some(mut stream_from) = stream_from {
-                    log::debug!("{} init", self.path);
+                    debug!("{} init", self.path);
                     let mut count = 0;
 
                     while let Some(message) = stream_from.recv().await {
@@ -63,27 +67,27 @@ impl Actor for StateActor {
                                 if self.update_state(message.clone()) {
                                     count += 1;
                                 } else {
-                                    log::trace!("{} init closing stream.", self.path);
+                                    trace!("{} init closing stream.", self.path);
                                     break;
                                 }
                             }
                         }
                     }
-                    log::trace!("{} init closing stream.", self.path);
+                    trace!("{} init closing stream.", self.path);
                     stream_from.close();
 
-                    log::debug!("{} finished init from {} events", self.path, count);
+                    debug!("{} finished init from {} events", self.path, count);
 
                     respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
                 }
             }
             Message::Update { .. } => {
-                log::trace!("{} handling update", self.path);
+                trace!("{} handling update", self.path);
 
                 if self.update_state(message.clone()) {
                     respond_or_log_error(respond_to, Ok(self.get_state_rpt()));
                 } else {
-                    log::error!("Error applying operators in ask");
+                    error!("Error applying operators in ask");
                     respond_or_log_error(
                         respond_to,
                         Err(NvError {
@@ -97,14 +101,14 @@ impl Actor for StateActor {
                 respond_or_log_error(respond_to, Ok(self.get_state_rpt()));
             }
             m => {
-                log::warn!("unexpected message: {m}");
+                warn!("unexpected message: {m}");
             }
         }
 
         // report the update to our state to the output actor
         if let Some(output_handle) = &self.output {
             if let Err(err) = output_handle.tell(self.get_state_rpt()).await {
-                log::error!("Error telling output actor: {err:?}");
+                error!("Error telling output actor: {err:?}");
             }
         }
     }
@@ -122,7 +126,7 @@ impl StateActor {
                 true
             }
             Err(e) => {
-                log::error!("Error applying operators in ask: {e:?}");
+                error!("Error applying operators in ask: {e:?}");
                 false
             }
         }

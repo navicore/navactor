@@ -15,6 +15,9 @@ use clap_complete::{generate, Generator};
 use std::io;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
+use tracing::error;
+use tracing::trace;
+use tracing::warn;
 
 pub fn run_serve(
     server_config: HttpServerConfig,
@@ -34,7 +37,7 @@ pub fn run_serve(
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
-            log::error!("can not launch server: {e}");
+            error!("can not launch server: {e}");
         }
     }
 }
@@ -75,7 +78,7 @@ async fn run_async_serve(
     match serve(shared_handle, server_config, uipath, disable_ui).await {
         Ok(()) => Ok(()),
         e => {
-            log::error!("{e:?}");
+            error!("{e:?}");
             Err(format!("{e:?}"))
         }
     }
@@ -101,7 +104,7 @@ pub fn update(
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
-            log::error!("can not launch thread: {e}");
+            error!("can not launch thread: {e}");
         }
     }
 }
@@ -137,11 +140,11 @@ async fn run_async_update(
 
     match input.ask(Message::ReadAllCmd {}).await {
         Ok(EndOfStream {}) => {
-            log::trace!("end of stream");
+            trace!("end of stream");
             Ok(())
         }
         e => {
-            log::error!("{:?}", e);
+            error!("{:?}", e);
             Err("END and response: sucks.".to_string())
         }
     }
@@ -153,7 +156,7 @@ pub fn configure(path: String, gene_type: GeneType, bufsz: usize, runtime: &Runt
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
-            log::error!("cannot launch thread: {e}");
+            error!("cannot launch thread: {e}");
         }
     }
 }
@@ -192,11 +195,11 @@ async fn run_async_configure(
         Ok(m) => match output.tell(m).await {
             Ok(_) => {}
             Err(e) => {
-                log::warn!("cannot tell {e}");
+                warn!("cannot tell {e}");
             }
         },
         Err(e) => {
-            log::error!("error {e}");
+            error!("error {e}");
         }
     }
 
@@ -213,7 +216,7 @@ pub fn explain(path: String, bufsz: usize, runtime: &Runtime) {
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
-            log::error!("cannot launch thread: {e}");
+            error!("cannot launch thread: {e}");
         }
     }
 }
@@ -241,11 +244,11 @@ async fn run_async_explain(path: String, bufsz: usize) -> Result<(), String> {
         Ok(m) => match output.tell(m).await {
             Ok(_) => {}
             Err(e) => {
-                log::warn!("cannot tell {e}");
+                warn!("cannot tell {e}");
             }
         },
         Err(e) => {
-            log::error!("error {e}");
+            error!("error {e}");
         }
     }
 
@@ -262,7 +265,7 @@ pub fn inspect(path: String, bufsz: usize, runtime: &Runtime) {
     match runtime.block_on(result) {
         Ok(_) => {}
         Err(e) => {
-            log::error!("cannot launch thread: {e}");
+            error!("cannot launch thread: {e}");
         }
     }
 }
@@ -274,7 +277,7 @@ async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
         .find(|c| *c != std::path::Component::RootDir)
         .and_then(|c| c.as_os_str().to_str())
         .unwrap_or("unk");
-    log::trace!("inspect of ns {ns}");
+    trace!("inspect of ns {ns}");
     let output = stdout_actor::new(bufsz); // print state
 
     let store_actor = store_actor_sqlite::new(bufsz, String::from(ns), false, false); // print state
@@ -291,11 +294,11 @@ async fn run_async_inspect(path: String, bufsz: usize) -> Result<(), String> {
         Ok(m) => match output.tell(m).await {
             Ok(_) => {}
             Err(e) => {
-                log::warn!("cannot tell {e}");
+                warn!("cannot tell {e}");
             }
         },
         Err(e) => {
-            log::error!("error {e}");
+            error!("error {e}");
         }
     }
 

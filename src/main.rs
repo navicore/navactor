@@ -5,6 +5,9 @@ use navactor::cli::{
 };
 use navactor::cli_interface::{Cli, Commands};
 use tokio::runtime::Runtime;
+use tracing;
+use tracing::info;
+use tracing_subscriber;
 
 /// This is the `main` entry point for the application. It imports various Rust crates and a set of
 /// local modules that constitute the program.
@@ -37,8 +40,9 @@ use tokio::runtime::Runtime;
 /// control logging of nv and various libs via `RUST_LOG` env var like so:
 /// `std::env::set_var("RUST_LOG`", "debug,sqlx=warn");
 fn main() {
-    env_logger::init();
-    log::info!("nv started");
+    tracing_subscriber::fmt::init();
+    info!("This will be logged to stdout");
+    info!("nv started");
 
     let pcli = Cli::parse();
     let bufsz: usize = pcli.buffer.unwrap_or(8);
@@ -124,5 +128,5 @@ fn main() {
         }
     }
 
-    log::info!("nv stopped.");
+    info!("nv stopped.");
 }

@@ -4,9 +4,9 @@ use navactor::message::Envelope;
 use navactor::message::Message;
 use navactor::message::MtHint;
 use navactor::stdout_actor;
-use test_log::test;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
+use tracing::debug;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
@@ -64,7 +64,7 @@ fn test_json_decode() {
 
         let result_message = result.expect("failed with RecvErr");
 
-        log::debug!("result_message: {:?}", result_message);
+        debug!("result_message: {:?}", result_message);
 
         assert!(matches!(result_message, Ok(Message::EndOfStream {}),));
 

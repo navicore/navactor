@@ -7,8 +7,8 @@ use navactor::message::MtHint;
 use navactor::stdout_actor;
 use navactor::store_actor_sqlite;
 use std::fs;
-use test_log::test;
 use tokio::runtime::Runtime;
+use tracing::debug;
 
 async fn setup_actors(db_file_prefix: String, namespace: String) -> Handle {
     let output_actor = stdout_actor::new(8);
@@ -27,7 +27,7 @@ async fn shutdown_actors(json_decoder_actor: Handle) {
 
     let result_message = json_decoder_actor.ask(message).await;
 
-    log::debug!("shutdown result_message: {:?}", result_message);
+    debug!("shutdown result_message: {:?}", result_message);
     assert!(matches!(result_message, Ok(Message::EndOfStream {}),));
 }
 
@@ -37,10 +37,10 @@ fn test_write_and_read_jrnl() {
     let namespace = String::from("/actors");
     let db_file_prefix = format!("/tmp/{namespace}");
 
-    log::debug!("deleting db files before starting test...");
+    debug!("deleting db files before starting test...");
     for entry in glob(&format!("{db_file_prefix}.db*")).unwrap() {
         let path = entry.unwrap();
-        log::debug!("deleting {path:?} before starting store test");
+        debug!("deleting {path:?} before starting store test");
         fs::remove_file(path).unwrap();
     }
 

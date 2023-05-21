@@ -3,7 +3,6 @@ use navactor::actor::State;
 use navactor::operator::Accumulator;
 use navactor::operator::Gauge;
 use navactor::operator::Operator;
-use test_log::test;
 use time::OffsetDateTime;
 
 #[test]

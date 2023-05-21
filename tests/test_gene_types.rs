@@ -1,6 +1,5 @@
 use navactor::gene::GeneType;
 use std::collections::HashMap;
-use test_log::test;
 
 struct MockDirector {
     pub gene_path_map: HashMap<String, GeneType>,

@@ -16,6 +16,7 @@ use crate::message::Message;
 use crate::operator::{Accumulator, OpError, Operator, OperatorResult};
 use std::ops::Add;
 use time::OffsetDateTime;
+use tracing::trace;
 
 pub struct AccumGene {
     pub time_scope: TimeScope,
@@ -46,7 +47,7 @@ impl<T: Add<Output = T> + Copy> Gene<T> for AccumGene {
                         reason: format!("unsupported idx: {idx}"),
                     })?;
                     let len = state.keys().len();
-                    log::trace!("updating key {idx} of keys {len}");
+                    trace!("updating key {idx} of keys {len}");
                     state = update_state_with_val(in_val, idx, state, datetime)?;
                 }
             }

@@ -16,6 +16,8 @@ use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::mpsc;
+use tracing::error;
+use tracing::warn;
 
 /// the stdin actor is only used in CLI mode.  it gets a single command to
 /// read from stdin and it reads until the EOF.  once it sees EOF, it sends
@@ -38,7 +40,7 @@ impl Actor for StdinActor {
             let mut lines = BufReader::new(stdin()).lines();
 
             while let Some(text) = lines.next_line().await.unwrap_or_else(|e| {
-                log::error!("failed to read stream: {e:?}");
+                error!("failed to read stream: {e:?}");
                 None
             }) {
                 let hint = if text.contains("gene_type") {
@@ -54,7 +56,7 @@ impl Actor for StdinActor {
                 match self.output.tell(msg).await {
                     Ok(()) => {}
                     Err(e) => {
-                        log::error!("cannot send message: {e:?}");
+                        error!("cannot send message: {e:?}");
                         return;
                     }
                 }
@@ -71,11 +73,11 @@ impl Actor for StdinActor {
             match self.output.send(senv).await {
                 Ok(()) => {}
                 Err(e) => {
-                    log::error!("cannot send end-of-stream message: {e:?}");
+                    error!("cannot send end-of-stream message: {e:?}");
                 }
             }
         } else {
-            log::warn!("unexpected: {message}");
+            warn!("unexpected: {message}");
         }
     }
     async fn stop(&self) {}

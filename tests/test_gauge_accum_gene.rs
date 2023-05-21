@@ -3,7 +3,6 @@ use navactor::actor::State;
 use navactor::gauge_and_accum_gene::GaugeAndAccumGene;
 use navactor::gene::Gene;
 use navactor::message::Message;
-use test_log::test;
 use time::OffsetDateTime;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
