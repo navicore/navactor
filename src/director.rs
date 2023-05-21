@@ -41,6 +41,7 @@ use tokio::sync::oneshot;
 use tokio::sync::oneshot::Sender;
 use tracing::debug;
 use tracing::error;
+use tracing::info;
 use tracing::instrument;
 use tracing::trace;
 use tracing::warn;
@@ -204,6 +205,7 @@ impl Actor for Director {
     async fn stop(&self) {}
     #[instrument]
     async fn start(&mut self) {
+        info!("starting");
         if let Some(store_actor) = &self.store_actor {
             type ResultSender = Sender<NvResult<Message<f64>>>;
             type ResultReceiver = oneshot::Receiver<NvResult<Message<f64>>>;

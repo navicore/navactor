@@ -73,12 +73,7 @@ fn main() {
                 Some(false) => OptionVariant::Off,
                 _ => OptionVariant::On,
             };
-            let server_config = HttpServerConfig {
-                port,
-                interface,
-                external_host,
-                namespace,
-            };
+            let server_config = HttpServerConfig::new(port, interface, external_host, namespace);
             run_serve(
                 server_config,
                 &runtime,

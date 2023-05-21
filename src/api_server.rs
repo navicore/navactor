@@ -16,16 +16,44 @@ use poem_openapi::{
     ApiResponse, Object, OpenApi, OpenApiService,
 };
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
 use tracing::debug;
 use tracing::error;
 use tracing::info;
 
 pub struct HttpServerConfig {
-    pub port: Option<u16>,
-    pub interface: Option<String>,
-    pub external_host: Option<String>,
+    pub port: u16,
+    pub interface: String,
+    pub external_host: String,
     pub namespace: String,
+}
+
+impl HttpServerConfig {
+    #[must_use]
+    pub fn new(
+        port: Option<u16>,
+        interface: Option<String>,
+        external_host: Option<String>,
+        namespace: String,
+    ) -> Self {
+        Self {
+            port: port.unwrap_or(8800),
+            interface: interface.unwrap_or_else(|| "127.0.0.1".to_string()),
+            external_host: external_host.unwrap_or_else(|| "http://localhost:8800".to_string()),
+            namespace,
+        }
+    }
+}
+
+impl fmt::Display for HttpServerConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[{} on {}:{} as {}]",
+            self.namespace, self.interface, self.port, self.external_host
+        )
+    }
 }
 
 #[derive(Object, Serialize)]
@@ -96,21 +124,18 @@ impl<'a> FromRequest<'a> for SharedHandle {
 
 #[OpenApi]
 impl NvApi {
-    #[oai(path = "/:namespace/:id", method = "get")]
+    #[oai(path = "/:namespace<.+/>:id", method = "get")]
     async fn get(
         &self,
         nv: Data<&SharedHandle>,
         namespace: Path<String>,
         id: Path<String>,
     ) -> Result<GetResponse, poem::Error> {
-        debug!("get {}/{}", namespace.as_str(), id.as_str());
+        let ns = namespace.trim_end_matches('/').to_string();
+        debug!("get {}/{}", ns, id.as_str());
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: format!(
-                "{{ \"path\": \"/{}/{}\" }}",
-                namespace.as_str(),
-                id.as_str()
-            ),
+            text: format!("{{ \"path\": \"/{}/{}\" }}", ns, id.as_str()),
             path: None,
             hint: MtHint::Query,
         };
@@ -139,7 +164,7 @@ impl NvApi {
         }
     }
 
-    #[oai(path = "/:namespace/:id", method = "post")]
+    #[oai(path = "/:namespace<.+/>:id", method = "post")]
     async fn post(
         &self,
         nv: Data<&SharedHandle>,
@@ -147,7 +172,8 @@ impl NvApi {
         id: Path<String>,
         body: Json<ApiStateReport>,
     ) -> Result<PostResponse, poem::Error> {
-        debug!("post {}/{}", namespace.as_str(), id.as_str());
+        let ns = namespace.trim_end_matches('/').to_string();
+        debug!("post {}/{}", ns, id.as_str());
         // record observation
         let body_str = to_string(&body.0).unwrap_or_else(|e| {
             error!("Failed to serialize JSON: {:?}", e);
@@ -204,20 +230,11 @@ pub async fn serve<'a>(
     uipath: Option<String>,
     disable_ui: Option<bool>,
 ) -> Result<(), std::io::Error> {
-    let p = server_config.port.unwrap_or(8800);
-    let i = server_config
-        .interface
-        .unwrap_or_else(|| "127.0.0.1".to_string());
+    info!("starting server: {server_config}");
 
     let disui = disable_ui.unwrap_or(false);
-    let ifc_host_str = format!("{i}:{p}");
-    let default_external_host_str = format!("http://localhost:{p}");
-    let external_host_str = server_config
-        .external_host
-        .unwrap_or(default_external_host_str);
-    let swagger_api_target = format!("{external_host_str}/api");
-
-    debug!("navactor server starting on {i}:{p}.");
+    let ifc_host_str = format!("{}:{}", server_config.interface, server_config.port);
+    let swagger_api_target = format!("{}/api", server_config.external_host);
 
     let api_service = OpenApiService::new(NvApi, clap::crate_name!(), clap::crate_version!())
         .server(swagger_api_target.clone());
@@ -227,7 +244,7 @@ pub async fn serve<'a>(
             .unwrap_or_default()
             .trim_start_matches('/')
             .to_string();
-        let swagger_ui_host = format!("{external_host_str}/{uip}");
+        let swagger_ui_host = format!("{}/{uip}", server_config.external_host);
         debug!("swagger UI is available at {}.", swagger_ui_host);
         let ui = api_service.swagger_ui();
 
