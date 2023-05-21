@@ -11,8 +11,20 @@ GET /api/actors/one
 --
 POST /api/actors/one
 {
-  "datetime": "2023-05-11T23:21:12+0000",
+  "datetime": "2023-05-11T23:21:13+0000",
   "path": "/actors/one",
-  "values": {"2":5.2}
+  "values": {"2":5.3}
 }
+
+--
+GET /api/actors/building1/floor2/room3
+
+--
+POST /api/actors/building1/floor2/room3
+{
+  "datetime": "2023-04-11T23:01:03+0000",
+  "path": "/actors/building1/floor2/room3",
+  "values": {"1":1.3}
+}
+
 
