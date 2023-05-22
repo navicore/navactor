@@ -1,13 +1,14 @@
 #![allow(clippy::useless_let_if_seq)]
 use crate::actor::Handle;
+use crate::gene::GeneType;
 use crate::message::Message;
 use crate::message::MtHint;
+use crate::nvtime::extract_datetime;
 use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,
     RequestBody, Result, Route,
 };
 use serde::Serialize;
-use serde_json::to_string;
 use std::ops::Deref;
 
 use poem_openapi::{
@@ -19,7 +20,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use tracing::debug;
-use tracing::error;
 use tracing::info;
 
 pub struct HttpServerConfig {
@@ -76,6 +76,9 @@ enum PostObservationResponse {
 
     #[oai(status = 404)]
     NotFound(PlainText<String>),
+
+    #[oai(status = 400)]
+    BadRequest(PlainText<String>),
 
     #[oai(status = 409)]
     ConstraintViolation(PlainText<String>),
@@ -169,10 +172,9 @@ impl ActorsApi {
         let fullpath = prepend_slash(fullpath);
         debug!("get state for {}", fullpath);
         // query state of actor one from above updates
-        let cmd: Message<f64> = Message::Content {
-            text: format!("{{ \"path\": \"{fullpath}\" }}"),
-            path: None,
-            hint: MtHint::Query,
+        let cmd = Message::Query {
+            path: fullpath,
+            hint: MtHint::State,
         };
         match nv.ask(cmd).await {
             Ok(Message::StateReport {
@@ -211,44 +213,56 @@ impl ActorsApi {
         let ns = prepend_slash(ns);
         debug!("post observations {}/{}", ns, id.as_str());
         // record observation
-        let body_str = to_string(&body.0).unwrap_or_else(|e| {
-            error!("Failed to serialize JSON: {:?}", e);
-            String::new()
-        });
-        let cmd: Message<f64> = Message::Content {
-            text: body_str,
-            path: None,
-            hint: MtHint::Update,
-        };
-        match nv.ask(cmd).await {
-            Ok(Message::StateReport {
-                datetime: _,
-                path: _,
-                values,
-            }) if values.is_empty() => Ok(PostObservationResponse::NotFound(PlainText(format!(
-                "No actor resurected with id `{}`",
-                id.0
-            )))),
-            Ok(Message::StateReport {
-                datetime,
-                path,
-                values,
-            }) => Ok(PostObservationResponse::ApiStateReport(Json(
-                ApiStateReport {
-                    datetime: datetime.to_string(),
+        if let Ok(dt) = extract_datetime(&body.0.datetime) {
+            let cmd = Message::Update {
+                path: body.0.path,
+                datetime: dt,
+                values: body.0.values,
+            };
+
+            match nv.ask(cmd).await {
+                Ok(Message::StateReport {
+                    datetime: _,
+                    path: _,
+                    values,
+                }) if values.is_empty() => Ok(PostObservationResponse::NotFound(PlainText(
+                    format!("No actor resurected with id `{}`", id.0),
+                ))),
+                Ok(Message::StateReport {
+                    datetime,
                     path,
                     values,
-                },
-            ))),
-            Ok(Message::ConstraintViolation {}) => {
-                Ok(PostObservationResponse::ConstraintViolation(PlainText(
-                    format!("contraint violation with id {}", id.0),
-                )))
+                }) => Ok(PostObservationResponse::ApiStateReport(Json(
+                    ApiStateReport {
+                        datetime: datetime.to_string(),
+                        path,
+                        values,
+                    },
+                ))),
+                Ok(Message::ConstraintViolation {}) => {
+                    Ok(PostObservationResponse::ConstraintViolation(PlainText(
+                        format!("contraint violation with id {}", id.0),
+                    )))
+                }
+                e => Ok(PostObservationResponse::InternalServerError(PlainText(
+                    format!("server error with id {}: {:?}", id.0, e),
+                ))),
             }
-            e => Ok(PostObservationResponse::InternalServerError(PlainText(
-                format!("server error with id {}: {:?}", id.0, e),
-            ))),
+        } else {
+            // TODO: how can this be located near the parse???
+            Ok(PostObservationResponse::BadRequest(PlainText(format!(
+                "cannot parse datetime {} for id {}",
+                body.0.datetime, id.0
+            ))))
         }
+    }
+}
+
+fn extract_gene_type(gene_type_str: &str) -> GeneType {
+    match gene_type_str {
+        "Gauge" => GeneType::Gauge,
+        "Accum" => GeneType::Accum,
+        _ => GeneType::GaugeAndAccum,
     }
 }
 
@@ -268,8 +282,8 @@ impl GenesApi {
         debug!("get gene for {}", fullpath);
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: String::new(),
             path: Some(fullpath),
+            text: String::new(),
             hint: MtHint::GeneMappingQuery,
         };
         match nv.ask(cmd).await {
@@ -300,15 +314,12 @@ impl GenesApi {
         let fullpath = format!("{}{}", namespace.as_str(), id.as_str());
         let fullpath = prepend_slash(fullpath);
         debug!("post gene mapping for {fullpath}");
-        let body_str = to_string(&body.0).unwrap_or_else(|e| {
-            error!("Failed to serialize JSON: {:?}", e);
-            String::new()
-        });
-        let cmd: Message<f64> = Message::Content {
-            text: body_str,
-            path: Some(fullpath),
-            hint: MtHint::GeneMapping,
+
+        let cmd = Message::GeneMapping {
+            path: fullpath,
+            gene_type: extract_gene_type(&body.0.gene_type),
         };
+
         match nv.ask(cmd).await {
             Ok(Message::GeneMapping { path, gene_type }) => Ok(
                 PostGeneMappingResponse::ApiGeneMapping(Json(ApiGeneMapping {

@@ -22,7 +22,7 @@ GET /api/actors/building1/floor2/room5
 --
 POST /api/actors/building1/floor2/room5
 {
-  "datetime": "2023-04-11T23:01:13+0000",
+  "datetime": "2023-04-11T23:02:14+0000",
   "path": "/building1/floor2/room5",
   "values": {"1": 2.5}
 }
@@ -40,12 +40,12 @@ POST /api/actors/building1/floor1/room1
 
 
 --
-GET /api/genes/building1/floor2/room5
+GET /api/genes/building1/floor2/room6
 
 --
-POST /api/genes/building1/floor2/room5
+POST /api/genes/building1/floor2/room6
 {
-  "path": "/building1/floor2/room5",
+  "path": "/building1/floor2/room6",
   "gene_type": "Accum"
 }
 

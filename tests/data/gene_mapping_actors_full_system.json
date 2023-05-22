@@ -1,6 +1,6 @@
-{ "path": "/tenant/bigcoffe/area/na/region/pnw/district/seattle/building", "gene_type": "gauge"}
-{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/3", "gene_type": "gauge_and_accum"}
-{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/5", "gene_type": "gauge_and_accum"}
-{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/5/floor/1/device/15", "gene_type": "accum"}
-{ "path": "/tenant/littlegames", "gene_type": "gauge_and_accum"}
-{ "path": "/tenant/mycars", "gene_type": "accum"}
+{ "path": "/tenant/bigcoffe/area/na/region/pnw/district/seattle/building", "gene_type": "Gauge"}
+{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/3", "gene_type": "GaugeAndAccum"}
+{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/5", "gene_type": "GaugeAndAccum"}
+{ "path": "/tenant/bigcoffe/area/na/region/ne/district/boston/building/5/floor/1/device/15", "gene_type": "Accum"}
+{ "path": "/tenant/littlegames", "gene_type": "GaugeAndAccum"}
+{ "path": "/tenant/mycars", "gene_type": "Accum"}
