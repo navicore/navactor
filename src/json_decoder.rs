@@ -86,6 +86,14 @@ impl Actor for JsonDecoder {
                 path: _,
             } => self.handle_update_json(&text, respond_to, datetime).await,
             Message::Content {
+                text: _,
+                hint: MtHint::GeneMappingQuery,
+                path,
+            } => {
+                self.handle_gene_mapping_query(path, respond_to, datetime)
+                    .await;
+            }
+            Message::Content {
                 text,
                 hint: MtHint::GeneMapping,
                 path: _,
@@ -119,10 +127,9 @@ impl JsonDecoder {
         debug!("processing mapping update");
         match extract_gene_mapping_from_json(json_str) {
             Ok(gene_mapping) => {
-                let msg = Message::Content {
-                    hint: MtHint::GeneMapping,
-                    path: Some(gene_mapping.path),
-                    text: gene_mapping.gene_type,
+                let msg = Message::GeneMapping {
+                    path: gene_mapping.path,
+                    gene_type: gene_mapping.gene_type,
                 };
 
                 let senv = Envelope {
@@ -143,6 +150,28 @@ impl JsonDecoder {
                 );
             }
         }
+    }
+
+    async fn handle_gene_mapping_query(
+        &self,
+        path: Option<String>,
+        respond_to: Option<tokio::sync::oneshot::Sender<NvResult<Message<f64>>>>,
+        datetime: OffsetDateTime,
+    ) {
+        debug!("processing gene mapping query");
+        let msg = Message::Content {
+            path,
+            text: "".to_string(),
+            hint: MtHint::GeneMappingQuery,
+        };
+
+        let senv = Envelope {
+            message: msg,
+            respond_to,
+            datetime,
+            ..Default::default()
+        };
+        self.send_or_log_error(senv).await;
     }
 
     async fn handle_update_json(

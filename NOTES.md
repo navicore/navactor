@@ -9,8 +9,8 @@ processing, and persist.
 
 Re-implement the DtLab DtPath with a graph lib (petgraph) and fully support graphs instead of trees.
 
-Postpone network support and make a dtlab cli lab that is a useful personal
-data science tool.
+~~Postpone network support and make a dtlab cli lab that is a useful personal
+data science tool.~~
 
 Eventually, with the addition of networking and sharding and replication, I hope
 to make IoT *seem like* an embarrassingly parallel problem where there is no
@@ -75,7 +75,7 @@ protocells have 3 things to be "alive", ie: the functionalities for life:
 2. container (identity, localization, reproduction )
 3. metabolism ( resource transformation, self-mainenance growth )
 
-Genees in this system is the type and its mappings for operators.  The type
+Genes in this system is the type and its mappings for operators.  The type
 metadata is data that can be edited ( mutated, randomly mutated ) as it is
 used as a prototype for offspring.
 

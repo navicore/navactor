@@ -92,21 +92,9 @@ impl Actor for Director {
                             Message::EndOfStream {} => {
                                 break;
                             }
-                            Message::Content {
-                                path,
-                                text,
-                                hint: _,
-                            } => {
-                                let gene_type = match text.as_str() {
-                                    "accum" => GeneType::Accum,
-                                    "gauge_and_accum" => GeneType::GaugeAndAccum,
-                                    _ => GeneType::Gauge,
-                                };
-
-                                if let Some(path) = path {
-                                    count += 1;
-                                    self.gene_path_map.insert(path.clone(), gene_type);
-                                }
+                            Message::GeneMapping { path, gene_type } => {
+                                count += 1;
+                                self.gene_path_map.insert(path.clone(), *gene_type);
                             }
                             _ => {}
                         }
@@ -124,20 +112,25 @@ impl Actor for Director {
             }
 
             // maintain the path-to-gene mappings
+            Message::GeneMapping { path, gene_type } => {
+                debug!("setting new mapping: {path} {gene_type}");
+                self.handle_gene_mapping(path, *gene_type, message.clone(), respond_to)
+                    .await;
+            }
+
             Message::Content {
-                hint: MtHint::GeneMapping,
                 path,
-                text,
-            } => match path {
-                Some(path) => {
-                    debug!("setting new mapping: {path} {text}");
-                    self.handle_gene_mapping(path, text, message.clone(), respond_to)
-                        .await;
-                }
-                _ => {
-                    error!("no path in content gene mapping");
-                }
-            },
+                text: _,
+                hint,
+            } if hint == &MtHint::GeneMappingQuery => {
+                debug!("getting mapping for {path:?}");
+                self.handle_gene_mapping_query(
+                    path.clone().unwrap_or_default().as_str(),
+                    respond_to,
+                )
+                .await;
+            }
+
             // If the message is an update or a query, handle it by calling the corresponding function
             Message::Update { path, .. } => {
                 self.handle_update_or_query(&path.clone(), message, respond_to)
@@ -324,21 +317,34 @@ fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
 
 /// actor private constructor
 impl Director {
+    async fn handle_gene_mapping_query(
+        &mut self,
+        path: &str,
+        respond_to: Option<Sender<NvResult<Message<f64>>>>,
+    ) {
+        if let Some(gt) = self.gene_path_map.get(path) {
+            let msg = Message::GeneMapping {
+                path: path.to_string(),
+                gene_type: *gt,
+            };
+            respond_or_log_error(respond_to, Ok(msg));
+        } else {
+            let msg = Message::NotFound {
+                path: path.to_string(),
+            };
+            respond_or_log_error(respond_to, Ok(msg));
+        }
+    }
+
     #[instrument]
     async fn handle_gene_mapping(
         &mut self,
         path: &str,
-        text: &str,
+        gene_type: GeneType,
         message: Message<f64>, // for jrnl
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
     ) {
         debug!("new gene_mapping");
-        let gene_type_str = text;
-        let gene_type = match gene_type_str {
-            "accum" => GeneType::Accum,
-            "gauge_and_accum" => GeneType::GaugeAndAccum,
-            _ => GeneType::Gauge,
-        };
         self.gene_path_map.insert(String::from(path), gene_type);
         if let Some(store_actor) = &self.store_actor {
             let jrnl_msg = store_actor.ask(message.clone()).await;
