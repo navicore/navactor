@@ -54,9 +54,8 @@ impl fmt::Display for GeneType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
             Self::Accum => "Accum",
-            Self::Gauge => "Gauge",
             Self::GaugeAndAccum => "GaugeAndAccum",
-            Self::Default => "Gauge",
+            Self::Gauge | Self::Default => "Gauge",
         };
         write!(f, "{display_text}")
     }

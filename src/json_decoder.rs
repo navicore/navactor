@@ -1,4 +1,4 @@
-//! only used to support the cli ifc and stdin_actor
+//! only used to support the cli ifc and `stdin_actor`
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
