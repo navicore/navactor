@@ -63,8 +63,14 @@ struct ApiStateReport {
     values: HashMap<i32, f64>,
 }
 
+#[derive(Object, Serialize)]
+struct ApiGeneMapping {
+    path: String,
+    gene_type: String,
+}
+
 #[derive(ApiResponse)]
-enum PostResponse {
+enum PostObservationResponse {
     #[oai(status = 200)]
     ApiStateReport(Json<ApiStateReport>),
 
@@ -79,7 +85,7 @@ enum PostResponse {
 }
 
 #[derive(ApiResponse)]
-enum GetResponse {
+enum GetStateResponse {
     #[oai(status = 200)]
     ApiStateReport(Json<ApiStateReport>),
 
@@ -90,7 +96,40 @@ enum GetResponse {
     InternalServerError(PlainText<String>),
 }
 
-struct NvApi;
+#[derive(ApiResponse)]
+enum GetGeneMappingResponse {
+    #[oai(status = 200)]
+    ApiGeneMapping(Json<ApiGeneMapping>),
+
+    #[oai(status = 404)]
+    NotFound(PlainText<String>),
+
+    #[oai(status = 500)]
+    InternalServerError(PlainText<String>),
+}
+
+#[derive(ApiResponse)]
+enum PostGeneMappingResponse {
+    #[oai(status = 200)]
+    ApiGeneMapping(Json<ApiGeneMapping>),
+
+    #[oai(status = 404)]
+    NotFound(PlainText<String>),
+
+    #[oai(status = 409)]
+    ConstraintViolation(PlainText<String>),
+
+    #[oai(status = 500)]
+    InternalServerError(PlainText<String>),
+}
+
+fn prepend_slash(mut s: String) -> String {
+    if !s.starts_with('/') {
+        s.insert(0, '/');
+    }
+    s
+}
+
 pub struct SharedHandle(Arc<Handle>);
 
 impl Deref for SharedHandle {
@@ -118,24 +157,23 @@ impl<'a> FromRequest<'a> for SharedHandle {
     }
 }
 
-// TODO: /actors/building1/floor10/room5/mymachine
-
-//TODO: wildcard https://github.com/poem-web/poem/blob/9941b48961c8c59a8dc92dd4e91ca62f834f7dc2/poem/src/route/router.rs#LL56C3-L56C3
+struct ActorsApi;
 
 #[OpenApi]
-impl NvApi {
+impl ActorsApi {
     #[oai(path = "/:namespace<.+/>:id", method = "get")]
-    async fn get(
+    async fn get_state(
         &self,
         nv: Data<&SharedHandle>,
         namespace: Path<String>,
         id: Path<String>,
-    ) -> Result<GetResponse, poem::Error> {
-        let ns = namespace.trim_end_matches('/').to_string();
-        debug!("get {}/{}", ns, id.as_str());
+    ) -> Result<GetStateResponse, poem::Error> {
+        let fullpath = format!("{}{}", namespace.as_str(), id.as_str());
+        let fullpath = prepend_slash(fullpath);
+        debug!("get state for {}", fullpath);
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: format!("{{ \"path\": \"/{}/{}\" }}", ns, id.as_str()),
+            text: format!("{{ \"path\": \"{}\" }}", fullpath),
             path: None,
             hint: MtHint::Query,
         };
@@ -144,7 +182,7 @@ impl NvApi {
                 datetime: _,
                 path: _,
                 values,
-            }) if values.is_empty() => Ok(GetResponse::NotFound(PlainText(format!(
+            }) if values.is_empty() => Ok(GetStateResponse::NotFound(PlainText(format!(
                 "No observations for id `{}`",
                 id.0
             )))),
@@ -152,12 +190,12 @@ impl NvApi {
                 datetime,
                 path,
                 values,
-            }) => Ok(GetResponse::ApiStateReport(Json(ApiStateReport {
+            }) => Ok(GetStateResponse::ApiStateReport(Json(ApiStateReport {
                 datetime: datetime.to_string(),
                 path,
                 values,
             }))),
-            m => Ok(GetResponse::InternalServerError(PlainText(format!(
+            m => Ok(GetStateResponse::InternalServerError(PlainText(format!(
                 "server error for id {}: {:?}",
                 id.0, m
             )))),
@@ -165,15 +203,16 @@ impl NvApi {
     }
 
     #[oai(path = "/:namespace<.+/>:id", method = "post")]
-    async fn post(
+    async fn post_observations(
         &self,
         nv: Data<&SharedHandle>,
         namespace: Path<String>,
         id: Path<String>,
         body: Json<ApiStateReport>,
-    ) -> Result<PostResponse, poem::Error> {
+    ) -> Result<PostObservationResponse, poem::Error> {
         let ns = namespace.trim_end_matches('/').to_string();
-        debug!("post {}/{}", ns, id.as_str());
+        let ns = prepend_slash(ns);
+        debug!("post observations {}/{}", ns, id.as_str());
         // record observation
         let body_str = to_string(&body.0).unwrap_or_else(|e| {
             error!("Failed to serialize JSON: {:?}", e);
@@ -189,7 +228,7 @@ impl NvApi {
                 datetime: _,
                 path: _,
                 values,
-            }) if values.is_empty() => Ok(PostResponse::NotFound(PlainText(format!(
+            }) if values.is_empty() => Ok(PostObservationResponse::NotFound(PlainText(format!(
                 "No actor resurected with id `{}`",
                 id.0
             )))),
@@ -197,18 +236,97 @@ impl NvApi {
                 datetime,
                 path,
                 values,
-            }) => Ok(PostResponse::ApiStateReport(Json(ApiStateReport {
-                datetime: datetime.to_string(),
-                path,
-                values,
-            }))),
-            Ok(Message::ConstraintViolation {}) => Ok(PostResponse::ConstraintViolation(
-                PlainText(format!("contraint violation with id {}", id.0)),
-            )),
-            e => Ok(PostResponse::InternalServerError(PlainText(format!(
-                "server error with id {}: {:?}",
-                id.0, e
-            )))),
+            }) => Ok(PostObservationResponse::ApiStateReport(Json(
+                ApiStateReport {
+                    datetime: datetime.to_string(),
+                    path,
+                    values,
+                },
+            ))),
+            Ok(Message::ConstraintViolation {}) => {
+                Ok(PostObservationResponse::ConstraintViolation(PlainText(
+                    format!("contraint violation with id {}", id.0),
+                )))
+            }
+            e => Ok(PostObservationResponse::InternalServerError(PlainText(
+                format!("server error with id {}: {:?}", id.0, e),
+            ))),
+        }
+    }
+}
+
+struct GenesApi;
+
+#[OpenApi]
+impl GenesApi {
+    #[oai(path = "/:namespace<.+/>:id", method = "get")]
+    async fn get_gene(
+        &self,
+        nv: Data<&SharedHandle>,
+        namespace: Path<String>,
+        id: Path<String>,
+    ) -> Result<GetGeneMappingResponse, poem::Error> {
+        let fullpath = format!("{}{}", namespace.as_str(), id.as_str());
+        let fullpath = prepend_slash(fullpath);
+        debug!("get gene for {}", fullpath);
+        // query state of actor one from above updates
+        let cmd: Message<f64> = Message::Content {
+            text: "".to_string(),
+            path: Some(fullpath),
+            hint: MtHint::GeneMappingQuery,
+        };
+        match nv.ask(cmd).await {
+            Ok(Message::GeneMapping { path, gene_type }) => Ok(
+                GetGeneMappingResponse::ApiGeneMapping(Json(ApiGeneMapping {
+                    path,
+                    gene_type: gene_type.to_string(),
+                })),
+            ),
+            Ok(Message::NotFound { path }) => Ok(GetGeneMappingResponse::NotFound(PlainText(
+                format!("No gene mapping for `{}`", path),
+            ))),
+
+            m => Ok(GetGeneMappingResponse::InternalServerError(PlainText(
+                format!("server error for path {}: {:?}", id.0, m),
+            ))),
+        }
+    }
+
+    #[oai(path = "/:namespace<.+/>:id", method = "post")]
+    async fn post_gene_mapping(
+        &self,
+        nv: Data<&SharedHandle>,
+        namespace: Path<String>,
+        id: Path<String>,
+        body: Json<ApiGeneMapping>,
+    ) -> Result<PostGeneMappingResponse, poem::Error> {
+        let fullpath = format!("{}{}", namespace.as_str(), id.as_str());
+        let fullpath = prepend_slash(fullpath);
+        debug!("post gene mapping for {fullpath}");
+        let body_str = to_string(&body.0).unwrap_or_else(|e| {
+            error!("Failed to serialize JSON: {:?}", e);
+            String::new()
+        });
+        let cmd: Message<f64> = Message::Content {
+            text: body_str,
+            path: Some(fullpath),
+            hint: MtHint::GeneMapping,
+        };
+        match nv.ask(cmd).await {
+            Ok(Message::GeneMapping { path, gene_type }) => Ok(
+                PostGeneMappingResponse::ApiGeneMapping(Json(ApiGeneMapping {
+                    path,
+                    gene_type: gene_type.to_string(),
+                })),
+            ),
+            Ok(Message::ConstraintViolation {}) => {
+                Ok(PostGeneMappingResponse::ConstraintViolation(PlainText(
+                    format!("contraint violation with id {}", id.0),
+                )))
+            }
+            e => Ok(PostGeneMappingResponse::InternalServerError(PlainText(
+                format!("server error with id {}: {:?}", id.0, e),
+            ))),
         }
     }
 }
@@ -236,26 +354,31 @@ pub async fn serve<'a>(
     let ifc_host_str = format!("{}:{}", server_config.interface, server_config.port);
     let swagger_api_target = format!("{}/api", server_config.external_host);
 
-    let api_service = OpenApiService::new(NvApi, clap::crate_name!(), clap::crate_version!())
+    let actors_service =
+        OpenApiService::new(ActorsApi, clap::crate_name!(), clap::crate_version!())
+            .server(swagger_api_target.clone());
+
+    let genes_service = OpenApiService::new(GenesApi, clap::crate_name!(), clap::crate_version!())
         .server(swagger_api_target.clone());
 
     let app = {
-        let uip = uipath
-            .unwrap_or_default()
-            .trim_start_matches('/')
-            .to_string();
-        let swagger_ui_host = format!("{}/{uip}", server_config.external_host);
-        debug!("swagger UI is available at {}.", swagger_ui_host);
-        let ui = api_service.swagger_ui();
-
         if disui {
             Route::new()
-                .nest("/api", api_service)
+                .nest("/api/actors", actors_service)
+                .nest("/api/genes", genes_service)
                 .data(SharedHandle(nv.clone()))
         } else {
+            let uip = uipath
+                .unwrap_or_default()
+                .trim_start_matches('/')
+                .to_string();
+            let actors_ui = actors_service.swagger_ui();
+            let genes_ui = genes_service.swagger_ui();
             Route::new()
-                .nest(format!("/{uip}"), ui)
-                .nest("/api", api_service)
+                .nest(format!("/{uip}/actors"), actors_ui)
+                .nest(format!("/{uip}/genes"), genes_ui)
+                .nest("/api/actors", actors_service)
+                .nest("/api/genes", genes_service)
                 .data(SharedHandle(nv.clone()))
         }
     };

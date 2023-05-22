@@ -6,25 +6,56 @@ Content-Type: application/json; charset=utf-8
 --
 
 --
-GET /api/actors/one
+GET /api/actors/actors/one
 
 --
-POST /api/actors/one
+POST /api/actors/actors/one
 {
-  "datetime": "2023-05-11T23:21:13+0000",
+  "datetime": "2023-05-11T23:21:15+0000",
   "path": "/actors/one",
-  "values": {"2":5.3}
+  "values": {"2":5.4}
 }
 
 --
-GET /api/actors/building1/floor2/room3
+GET /api/actors/building1/floor2/room5
 
 --
-POST /api/actors/building1/floor2/room3
+POST /api/actors/building1/floor2/room5
 {
-  "datetime": "2023-04-11T23:01:03+0000",
-  "path": "/actors/building1/floor2/room3",
-  "values": {"1":1.3}
+  "datetime": "2023-04-11T23:01:13+0000",
+  "path": "/building1/floor2/room5",
+  "values": {"1": 2.5}
 }
 
+--
+GET /api/actors/building1/floor1/room1
+
+--
+POST /api/actors/building1/floor1/room1
+{
+  "datetime": "2023-04-11T23:01:12+0000",
+  "path": "/building1/floor1/room1",
+  "values": {"1": 1.2}
+}
+
+
+--
+GET /api/genes/building1/floor2/room5
+
+--
+POST /api/genes/building1/floor2/room5
+{
+  "path": "/building1/floor2/room5",
+  "gene_type": "Accum"
+}
+
+--
+GET /api/genes/building1/floor1/room1
+
+--
+POST /api/genes/building1/floor1/room1
+{
+  "path": "/building1/floor1/room1",
+  "gene_type": "Gauge"
+}
 

@@ -21,6 +21,7 @@
 use crate::actor::respond_or_log_error;
 use crate::actor::Actor;
 use crate::actor::Handle;
+use crate::gene::GeneType;
 use crate::message::Envelope;
 use crate::message::Message;
 use crate::message::MtHint;
@@ -78,11 +79,17 @@ pub struct StoreActor {
 async fn insert_gene_mapping(
     dbconn: &SqlitePool,
     path: &String,
-    text: &String,
+    gene_type: &GeneType,
 ) -> Result<(), sqlx::error::Error> {
-    match sqlx::query("INSERT INTO gene_mappings (path, text) VALUES (?,?)")
+    match sqlx::query("INSERT INTO gene_mappings (path, gene_type) VALUES (?,?)")
         .bind(path)
-        .bind(text)
+        .bind(
+            serde_json::to_string(&gene_type)
+                .map_err(|e| {
+                    error!("cannot serialize gene_type: {e:?}");
+                })
+                .ok(),
+        )
         .execute(dbconn)
         .await
     {
@@ -180,15 +187,22 @@ async fn stream_message(
     }
 }
 
-async fn handle_gene_mapping(
+async fn handle_gene_mapping_query(
     path: String,
-    text: String,
     dbconn: &SqlitePool,
     respond_to: Option<Sender<NvResult<Message<f64>>>>,
 ) {
-    match insert_gene_mapping(dbconn, &path, &text).await {
+}
+
+async fn handle_gene_mapping(
+    path: String,
+    gene_type: GeneType,
+    dbconn: &SqlitePool,
+    respond_to: Option<Sender<NvResult<Message<f64>>>>,
+) {
+    match insert_gene_mapping(dbconn, &path, &gene_type).await {
         Ok(_) => {
-            debug!("gene_mapping '{path}' -> '{text}' persisted");
+            debug!("gene_mapping '{path}' -> '{gene_type}' persisted");
             respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
         }
         Err(e) => respond_or_log_error(
@@ -325,17 +339,15 @@ impl Actor for StoreActor {
                 Message::LoadCmd { path, hint } if hint == MtHint::Update => {
                     handle_load_cmd(path, dbconn, stream_to).await;
                 }
-                Message::Content { path, text, hint }
-                    if path.is_some() && hint == MtHint::GeneMapping =>
-                {
-                    match path {
-                        Some(path) => {
-                            handle_gene_mapping(path, text, dbconn, respond_to).await;
-                        }
-                        _ => {
-                            error!("path not set");
-                        }
-                    }
+                Message::GeneMapping { path, gene_type } => {
+                    handle_gene_mapping(path, gene_type, dbconn, respond_to).await;
+                }
+                Message::Content {
+                    path,
+                    text: _,
+                    hint,
+                } if hint == MtHint::GeneMappingQuery => {
+                    handle_gene_mapping_query(path.unwrap_or_default(), dbconn, respond_to).await;
                 }
                 m => warn!("Unexpected: {m}"),
             }
@@ -357,7 +369,7 @@ async fn get_mappings_for_ns(
     dbconn: &SqlitePool,
 ) -> Result<Vec<Message<f64>>, sqlx::error::Error> {
     debug!("loading mappings for path {path}");
-    sqlx::query("SELECT path, text FROM gene_mappings;")
+    sqlx::query("SELECT path, gene_type FROM gene_mappings;")
         .bind(path)
         .try_map(|row: sqlx::sqlite::SqliteRow| {
             let path = match row.try_get(0) {
@@ -369,20 +381,15 @@ async fn get_mappings_for_ns(
                 }
             };
 
-            let text = match row.try_get(1) {
-                //let text = match from_str(row.get(1)) {
-                Ok(p) => p,
-                Err(e) => {
-                    error!("cannot read text");
-                    return Err(sqlx::Error::Decode(Box::new(e)));
-                }
+            let gene_type = match row.try_get(1) {
+                Ok(p) => match from_str(p) {
+                    Ok(gt) => gt,
+                    Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
+                },
+                Err(e) => return Err(sqlx::Error::Decode(Box::new(e))),
             };
 
-            Ok(Message::Content {
-                path: Some(path),
-                text,
-                hint: MtHint::GeneMapping,
-            })
+            Ok(Message::GeneMapping { path, gene_type })
         })
         .fetch_all(dbconn)
         .await
@@ -463,7 +470,7 @@ async fn define_gene_mapping_table_if_not_exist(
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS gene_mappings (
               path TEXT NOT NULL,
-              text TEXT NOT NULL,
+              gene_type TEXT NOT NULL,
               PRIMARY KEY (path)
         )",
     )

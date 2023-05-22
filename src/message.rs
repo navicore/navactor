@@ -20,12 +20,20 @@
 //! communication process (`NvError` and `NvResult<T>`), as well as a type used to
 //! hint at the intent of a `Message<T>` (`MtHint`).
 
+use crate::gene::GeneType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+
+// deprecated - please use Messsage::GeneMapping
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GeneMapping {
+    pub path: String,
+    pub gene_type: GeneType,
+}
 
 pub type NvResult<T> = Result<T, NvError>;
 
@@ -52,12 +60,6 @@ pub struct Observations {
     pub path: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GeneMapping {
-    pub path: String,
-    pub gene_type: String,
-}
-
 /// all actor messages are delivered in envelops that contain optional
 /// sender objects - these are set when a `tell` message is sent so that
 /// the reply can be delivered.  These replies are not placed in envelopes.
@@ -76,6 +78,7 @@ pub enum MtHint {
     Query,
     State,
     GeneMapping,
+    GeneMappingQuery,
 }
 
 impl fmt::Display for MtHint {
@@ -85,6 +88,7 @@ impl fmt::Display for MtHint {
             Self::State => "state",
             Self::Update => "update",
             Self::GeneMapping => "gene mapping",
+            Self::GeneMappingQuery => "gene mapping query",
         };
         write!(f, "[{display_text}]")
     }
@@ -110,11 +114,18 @@ pub enum Message<T> {
         path: String,
         values: HashMap<i32, T>,
     },
+    GeneMapping {
+        path: String,
+        gene_type: GeneType,
+    },
     /// the actor init process is complicated in that the actors must recalculate
     /// their state from event source replays when they are first instantiated.
     /// EndOfStream is used to complete the jrnl stream at init time.
     EndOfStream {},
     Persisted,
+    NotFound {
+        path: String,
+    },
     ConstraintViolation,
     /// InitCmd instructs the actor to flip into init mode and recalculate its
     /// state from the incoming eventstream using a tokio receiver in the
@@ -159,8 +170,10 @@ impl<T> fmt::Display for Message<T> {
             Self::InitCmd { hint } => format!("[InitCmd {hint}]"),
             Self::EndOfStream {} => "[EndOfStream]".to_string(),
             Self::Persisted {} => "[Persisted]".to_string(),
+            Self::NotFound { path } => "[Not Found]".to_string(),
             Self::ConstraintViolation {} => "[Contraint Violation]".to_string(),
-            Self::StateReport { .. } => "[StateReport]".to_string(),
+            Self::StateReport { .. } => "[StateReport]".to_string(), // TODO
+            Self::GeneMapping { .. } => "[GeneMapping]".to_string(), // TODO
             Self::Update { .. } => "[Update]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
         };
