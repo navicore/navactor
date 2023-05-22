@@ -49,7 +49,7 @@ impl GaugeAndAccumGene {
 impl<T: Add<Output = T> + Copy> Gene<T> for GaugeAndAccumGene {
     fn apply_operators(&self, mut state: State<T>, update: Message<T>) -> OperatorResult<State<T>> {
         match update {
-            Message::Update {
+            Message::Observations {
                 path: _,
                 datetime,
                 values,

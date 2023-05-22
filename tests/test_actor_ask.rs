@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use tokio::runtime::Runtime;
 
 /**
- * create a state actor and send it updates via `Message::Update` a hashmap
+ * create a state actor and send it updates via `Message::Observations` a hashmap
  */
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]
 #[test]
@@ -29,7 +29,7 @@ fn test_actor_ask() {
         values.insert(1, 1.9);
         values.insert(2, 2.9);
 
-        let cmd = Message::Update {
+        let cmd = Message::Observations {
             path: String::from("/"),
             datetime: OffsetDateTime::now_utc(),
             values,
@@ -41,7 +41,7 @@ fn test_actor_ask() {
         let mut values = HashMap::new();
         values.insert(1, 1.8);
         let datetime = OffsetDateTime::now_utc();
-        let cmd = Message::Update {
+        let cmd = Message::Observations {
             path: String::from("/"),
             datetime,
             values,

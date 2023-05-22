@@ -22,7 +22,7 @@ fn test_accum_gene() {
         ..Default::default()
     };
 
-    let msg = Message::Update {
+    let msg = Message::Observations {
         path: String::from("/"),
         datetime: OffsetDateTime::now_utc(),
         values,
