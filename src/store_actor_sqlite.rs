@@ -187,13 +187,6 @@ async fn stream_message(
     }
 }
 
-async fn handle_gene_mapping_query(
-    path: String,
-    dbconn: &SqlitePool,
-    respond_to: Option<Sender<NvResult<Message<f64>>>>,
-) {
-}
-
 async fn handle_gene_mapping(
     path: String,
     gene_type: GeneType,
@@ -341,13 +334,6 @@ impl Actor for StoreActor {
                 }
                 Message::GeneMapping { path, gene_type } => {
                     handle_gene_mapping(path, gene_type, dbconn, respond_to).await;
-                }
-                Message::Content {
-                    path,
-                    text: _,
-                    hint,
-                } if hint == MtHint::GeneMappingQuery => {
-                    handle_gene_mapping_query(path.unwrap_or_default(), dbconn, respond_to).await;
                 }
                 m => warn!("Unexpected: {m}"),
             }

@@ -161,7 +161,7 @@ impl JsonDecoder {
         debug!("processing gene mapping query");
         let msg = Message::Content {
             path,
-            text: "".to_string(),
+            text: String::new(),
             hint: MtHint::GeneMappingQuery,
         };
 

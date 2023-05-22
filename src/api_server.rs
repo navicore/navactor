@@ -113,9 +113,6 @@ enum PostGeneMappingResponse {
     #[oai(status = 200)]
     ApiGeneMapping(Json<ApiGeneMapping>),
 
-    #[oai(status = 404)]
-    NotFound(PlainText<String>),
-
     #[oai(status = 409)]
     ConstraintViolation(PlainText<String>),
 
@@ -173,7 +170,7 @@ impl ActorsApi {
         debug!("get state for {}", fullpath);
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: format!("{{ \"path\": \"{}\" }}", fullpath),
+            text: format!("{{ \"path\": \"{fullpath}\" }}"),
             path: None,
             hint: MtHint::Query,
         };
@@ -271,7 +268,7 @@ impl GenesApi {
         debug!("get gene for {}", fullpath);
         // query state of actor one from above updates
         let cmd: Message<f64> = Message::Content {
-            text: "".to_string(),
+            text: String::new(),
             path: Some(fullpath),
             hint: MtHint::GeneMappingQuery,
         };
@@ -283,7 +280,7 @@ impl GenesApi {
                 })),
             ),
             Ok(Message::NotFound { path }) => Ok(GetGeneMappingResponse::NotFound(PlainText(
-                format!("No gene mapping for `{}`", path),
+                format!("No gene mapping for `{path}`"),
             ))),
 
             m => Ok(GetGeneMappingResponse::InternalServerError(PlainText(

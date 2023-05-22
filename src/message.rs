@@ -170,7 +170,7 @@ impl<T> fmt::Display for Message<T> {
             Self::InitCmd { hint } => format!("[InitCmd {hint}]"),
             Self::EndOfStream {} => "[EndOfStream]".to_string(),
             Self::Persisted {} => "[Persisted]".to_string(),
-            Self::NotFound { path } => "[Not Found]".to_string(),
+            Self::NotFound { path: _ } => "[Not Found]".to_string(),
             Self::ConstraintViolation {} => "[Contraint Violation]".to_string(),
             Self::StateReport { .. } => "[StateReport]".to_string(), // TODO
             Self::GeneMapping { .. } => "[GeneMapping]".to_string(), // TODO

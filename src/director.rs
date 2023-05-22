@@ -127,8 +127,7 @@ impl Actor for Director {
                 self.handle_gene_mapping_query(
                     path.clone().unwrap_or_default().as_str(),
                     respond_to,
-                )
-                .await;
+                );
             }
 
             // If the message is an update or a query, handle it by calling the corresponding function
@@ -317,7 +316,7 @@ fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
 
 /// actor private constructor
 impl Director {
-    async fn handle_gene_mapping_query(
+    fn handle_gene_mapping_query(
         &mut self,
         path: &str,
         respond_to: Option<Sender<NvResult<Message<f64>>>>,
