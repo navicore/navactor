@@ -53,10 +53,10 @@ pub enum GeneType {
 impl fmt::Display for GeneType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let display_text = match self {
-            Self::Accum => "[Accum Gene]",
-            Self::Gauge => "[GaugeGene]",
-            Self::GaugeAndAccum => "[GaugeAndAccum Gene]",
-            Self::Default => "[Default GaugeGene]",
+            Self::Accum => "Accum",
+            Self::Gauge => "Gauge",
+            Self::GaugeAndAccum => "GaugeAndAccum",
+            Self::Default => "Gauge",
         };
         write!(f, "{display_text}")
     }

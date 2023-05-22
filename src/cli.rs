@@ -55,25 +55,9 @@ fn setup_server_actor(
         disable_dupe_detection == OptionVariant::On,
     );
 
-    let director_w_persist = director::new(namespace, 8, None, Some(store_actor));
+    let director_with_persistence = director::new(namespace, 8, None, Some(store_actor));
 
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    // BUG!  get rid of json_decode from this flow - and put the json stuff in std_in ... json is
-    // handled by peom now
-    let nv = json_decoder::new(8, director_w_persist);
-
-    Arc::new(nv)
+    Arc::new(director_with_persistence)
 }
 
 async fn run_async_serve(
