@@ -146,7 +146,7 @@ fn test_decoder_ask_accum_and_gauge() {
         let cmd = Message::Content {
             hint: MtHint::GeneMapping,
             path: None,
-            text: String::from("{ \"path\": \"/actors/blue\", \"gene_type\": \"accum\"}"),
+            text: String::from("{ \"path\": \"/actors/blue\", \"gene_type\": \"Accum\"}"),
         };
         let r = json_decoder_actor.tell(cmd).await;
         assert_eq!(r.ok(), Some(()));
