@@ -14,9 +14,9 @@
 //! operators when an input is not valid, along with a `TimeScope` enum that specifies the time
 //! granularity of the gene.
 
-use crate::actor::State;
-use crate::message::Message;
-use crate::operator::OperatorResult;
+use crate::actors::actor::State;
+use crate::actors::message::Message;
+use crate::actors::operator::OperatorResult;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Add;

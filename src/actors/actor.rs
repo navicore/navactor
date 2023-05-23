@@ -21,12 +21,12 @@
 //!This Rust code uses Rust's `async_trait` library, which allows you to write asynchronous code
 //!using traits.
 
-use crate::message::create_init_lifecycle;
-use crate::message::Envelope;
-use crate::message::Message;
-use crate::message::MtHint;
-use crate::message::NvError;
-use crate::message::NvResult;
+use crate::actors::message::create_init_lifecycle;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
+use crate::actors::message::NvError;
+use crate::actors::message::NvResult;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;

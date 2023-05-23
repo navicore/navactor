@@ -1,4 +1,4 @@
-use navactor::gene::GeneType;
+use navactor::actors::genes::gene::GeneType;
 use std::collections::HashMap;
 
 struct MockDirector {

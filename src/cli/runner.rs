@@ -1,15 +1,15 @@
-use crate::actor::Handle;
-use crate::api_server::serve;
-use crate::api_server::HttpServerConfig;
-use crate::director;
-use crate::gene::GeneType;
-use crate::json_decoder;
-use crate::message::Message;
-use crate::message::Message::EndOfStream;
-use crate::message::MtHint;
-use crate::stdin_actor;
-use crate::stdout_actor;
-use crate::store_actor_sqlite;
+use crate::actors::actor::Handle;
+use crate::actors::director;
+use crate::actors::genes::gene::GeneType;
+use crate::actors::message::Message;
+use crate::actors::message::Message::EndOfStream;
+use crate::actors::message::MtHint;
+use crate::actors::store_actor_sqlite;
+use crate::io::json_decoder;
+use crate::io::net::api_server::serve;
+use crate::io::net::api_server::HttpServerConfig;
+use crate::io::stdin_actor;
+use crate::io::stdout_actor;
 use clap::Command;
 use clap_complete::{generate, Generator};
 use std::io;
@@ -48,7 +48,7 @@ fn setup_server_actor(
     write_ahead_logging: OptionVariant,
     disable_dupe_detection: OptionVariant,
 ) -> Arc<Handle> {
-    let store_actor = store_actor_sqlite::new(
+    let store_actor: Handle = store_actor_sqlite::new(
         8,
         db_file_prefix,
         write_ahead_logging == OptionVariant::On,

@@ -6,11 +6,11 @@
 //!trigger any necessary cleanup and shutdown. This actor is only used in `CLI` mode and is used to
 //!interact with the command-line interface by reading input commands from the user.
 
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::message::Envelope;
-use crate::message::Message;
-use crate::message::MtHint;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
 use async_trait::async_trait;
 use tokio::io::stdin;
 use tokio::io::AsyncBufReadExt;
