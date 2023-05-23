@@ -27,7 +27,7 @@ use crate::actors::message::MtHint;
 use crate::actors::message::NvError;
 use crate::actors::message::NvResult;
 use crate::genes::gene::GeneType;
-use crate::nvtime::OffsetDateTimeWrapper;
+use crate::utils::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;
 use sqlx::error::DatabaseError;

@@ -9,7 +9,7 @@ use crate::actors::message::MtHint;
 use crate::actors::message::NvError;
 use crate::actors::message::NvResult;
 use crate::actors::message::PathQuery;
-use crate::nvtime::extract_datetime;
+use crate::utils::nvtime::extract_datetime;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,4 +1,4 @@
-use navactor::nvtime::extract_datetime;
+use navactor::utils::nvtime::extract_datetime;
 use navactor::io::json_decoder;
 use navactor::actors::message::Envelope;
 use navactor::actors::message::Message;
