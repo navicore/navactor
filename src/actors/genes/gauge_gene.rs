@@ -10,10 +10,10 @@
 //! The module exports the `GaugeGene` struct, which can be used in the larger system for processing
 //! incoming data from `IoT` devices.
 use crate::actors::actor::State;
+use crate::actors::genes::gene::Gene;
+use crate::actors::genes::gene::TimeScope;
 use crate::actors::message::Message;
 use crate::actors::operator::{Gauge, OpError, Operator, OperatorResult};
-use crate::genes::gene::Gene;
-use crate::genes::gene::TimeScope;
 use std::ops::Add;
 use time::OffsetDateTime;
 

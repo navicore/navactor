@@ -21,12 +21,12 @@
 use crate::actors::actor::respond_or_log_error;
 use crate::actors::actor::Actor;
 use crate::actors::actor::Handle;
+use crate::actors::genes::gene::GeneType;
 use crate::actors::message::Envelope;
 use crate::actors::message::Message;
 use crate::actors::message::MtHint;
 use crate::actors::message::NvError;
 use crate::actors::message::NvResult;
-use crate::genes::gene::GeneType;
 use crate::utils::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;

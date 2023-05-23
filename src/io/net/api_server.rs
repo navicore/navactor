@@ -1,8 +1,8 @@
 #![allow(clippy::useless_let_if_seq)]
 use crate::actors::actor::Handle;
+use crate::actors::genes::gene::GeneType;
 use crate::actors::message::Message;
 use crate::actors::message::MtHint;
-use crate::genes::gene::GeneType;
 use crate::utils::nvtime::extract_datetime;
 use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,

@@ -25,7 +25,7 @@
 //! arguments, making it easy for users to get up and running with the tool quickly and
 //! efficiently.
 
-use crate::genes::gene::GeneType;
+use crate::actors::genes::gene::GeneType;
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]

@@ -1,9 +1,9 @@
 use approx::assert_ulps_eq;
 use navactor::actors::director;
+use navactor::actors::genes::gauge_and_accum_gene::GaugeAndAccumGene;
 use navactor::actors::message::Message;
 use navactor::actors::message::MtHint;
 use navactor::actors::state_actor;
-use navactor::genes::gauge_and_accum_gene::GaugeAndAccumGene;
 use navactor::io::json_decoder;
 use std::collections::HashMap;
 use time::OffsetDateTime;

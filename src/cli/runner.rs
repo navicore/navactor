@@ -1,10 +1,10 @@
 use crate::actors::actor::Handle;
 use crate::actors::director;
+use crate::actors::genes::gene::GeneType;
 use crate::actors::message::Message;
 use crate::actors::message::Message::EndOfStream;
 use crate::actors::message::MtHint;
 use crate::actors::store_actor_sqlite;
-use crate::genes::gene::GeneType;
 use crate::io::json_decoder;
 use crate::io::net::api_server::serve;
 use crate::io::net::api_server::HttpServerConfig;

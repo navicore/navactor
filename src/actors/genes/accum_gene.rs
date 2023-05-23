@@ -10,10 +10,10 @@
 //! The module exports the `AccumGene` struct, which can be used in the larger system for processing
 //! incoming data from `IoT` devices.
 use crate::actors::actor::State;
+use crate::actors::genes::gene::Gene;
+use crate::actors::genes::gene::TimeScope;
 use crate::actors::message::Message;
 use crate::actors::operator::{Accumulator, OpError, Operator, OperatorResult};
-use crate::genes::gene::Gene;
-use crate::genes::gene::TimeScope;
 use std::ops::Add;
 use time::OffsetDateTime;
 use tracing::trace;
