@@ -310,7 +310,7 @@ impl Actor for StoreActor {
             } = envelope;
 
             match message {
-                Message::Update {
+                Message::Observations {
                     path,
                     datetime,
                     values,
@@ -412,7 +412,7 @@ async fn get_values(
                     OffsetDateTime::now_utc()
                 }
             };
-            Ok(Message::Update {
+            Ok(Message::Observations {
                 path: String::from(path),
                 datetime: dt,
                 values,

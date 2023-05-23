@@ -131,7 +131,7 @@ impl Actor for Director {
             }
 
             // If the message is an update or a query, handle it by calling the corresponding function
-            Message::Update { path, .. } => {
+            Message::Observations { path, .. } => {
                 self.handle_update_or_query(&path.clone(), message, respond_to)
                     .await;
             }
@@ -270,7 +270,7 @@ async fn write_jrnl(
     store_actor: &Option<Handle>,
 ) -> Result<Message<f64>, NvError> {
     match message.clone() {
-        Message::Update { path: _, .. } => {
+        Message::Observations { path: _, .. } => {
             trace!("write_jrnl");
             journal_message(message.clone(), store_actor).await
         }

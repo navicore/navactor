@@ -53,13 +53,6 @@ pub struct PathQuery {
     pub path: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Observations {
-    pub datetime: String,
-    pub values: HashMap<i32, f64>,
-    pub path: String,
-}
-
 /// all actor messages are delivered in envelops that contain optional
 /// sender objects - these are set when a `tell` message is sent so that
 /// the reply can be delivered.  These replies are not placed in envelopes.
@@ -102,8 +95,8 @@ pub enum Message<T> {
         path: String,
         hint: MtHint,
     },
-    /// 'Update' is usually the 'tell' payload
-    Update {
+    /// 'Observations' is usually the 'tell' payload
+    Observations {
         datetime: OffsetDateTime,
         path: String,
         values: HashMap<i32, T>,
@@ -174,7 +167,7 @@ impl<T> fmt::Display for Message<T> {
             Self::ConstraintViolation {} => "[Contraint Violation]".to_string(),
             Self::StateReport { .. } => "[StateReport]".to_string(), // TODO
             Self::GeneMapping { .. } => "[GeneMapping]".to_string(), // TODO
-            Self::Update { .. } => "[Update]".to_string(),
+            Self::Observations { .. } => "[Observations]".to_string(),
             Self::Query { .. } => "[Query]".to_string(),
         };
         write!(f, "{display_text}")

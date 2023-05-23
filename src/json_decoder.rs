@@ -8,10 +8,11 @@ use crate::message::Message;
 use crate::message::MtHint;
 use crate::message::NvError;
 use crate::message::NvResult;
-use crate::message::Observations;
 use crate::message::PathQuery;
 use crate::nvtime::extract_datetime;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;
 extern crate serde;
@@ -19,6 +20,13 @@ extern crate serde_json;
 use tracing::debug;
 use tracing::error;
 use tracing::trace;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Observations {
+    pub datetime: String,
+    pub values: HashMap<i32, f64>,
+    pub path: String,
+}
 
 pub struct JsonDecoder {
     pub receiver: mpsc::Receiver<Envelope<f64>>,
@@ -169,7 +177,7 @@ impl JsonDecoder {
                 trace!("json parsed");
                 match extract_datetime(&observations.datetime) {
                     Ok(dt) => {
-                        let msg = Message::Update {
+                        let msg = Message::Observations {
                             path: observations.path,
                             datetime: dt,
                             values: observations.values,

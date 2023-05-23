@@ -8,7 +8,6 @@ use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,
     RequestBody, Result, Route,
 };
-use serde::Serialize;
 use std::ops::Deref;
 
 use poem_openapi::{
@@ -56,14 +55,21 @@ impl fmt::Display for HttpServerConfig {
     }
 }
 
-#[derive(Object, Serialize)]
+#[derive(Object, Debug)]
+pub struct ApiObservations {
+    pub datetime: String,
+    pub values: HashMap<i32, f64>,
+    pub path: String,
+}
+
+#[derive(Object)]
 struct ApiStateReport {
     datetime: String,
     path: String,
     values: HashMap<i32, f64>,
 }
 
-#[derive(Object, Serialize)]
+#[derive(Object)]
 struct ApiGeneMapping {
     path: String,
     gene_type: String,
@@ -207,14 +213,14 @@ impl ActorsApi {
         nv: Data<&SharedHandle>,
         namespace: Path<String>,
         id: Path<String>,
-        body: Json<ApiStateReport>,
+        body: Json<ApiObservations>,
     ) -> Result<PostObservationResponse, poem::Error> {
         let ns = namespace.trim_end_matches('/').to_string();
         let ns = prepend_slash(ns);
         debug!("post observations {}/{}", ns, id.as_str());
         // record observation
         if let Ok(dt) = extract_datetime(&body.0.datetime) {
-            let cmd = Message::Update {
+            let cmd = Message::Observations {
                 path: body.0.path,
                 datetime: dt,
                 values: body.0.values,

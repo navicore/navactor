@@ -27,7 +27,7 @@ fn test_json_decode() {
         
         match json_decoder_actor.ask(cmd).await {
             Ok(r) => {
-                if let Message::Update { datetime, path, values } = r {
+                if let Message::Observations { datetime, path, values } = r {
                     assert_eq!(path, "/actors");
                     let keys: Vec<&i32> = values.keys().collect();
                     assert_eq!(keys.len(), 2);

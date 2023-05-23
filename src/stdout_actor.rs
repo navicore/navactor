@@ -51,7 +51,7 @@ impl Actor for StdoutActor {
                 println!("{path} current state: {values:?}");
                 respond_or_log_error(respond_to, Ok(message));
             }
-            Message::Update { path, values, .. } => {
+            Message::Observations { path, values, .. } => {
                 println!("{path} new observations: {values:?}");
                 respond_or_log_error(respond_to, Ok(message));
             }

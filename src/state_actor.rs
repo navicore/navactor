@@ -81,7 +81,7 @@ impl Actor for StateActor {
                     respond_or_log_error(respond_to, Ok(Message::EndOfStream {}));
                 }
             }
-            Message::Update { .. } => {
+            Message::Observations { .. } => {
                 trace!("{} handling update", self.path);
 
                 if self.update_state(message.clone()) {

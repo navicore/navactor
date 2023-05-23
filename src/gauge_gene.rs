@@ -37,7 +37,7 @@ fn update_state_with_val<T: Add<Output = T>>(
 impl<T: Add<Output = T> + Copy> Gene<T> for GaugeGene {
     fn apply_operators(&self, mut state: State<T>, update: Message<T>) -> OperatorResult<State<T>> {
         match update {
-            Message::Update {
+            Message::Observations {
                 path: _,
                 datetime,
                 values,
