@@ -1,9 +1,9 @@
 use navactor::nvtime::extract_datetime;
-use navactor::json_decoder;
-use navactor::message::Envelope;
-use navactor::message::Message;
-use navactor::message::MtHint;
-use navactor::stdout_actor;
+use navactor::io::json_decoder;
+use navactor::actors::message::Envelope;
+use navactor::actors::message::Message;
+use navactor::actors::message::MtHint;
+use navactor::io::stdout_actor;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 use tracing::debug;

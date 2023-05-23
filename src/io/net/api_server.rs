@@ -1,8 +1,8 @@
 #![allow(clippy::useless_let_if_seq)]
-use crate::actor::Handle;
-use crate::gene::GeneType;
-use crate::message::Message;
-use crate::message::MtHint;
+use crate::actors::actor::Handle;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
+use crate::genes::gene::GeneType;
 use crate::nvtime::extract_datetime;
 use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,
@@ -55,7 +55,7 @@ impl fmt::Display for HttpServerConfig {
     }
 }
 
-#[derive(Object, Debug)]
+#[derive(Object)]
 pub struct ApiObservations {
     pub datetime: String,
     pub values: HashMap<i32, f64>,

@@ -18,7 +18,7 @@
 //! value of type `T` and an error of type `OpError`. The module also defines the `State` type,
 //! which is used as the state of actors in the system and is passed as an argument to the `apply`
 //! method of all operators.
-use crate::actor::State;
+use crate::actors::actor::State;
 use std::fmt;
 use std::ops::Add;
 use time::OffsetDateTime;

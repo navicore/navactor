@@ -1,8 +1,8 @@
 use approx::assert_ulps_eq;
-use navactor::accum_gene::AccumGene;
-use navactor::actor::State;
-use navactor::gene::Gene;
-use navactor::message::Message;
+use navactor::actors::actor::State;
+use navactor::actors::message::Message;
+use navactor::genes::accum_gene::AccumGene;
+use navactor::genes::gene::Gene;
 use time::OffsetDateTime;
 
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::unwrap_used))]

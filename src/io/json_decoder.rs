@@ -1,14 +1,14 @@
 //! only used to support the cli ifc and `stdin_actor`
-use crate::actor::respond_or_log_error;
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::message::Envelope;
-use crate::message::GeneMapping;
-use crate::message::Message;
-use crate::message::MtHint;
-use crate::message::NvError;
-use crate::message::NvResult;
-use crate::message::PathQuery;
+use crate::actors::actor::respond_or_log_error;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::message::Envelope;
+use crate::actors::message::GeneMapping;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
+use crate::actors::message::NvError;
+use crate::actors::message::NvResult;
+use crate::actors::message::PathQuery;
 use crate::nvtime::extract_datetime;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

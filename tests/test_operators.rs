@@ -1,8 +1,8 @@
 use approx::assert_ulps_eq;
-use navactor::actor::State;
-use navactor::operator::Accumulator;
-use navactor::operator::Gauge;
-use navactor::operator::Operator;
+use navactor::actors::actor::State;
+use navactor::actors::operator::Accumulator;
+use navactor::actors::operator::Gauge;
+use navactor::actors::operator::Operator;
 use time::OffsetDateTime;
 
 #[test]

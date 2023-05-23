@@ -7,14 +7,14 @@
 //! with a copy of the current state report. The state actor also reports the
 //! update to the state to the output actor if it is specified.
 
-use crate::actor::respond_or_log_error;
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::actor::State;
-use crate::gene::Gene;
-use crate::message::Envelope;
-use crate::message::Message;
-use crate::message::NvError;
+use crate::actors::actor::respond_or_log_error;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::actor::State;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
+use crate::actors::message::NvError;
+use crate::genes::gene::Gene;
 use async_trait::async_trait;
 use time::OffsetDateTime;
 use tokio::sync::mpsc;

@@ -1,8 +1,8 @@
-use crate::actor::State;
-use crate::gene::Gene;
-use crate::gene::TimeScope;
-use crate::message::Message;
-use crate::operator::{Accumulator, Gauge, OpError, Operator, OperatorResult};
+use crate::actors::actor::State;
+use crate::actors::message::Message;
+use crate::actors::operator::{Accumulator, Gauge, OpError, Operator, OperatorResult};
+use crate::genes::gene::Gene;
+use crate::genes::gene::TimeScope;
 use std::ops::Add;
 use time::OffsetDateTime;
 

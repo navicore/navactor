@@ -18,15 +18,15 @@
 //!The module is constructed as an actor handle that is expected to be used with the director
 //!module in creating a new actor system.
 
-use crate::actor::respond_or_log_error;
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::gene::GeneType;
-use crate::message::Envelope;
-use crate::message::Message;
-use crate::message::MtHint;
-use crate::message::NvError;
-use crate::message::NvResult;
+use crate::actors::actor::respond_or_log_error;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
+use crate::actors::message::NvError;
+use crate::actors::message::NvResult;
+use crate::genes::gene::GeneType;
 use crate::nvtime::OffsetDateTimeWrapper;
 use async_trait::async_trait;
 use serde_json::from_str;

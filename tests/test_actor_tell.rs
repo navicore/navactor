@@ -1,8 +1,8 @@
-use navactor::director;
-use navactor::json_decoder;
-use navactor::message::Envelope;
-use navactor::message::Message;
-use navactor::message::MtHint;
+use navactor::actors::director;
+use navactor::actors::message::Envelope;
+use navactor::actors::message::Message;
+use navactor::actors::message::MtHint;
+use navactor::io::json_decoder;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 

@@ -16,11 +16,11 @@
 //!The module has a public constructor function `new` that returns a `Handle` to interact with the
 //!actor.
 
-use crate::actor::respond_or_log_error;
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::message::Envelope;
-use crate::message::Message;
+use crate::actors::actor::respond_or_log_error;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
 use async_trait::async_trait;
 use tokio::sync::mpsc;
 use tracing::error;

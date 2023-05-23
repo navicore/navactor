@@ -1,9 +1,9 @@
 use clap::{CommandFactory, Parser};
-use navactor::api_server::HttpServerConfig;
-use navactor::cli::{
+use navactor::cli::ifc::{Cli, Commands};
+use navactor::cli::runner::{
     configure, explain, inspect, print_completions, run_serve, update, OptionVariant,
 };
-use navactor::cli_interface::{Cli, Commands};
+use navactor::io::net::api_server::HttpServerConfig;
 use tokio::runtime::Runtime;
 use tracing::info;
 

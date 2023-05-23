@@ -20,7 +20,7 @@
 //! communication process (`NvError` and `NvResult<T>`), as well as a type used to
 //! hint at the intent of a `Message<T>` (`MtHint`).
 
-use crate::gene::GeneType;
+use crate::genes::gene::GeneType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;

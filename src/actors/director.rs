@@ -18,21 +18,21 @@
 //!The `Director` uses other Rust crates and libraries, such as `tokio`, `async_trait`,
 //!`std::collections::HashMap`, and others.
 
-use crate::accum_gene::AccumGene;
-use crate::actor::respond_or_log_error;
-use crate::actor::Actor;
-use crate::actor::Handle;
-use crate::gauge_and_accum_gene::GaugeAndAccumGene;
-use crate::gauge_gene::GaugeGene;
-use crate::gene::Gene;
-use crate::gene::GeneType;
-use crate::message::create_init_lifecycle;
-use crate::message::Envelope;
-use crate::message::Message;
-use crate::message::MtHint;
-use crate::message::NvError;
-use crate::message::NvResult;
-use crate::state_actor;
+use crate::actors::actor::respond_or_log_error;
+use crate::actors::actor::Actor;
+use crate::actors::actor::Handle;
+use crate::actors::message::create_init_lifecycle;
+use crate::actors::message::Envelope;
+use crate::actors::message::Message;
+use crate::actors::message::MtHint;
+use crate::actors::message::NvError;
+use crate::actors::message::NvResult;
+use crate::actors::state_actor;
+use crate::genes::accum_gene::AccumGene;
+use crate::genes::gauge_and_accum_gene::GaugeAndAccumGene;
+use crate::genes::gauge_gene::GaugeGene;
+use crate::genes::gene::Gene;
+use crate::genes::gene::GeneType;
 use async_trait::async_trait;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
