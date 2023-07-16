@@ -31,8 +31,6 @@ eighties around [tuple spaces](https://en.wikipedia.org/wiki/Tuple_space) for
 coordination languages and later the
 [actor](https://en.wikipedia.org/wiki/Actor_model) programming model. 
 
-![Fun Mutation of DtLab Graphic](images/dtlab-mutant-3.jpg)
-
 Status
 ----------
 
@@ -132,7 +130,6 @@ Run specific tests with logging enabled:
 cargo test --test test_json_decoder_actor -- --nocapture
 ```
 
-![Fun Mutation of DtLab Graphic](images/diodes-2.jpeg)
 ----------
 
 `nv` was bootstrapped from Alice Ryhl's very instructive blog post
