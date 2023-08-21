@@ -20,7 +20,7 @@ clap_complete = "4"
 glob = "0.3.1"
 petgraph = "0.6.3"
 reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0.183", features = ["derive"] }
+serde = { version = "1.0.184", features = ["derive"] }
 serde_json = "1.0.104"
 sqlx = { version = "0.7", features = [ "sqlite", "runtime-tokio-rustls" ] }
 test-log = "0.2.12"
