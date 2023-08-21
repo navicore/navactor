@@ -302,15 +302,9 @@ async fn send_to_actor(
 
 fn get_gene(gene_type: GeneType) -> Box<dyn Gene<f64> + Send + Sync> {
     match gene_type {
-        GeneType::Accum => Box::new(AccumGene {
-            ..Default::default()
-        }),
-        GeneType::Gauge => Box::new(GaugeGene {
-            ..Default::default()
-        }),
-        _ => Box::new(GaugeAndAccumGene {
-            ..Default::default()
-        }),
+        GeneType::Accum => Box::<AccumGene>::default(),
+        GeneType::Gauge => Box::<GaugeGene>::default(),
+        _ => Box::<GaugeAndAccumGene>::default(),
     }
 }
 

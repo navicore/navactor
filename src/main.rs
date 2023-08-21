@@ -7,23 +7,7 @@ use navactor::io::net::api_server::HttpServerConfig;
 use tokio::runtime::Runtime;
 use tracing::info;
 
-fn main() {
-    tracing_subscriber::fmt::init();
-    info!("This will be logged to stdout");
-    info!("nv started");
-
-    let pcli = Cli::parse();
-    let bufsz: usize = pcli.buffer.unwrap_or(8);
-    let memory_only = pcli.memory_only.map(|m| {
-        if m {
-            OptionVariant::On
-        } else {
-            OptionVariant::Off
-        }
-    });
-
-    let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
-
+fn match_command(pcli: Cli, runtime: &Runtime, memory_only: Option<OptionVariant>, bufsz: usize) {
     match pcli.command {
         Commands::Serve {
             port,
@@ -46,7 +30,7 @@ fn main() {
             let server_config = HttpServerConfig::new(port, interface, external_host, namespace);
             run_serve(
                 server_config,
-                &runtime,
+                runtime,
                 uipath,
                 disable_ui,
                 wal,
@@ -75,21 +59,42 @@ fn main() {
             update(
                 namespace,
                 bufsz,
-                &runtime,
+                runtime,
                 silent,
                 memory_only,
                 wal,
                 disable_duplicate_detection,
             );
         }
-        Commands::Inspect { path } => inspect(path, bufsz, &runtime),
-        Commands::Explain { path } => explain(path, bufsz, &runtime),
-        Commands::Configure { path, gene } => configure(path, gene, bufsz, &runtime),
+        Commands::Inspect { path } => inspect(path, bufsz, runtime),
+        Commands::Explain { path } => explain(path, bufsz, runtime),
+        Commands::Configure { path, gene } => configure(path, gene, bufsz, runtime),
         Commands::Completions { shell } => {
             let mut cmd = Cli::command();
             print_completions(shell, &mut cmd);
         }
     }
 
+    info!("nv stopped.");
+}
+
+fn main() {
+    tracing_subscriber::fmt::init();
+    info!("This will be logged to stdout");
+    info!("nv started");
+
+    let pcli = Cli::parse();
+    let bufsz: usize = pcli.buffer.unwrap_or(8);
+    let memory_only = pcli.memory_only.map(|m| {
+        if m {
+            OptionVariant::On
+        } else {
+            OptionVariant::Off
+        }
+    });
+
+    let runtime = Runtime::new().unwrap_or_else(|e| panic!("Error creating runtime: {e}"));
+
+    match_command(pcli, &runtime, memory_only, bufsz);
     info!("nv stopped.");
 }
