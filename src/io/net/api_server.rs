@@ -8,8 +8,6 @@ use poem::{
     http::StatusCode, listener::TcpListener, web::Data, EndpointExt, Error, FromRequest, Request,
     RequestBody, Result, Route,
 };
-use std::ops::Deref;
-
 use poem_openapi::{
     param::Path,
     payload::{Json, PlainText},
@@ -17,6 +15,7 @@ use poem_openapi::{
 };
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::Deref;
 use std::sync::Arc;
 use tracing::debug;
 use tracing::info;
@@ -371,6 +370,9 @@ pub async fn serve<'a>(
     let actors_service =
         OpenApiService::new(ActorsApi, clap::crate_name!(), clap::crate_version!())
             .server(swagger_api_target.clone());
+
+    let spec = actors_service.spec();
+    std::fs::write("/tmp/navactor_spec.json", spec)?;
 
     let genes_service = OpenApiService::new(GenesApi, clap::crate_name!(), clap::crate_version!())
         .server(swagger_api_target.clone());

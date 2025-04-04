@@ -29,7 +29,7 @@ powerful and undefeated
 The ideas that inspire Navactor and DtLab come from CS insights from the early
 eighties around [tuple spaces](https://en.wikipedia.org/wiki/Tuple_space) for
 coordination languages and later the
-[actor](https://en.wikipedia.org/wiki/Actor_model) programming model. 
+[actor](https://en.wikipedia.org/wiki/Actor_model) programming model.
 
 Status
 ----------
