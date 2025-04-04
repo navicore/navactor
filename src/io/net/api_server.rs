@@ -355,7 +355,7 @@ impl Clone for SharedHandle {
 /// # Errors
 ///
 /// Returns `Err` if server can not be started
-pub async fn serve<'a>(
+pub async fn serve(
     nv: Arc<Handle>,
     server_config: HttpServerConfig,
     uipath: Option<String>,
